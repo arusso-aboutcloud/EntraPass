@@ -13,7 +13,7 @@ jobs:
       contents: read
       deployments: write
       
-    environment: production
+
     
     steps:
       - name: Checkout
