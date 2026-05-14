@@ -1,318 +1,294 @@
-# EntraPass � Installation Guide
+# EntraPass — Installation Guide
 
-> **Version:** 0.1.0  
-> **License:** MIT  
-> **Last Updated:** 2026-05-14
+> **Version:** 0.1.0
+> **License:** MIT
+> **Last updated:** 2026-05-14
 
 ---
 
-## Table of Contents
+## Table of contents
 
 1. [Overview](#1-overview)
-2. [Option A: Use the Hosted Version](#2-option-a-use-the-hosted-version)
-3. [Option B: Self-Host on Cloudflare Pages](#3-option-b-self-host-on-cloudflare-pages)
-4. [Option C: Run Locally (Development)](#4-option-c-run-locally-development)
-5. [Post-Installation: Grant Admin Consent](#5-post-installation-grant-admin-consent)
-6. [Verification Checklist](#6-verification-checklist)
+2. [Step 1: Create the App Registration](#2-step-1-create-the-app-registration)
+3. [Step 2: Choose how to run EntraPass](#3-step-2-choose-how-to-run-entrapass)
+   - [Option A: Use the hosted version](#option-a-use-the-hosted-version)
+   - [Option B: Self-host on Cloudflare Pages](#option-b-self-host-on-cloudflare-pages)
+   - [Option C: Run locally for development](#option-c-run-locally-for-development)
+4. [Step 3: Grant admin consent](#4-step-3-grant-admin-consent)
+5. [Verification checklist](#5-verification-checklist)
+6. [Cleanup](#6-cleanup)
+7. [Appendix: infrastructure files](#7-appendix-infrastructure-files)
 
 ---
 
 ## 1. Overview
 
-EntraPass can be used in three ways:
+Running EntraPass always involves two pieces:
 
-| Method | Difficulty | Best For |
+1. **An App Registration in your Entra ID tenant** — a PKCE-only SPA with seven
+   read-only Microsoft Graph delegated permissions. EntraPass uses it to
+   authenticate the signed-in user and read tenant data.
+2. **The EntraPass web app itself** — a static SPA you can either use as hosted
+   on Cloudflare Pages, self-host, or run locally.
+
+| Hosting method | Difficulty | Best for |
 |---|---|---|
-| **Hosted version** (Cloudflare Pages) | ? Easy | Most users � no infrastructure needed |
-| **Self-host** (Cloudflare Pages) | ?? Medium | Organizations with their own Cloudflare account |
-| **Local development** | ??? Harder | Developers, contributors, air-gapped tenants |
+| **Hosted version** | Easy | Most users — no infrastructure needed |
+| **Self-host (Cloudflare Pages)** | Medium | Organizations that want their own deployment |
+| **Local development** | Higher | Developers, contributors, air-gapped review |
 
-All methods require deploying a Bicep template to your Azure subscription.
+> **About Bicep / ARM templates:** `infra/app-registration.bicep` and
+> `infra/app-registration.json` are kept in the repository **for reference
+> only**. Deploying `Microsoft.Graph/applications` resources through Bicep/ARM
+> is not reliably supported, so use one of the three methods in
+> [Step 1](#2-step-1-create-the-app-registration) instead.
 
 ---
 
-## 2. Option A: Use the Hosted Version
+## 2. Step 1: Create the App Registration
 
-The hosted version is available at a Cloudflare Pages deployment URL (configured by the repository owner).
+Pick **one** of the three methods below. All of them create the same thing: a
+SPA app registration named `entrapass-scanner` with seven Graph delegated
+permissions and no client secret.
 
-### Step 1: Access the Portal
+You will need: an Entra ID tenant, and the **Application Developer** role (or
+higher) to create app registrations. Granting admin consent additionally
+requires a **Global Administrator** (see [Step 3](#4-step-3-grant-admin-consent)).
 
-1. Open the hosted portal URL in your browser
-2. You will see the **Terms & Conditions** screen
+### Method 1: Azure Portal blade (recommended)
 
-### Step 2: Deploy the App Registration
+1. In the EntraPass setup wizard, click **Create App Registration** — it opens
+   the Azure Portal "Register an application" blade.
+2. Configure:
+   - **Name:** `entrapass-scanner`
+   - **Supported account types:** *Accounts in this organizational directory only*
+   - **Redirect URI:** select **Single-page application (SPA)** and enter your
+     portal URL (e.g. `https://entrapass.pages.dev`, or `http://localhost:5173`
+     for local development).
+3. Click **Register**.
+4. Go to **API permissions → Add a permission → Microsoft Graph → Delegated
+   permissions** and add all seven scopes:
+   `User.Read`, `User.Read.All`, `Device.Read.All`, `Policy.Read.All`,
+   `Application.Read.All`, `AuditLog.Read.All`, `Organization.Read.All`.
+5. Click **Grant admin consent for [tenant]** (requires Global Administrator).
+6. Copy the **Application (client) ID** and **Directory (tenant) ID** from the
+   app's **Overview** page.
 
-Choose one of three methods:
+### Method 2: Azure Cloud Shell script (fastest)
 
-#### ?? Option A: Azure Portal (Recommended)
-
-1. Click the **?? Create App Registration** button in the portal
-2. You will be redirected to the Azure Portal App Registration creation blade
-3. Configure:
-   - **Name**: `entrapass-scanner`
-   - **Accounts**: "Only this organizational directory"
-   - **Redirect URI**: SPA ? your portal URL (e.g., `https://entrapass.pages.dev`)
-4. Click **Register**
-5. Go to **API Permissions** ? **Add a permission** ? **Microsoft Graph** ? **Delegated permissions**
-6. Add all 7 scopes: User.Read, User.Read.All, Device.Read.All, Policy.Read.All, Application.Read.All, AuditLog.Read.All, Organization.Read.All
-7. Click **Grant admin consent** (requires Global Admin)
-
-#### ?? Option B: Azure Cloud Shell (Fastest)
-
-1. Open [Azure Cloud Shell](https://shell.azure.com) in PowerShell mode
-2. Run this one-liner:
+1. Open [Azure Cloud Shell](https://shell.azure.com) in **PowerShell** mode.
+2. Run:
    ```powershell
    irm https://raw.githubusercontent.com/arusso-aboutcloud/EntraPass/main/infra/deploy-entrapass.ps1 | iex
    ```
-3. Enter your portal URL when prompted
-4. The script creates the App Registration, adds all permissions, and outputs your **Client ID**
+3. Enter your portal URL when prompted.
+4. The script creates the app registration, adds all seven permissions, and
+   prints your **Client ID** and **Tenant ID**.
 
-#### ?? Option C: Manual PowerShell
+### Method 3: Manual PowerShell
 
-```powershell
-Connect-MgGraph -Scopes Application.ReadWrite.All,DelegatedPermissionGrant.ReadWrite.All
-$app = New-MgApplication -DisplayName "entrapass-scanner" -SignInAudience AzureADMyOrg -Spa @{RedirectUris=@("https://entrapass.pages.dev")}
-# Then add required permissions (see deploy-entrapass.ps1 for full script)
-```
-
-### Step 3: Configure
-
-1. Enter your **Client ID** and **Tenant ID**
-2. Click **Save & Start Scanning**
-3. Sign in with Microsoft
-4. Consent to the requested permissions
-
-> **No additional install steps needed.** The hosted version is ready to use.
-
----
-
-## 3. Option B: Self-Host on Cloudflare Pages
-
-Self-hosting gives you full control over the deployment.
-
-### Prerequisites
-
-| Requirement | Details |
-|---|---|
-| **Cloudflare account** | Free tier is sufficient |
-| **GitHub account** | To fork the repository |
-| **Node.js 18+** | For building |
-| **Azure subscription** | For the App Registration |
-
-### Step 1: Fork the Repository
-
-```bash
-git clone https://github.com/arusso-aboutcloud/EntraPass.git
-cd EntraPass
-```
-
-### Step 2: Configure Environment Variables
-
-Create a `.env` file (optional � only needed to skip the setup wizard):
-
-```env
-VITE_CLIENT_ID=your-client-id-from-bicep
-VITE_TENANT_ID=your-tenant-id
-```
-
-### Step 3: Build the Application
-
-```bash
-npm install
-npm run build
-```
-
-This produces a `dist/` directory with the static files.
-
-### Step 4: Deploy to Cloudflare Pages
-
-**Via Wrangler CLI:**
-
-```bash
-npm install -g wrangler
-wrangler pages deploy dist/ --project-name entrapass
-```
-
-**Via Cloudflare Dashboard:**
-1. Go to Cloudflare Dashboard > Pages
-2. Click **Create a project** > **Direct upload**
-3. Upload the `dist/` folder
-
-### Step 5: Configure Custom Domain (Optional)
-
-1. In Cloudflare Pages > your project > **Custom domains**
-2. Add your domain (e.g., `entrapass.yourcompany.com`)
-3. Update DNS records as instructed
-
-### Step 6: Deploy the Bicep Template
-
-Same as Option A � use the **Deploy to Azure** button or CLI.
-
-```bash
-az deployment group create \
-  --resource-group <your-rg> \
-  --template-file infra/app-registration.bicep \
-  --parameters redirectUri="https://entrapass.yourcompany.com" \
-               tenantId="<your-tenant-id>"
-```
-
-### Step 7: Verify
-
-1. Visit your custom URL
-2. Follow the setup wizard
-3. Enter your Client ID and Tenant ID
-4. Start scanning
-
----
-
-## 4. Option C: Run Locally (Development)
-
-### Prerequisites
-
-| Requirement | Version |
-|---|---|
-| **Node.js** | 18+ |
-| **npm** | 9+ |
-| **Azure CLI** | Latest (for Bicep deploys) |
-| **Modern browser** | Latest Chrome/Edge/Firefox |
-
-### Step 1: Clone and Install
-
-```bash
-git clone https://github.com/arusso-aboutcloud/EntraPass.git
-cd EntraPass
-npm install
-```
-
-### Step 2: Deploy the App Registration
-
-```bash
-# Create a resource group
-az group create --name entrapass-rg --location westeurope
-
-# Deploy the Bicep template
-az deployment group create \
-  --resource-group entrapass-rg \
-  --template-file infra/app-registration.bicep \
-  --parameters redirectUri="http://localhost:5173" \
-               tenantId="<your-tenant-id>"
-```
-
-### Step 3: Start the Dev Server
-
-```bash
-npm run dev
-```
-
-This starts Vite\'s development server at `http://localhost:5173`
-
-### Step 4: Configure in the Portal
-
-1. Open `http://localhost:5173`
-2. Follow the setup wizard
-3. Enter your Client ID (from Bicep output)
-4. Enter your Tenant ID
-5. The redirect URI should already be `http://localhost:5173`
-6. Click **Save & Start Scanning**
-
-### Step 5: (Optional) Use Environment Variables
-
-To skip the setup wizard during development, create `.env`:
-
-```env
-VITE_CLIENT_ID=your-client-id
-VITE_TENANT_ID=your-tenant-id
-```
-
-Then restart the dev server. The app will use these values directly.
-
-### Step 6: Debugging
-
-Open browser developer tools (F12):
-- **Console**: View scan progress and error messages
-- **Network**: Watch Graph API calls
-- **Application > Session Storage**: View `entrapass_config` and `entrapass_results`
-
----
-
-## 5. Post-Installation: Grant Admin Consent
-
-After deploying the App Registration, some Graph permissions require **admin consent** before they can be used.
-
-### Automatic (during deploy)
-
-If the user deploying has Global Admin rights, consent is granted during the Bicep deployment.
-
-### Manual (in Azure Portal)
-
-1. Go to **Azure Portal** > **App Registrations**
-2. Select the EntraPass scanner app
-3. Go to **API Permissions**
-4. Click **Grant admin consent for [tenant]**
-5. Click **Yes** to confirm
-
-### Using Graph API (for automation)
+For full control, run the equivalent of the Cloud Shell script yourself:
 
 ```powershell
-# Install Microsoft.Graph module
-Install-Module Microsoft.Graph -Scope CurrentUser
+Connect-MgGraph -Scopes "Application.ReadWrite.All","DelegatedPermissionGrant.ReadWrite.All"
 
-# Connect as Global Admin
-Connect-MgGraph -Scopes "Application.ReadWrite.All","Directory.ReadWrite.All"
+$redirectUri = "https://entrapass.pages.dev"   # or http://localhost:5173
 
-# Get the service principal
-$sp = Get-MgServicePrincipal -Filter "displayName eq 'entrapass-scanner-...'"
+$app = New-MgApplication `
+  -DisplayName "entrapass-scanner" `
+  -SignInAudience "AzureADMyOrg" `
+  -Spa @{ RedirectUris = @($redirectUri) } `
+  -RequiredResourceAccess @(
+    @{
+      ResourceAppId  = "00000003-0000-0000-c000-000000000000"   # Microsoft Graph
+      ResourceAccess = @(
+        @{ Id = "e1fe6dd8-ba31-4d61-89e7-88639da4923c"; Type = "Scope" }  # User.Read
+        @{ Id = "df021288-bdef-4463-88db-98f22de89214"; Type = "Scope" }  # User.Read.All
+        @{ Id = "951183d1-1a61-466f-a6d1-1f55c005e95d"; Type = "Scope" }  # Device.Read.All
+        @{ Id = "246dd0d5-5bd0-4def-940b-0421030a5b7b"; Type = "Scope" }  # Policy.Read.All
+        @{ Id = "9a5d68dd-52b0-4cc2-bd40-abcf44ac3a30"; Type = "Scope" }  # Application.Read.All
+        @{ Id = "26456419-2c0a-41c4-9ff7-4b10e1e682df"; Type = "Scope" }  # AuditLog.Read.All
+        @{ Id = "130f2d35-2658-4bcb-a614-ee92b9697645"; Type = "Scope" }  # Organization.Read.All
+      )
+    }
+  )
 
-# Grant admin consent (scopes from Bicep template)
-# Or approve in Azure Portal as shown above
+Write-Host "Client ID: $($app.AppId)"
+Write-Host "Tenant ID: $((Get-MgContext).TenantId)"
 ```
+
+Then grant admin consent — see [Step 3](#4-step-3-grant-admin-consent).
 
 ---
 
-## 6. Verification Checklist
+## 3. Step 2: Choose how to run EntraPass
 
-Use this checklist to ensure your installation is complete:
+### Option A: Use the hosted version
 
-| # | Check | Method |
+The hosted version is available at the Cloudflare Pages URL published by the
+repository owner (e.g. `https://entrapass.pages.dev`).
+
+1. Open the portal URL in your browser.
+2. Read and accept the **Terms & Conditions**.
+3. Complete [Step 1](#2-step-1-create-the-app-registration) if you have not already.
+4. Enter your **Client ID** and **Tenant ID**, then click **Save & Start Scanning**.
+5. Sign in with Microsoft and consent to the requested permissions.
+
+No installation is required.
+
+### Option B: Self-host on Cloudflare Pages
+
+Self-hosting gives you full control over the deployment URL.
+
+**Prerequisites:** a Cloudflare account (free tier is fine), a GitHub account,
+Node.js 18+ (CI uses Node 22).
+
+1. **Clone (or fork) the repository:**
+   ```bash
+   git clone https://github.com/arusso-aboutcloud/EntraPass.git
+   cd EntraPass
+   ```
+2. **(Optional) configure environment variables** to skip the setup wizard.
+   Create a `.env` file:
+   ```env
+   VITE_CLIENT_ID=your-client-id
+   VITE_TENANT_ID=your-tenant-id
+   ```
+3. **Build:**
+   ```bash
+   npm install
+   npm run build
+   ```
+   This produces a static `dist/` directory.
+4. **Deploy to Cloudflare Pages** — either via Wrangler:
+   ```bash
+   npx wrangler pages deploy dist --project-name entrapass
+   ```
+   or via the Cloudflare dashboard (**Pages → Create a project → Direct upload**,
+   then upload `dist/`).
+5. **(Optional) add a custom domain** in **Pages → your project → Custom domains**.
+6. **Create the App Registration** for your deployment URL — see
+   [Step 1](#2-step-1-create-the-app-registration). The redirect URI must match
+   your portal URL exactly.
+
+> **Tip:** the repository already includes
+> [`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml), which
+> deploys to Cloudflare Pages on every push to `main`. To use it, set the
+> `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, and optionally
+> `AZURE_CLIENT_ID` / `AZURE_TENANT_ID` repository secrets.
+
+### Option C: Run locally for development
+
+**Prerequisites:** Node.js 18+, npm 9+, a modern browser.
+
+1. **Clone and install:**
+   ```bash
+   git clone https://github.com/arusso-aboutcloud/EntraPass.git
+   cd EntraPass
+   npm install
+   ```
+2. **Create the App Registration** with redirect URI `http://localhost:5173` —
+   see [Step 1](#2-step-1-create-the-app-registration).
+3. **Start the dev server:**
+   ```bash
+   npm run dev
+   ```
+   Vite serves the app at `http://localhost:5173`.
+4. **Configure in the portal:** open `http://localhost:5173`, complete the setup
+   wizard, and enter your Client ID and Tenant ID (redirect URI is already
+   `http://localhost:5173`).
+5. **(Optional) skip the wizard** by adding a `.env` file:
+   ```env
+   VITE_CLIENT_ID=your-client-id
+   VITE_TENANT_ID=your-tenant-id
+   ```
+   Restart the dev server afterwards.
+6. **Debugging** — open browser DevTools (F12):
+   - **Console:** scan progress and errors
+   - **Network:** Microsoft Graph API calls
+   - **Application → Session Storage:** `entrapass_config` and `entrapass_results`
+
+---
+
+## 4. Step 3: Grant admin consent
+
+Several Graph permissions require **admin consent** before EntraPass can use them.
+
+### In the Azure Portal (recommended)
+
+1. Go to **Azure Portal → App registrations → entrapass-scanner**.
+2. Open **API permissions**.
+3. Click **Grant admin consent for [tenant]** and confirm.
+4. All seven permissions should show a green **Granted** status.
+
+### Via PowerShell (for automation)
+
+```powershell
+Connect-MgGraph -Scopes "Application.ReadWrite.All","DelegatedPermissionGrant.ReadWrite.All"
+
+# Find the service principal created for the app
+$sp        = Get-MgServicePrincipal -Filter "appId eq '<your-client-id>'"
+$graph     = Get-MgServicePrincipal -Filter "appId eq '00000003-0000-0000-c000-000000000000'"
+
+# Grant tenant-wide admin consent for all delegated scopes
+New-MgOauth2PermissionGrant -ClientId $sp.Id -ConsentType "AllPrincipals" -ResourceId $graph.Id `
+  -Scope "User.Read User.Read.All Device.Read.All Policy.Read.All Application.Read.All AuditLog.Read.All Organization.Read.All"
+```
+
+> If you skip admin consent, users can still consent interactively at sign-in —
+> but only if your tenant allows user consent for these scopes. Tenant-wide
+> admin consent is the reliable path.
+
+---
+
+## 5. Verification checklist
+
+| # | Check | How to verify |
 |---|---|---|
-| 1 | App Registration created | Azure Portal > App Registrations > find "entrapass-scanner-*" |
-| 2 | API Permissions configured | Check all 7 delegated permissions are listed |
-| 3 | Admin consent granted | API Permissions should show a green checkmark |
-| 4 | Redirect URI correct | Must match your portal URL exactly (including trailing slash) |
-| 5 | Client ID entered | Appears in EntraPass config screen |
-| 6 | Tenant ID entered | Appears in EntraPass config screen |
+| 1 | App Registration created | Azure Portal → App registrations → find `entrapass-scanner` |
+| 2 | API permissions configured | All seven delegated Graph permissions are listed |
+| 3 | Admin consent granted | API permissions page shows green "Granted" status |
+| 4 | Redirect URI correct | SPA redirect URI matches your portal URL exactly |
+| 5 | Client ID entered | Appears in the EntraPass config screen |
+| 6 | Tenant ID entered | Appears in the EntraPass config screen |
 | 7 | Sign-in works | MSAL redirect completes without errors |
-| 8 | Scan runs | Click "Scan Tenant Now" � see stats populate |
-| 9 | Results display | Switch between all 5 tabs � data visible |
-| 10 | Reset works | Click "Reset app" � config cleared, setup wizard reappears |
+| 8 | Scan runs | "Scan Tenant Now" populates the stats grid |
+| 9 | Results display | All 5 dashboard tabs show data |
+| 10 | Reset works | "Reset app" clears config and re-shows the setup wizard |
 
 ---
 
-## Appendix: Infrastructure Files
+## 6. Cleanup
+
+When you are done, remove the App Registration from your tenant:
+
+```powershell
+.\infra\cleanup-entrapass.ps1 -ClientId "<your-client-id>" -RevokeConsent
+```
+
+- Without `-RevokeConsent`: deletes the App Registration only.
+- With `-RevokeConsent`: also deletes the service principal and its admin consent.
+
+To clear local browser data, click **Reset app** in the dashboard header, or
+simply close the browser tab.
+
+---
+
+## 7. Appendix: infrastructure files
 
 | File | Purpose |
 |---|---|
-| `infra/deploy-entrapass.ps1` | Cloud Shell one-click deployment script (recommended) |
-| `infra/app-registration.bicep` | Bicep template (CLI deployment) |
-| `infra/app-registration.json` | ARM JSON template (portal reference) |
-| `infra/cleanup-entrapass.ps1` | PowerShell script to remove the App Registration |
-| `.github/workflows/deploy.yml` | CI/CD for Cloudflare Pages deployment |
-| `.github/workflows/trivy-scan.yml` | Security scanning |
+| `infra/deploy-entrapass.ps1` | Azure Cloud Shell deployment script (Method 2) |
+| `infra/cleanup-entrapass.ps1` | Removes the App Registration and optionally revokes consent |
+| `infra/app-registration.bicep` | Bicep template — **reference only** (see Overview note) |
+| `infra/app-registration.json` | ARM JSON template — **reference only** |
+| `.github/workflows/deploy.yml` | CI/CD: deploys the SPA to Cloudflare Pages |
+| `.github/workflows/security-scan.yml` | CI: Trivy filesystem and dependency scanning |
 
-### Bicep Parameters (if using CLI)
-
-| Parameter | Default | Description |
-|---|---|---|
-| `appName` | `entrapass-scanner` | Base name for the app registration |
-| `redirectUri` | `http://localhost:5173` | SPA redirect URI (your portal URL) |
-| `tenantId` | (required) | Your Entra ID tenant ID |
-
-### Cloud Shell Script Parameters
+### Cloud Shell script parameter
 
 The `deploy-entrapass.ps1` script prompts for:
 
 | Prompt | Description |
 |---|---|
-| **Portal URL** | Your EntraPass deployment URL (e.g., `https://entrapass.pages.dev`) |
-
-
+| **Portal URL** | Your EntraPass deployment URL, used as the SPA redirect URI (e.g. `https://entrapass.pages.dev`) |
