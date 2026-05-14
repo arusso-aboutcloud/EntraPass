@@ -389,7 +389,6 @@ function renderApps(r) {
   h += "</tbody></table></div>";
   document.getElementById('apps-table').innerHTML = h;
 }
-}
 
 function renderPolicies(r) {
   let h = '<table><thead><tr>' + '<th>Policy</th><th>Blocks Passkeys?</th><th>Action</th></tr></thead><tbody>';
