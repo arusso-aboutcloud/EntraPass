@@ -48,9 +48,10 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: pages deploy dist --project-name=entrapass
 
-      - name: Deploy AI Worker
-        run: |
-          npx wrangler deploy workers/ai.js --name=entrapass-ai
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      # AI Worker deployment is optional - deploy manually via Cloudflare dashboard
+      # or uncomment below once Workers AI is enabled in your account
+      # - name: Deploy AI Worker
+      #   run: npx wrangler deploy workers/ai.js --name=entrapass-ai
+      #   env:
+      #     CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      #     CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
