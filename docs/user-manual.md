@@ -108,7 +108,7 @@ The wizard offers three options. Pick whichever suits you — see the
 | Option | Summary |
 |---|---|
 | **Azure Portal blade** (recommended) | The wizard links to the "Register an application" blade; you add the 7 Graph permissions and grant admin consent |
-| **Azure Cloud Shell script** | Run a one-line script that creates the app and all 7 permissions, then prints your Client ID |
+| **Azure Cloud Shell script** | Run a one-line script that creates the app and all 7 permissions, grants admin consent, and prints your Client ID and Tenant ID (press Enter to accept the default portal URL) |
 | **Manual PowerShell** | Run the Microsoft Graph PowerShell commands yourself for full control |
 
 ### Step 3: Configure
