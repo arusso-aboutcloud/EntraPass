@@ -9,3 +9,4 @@ build/
 Thumbs.db
 *.key
 *.pem
+.claude/

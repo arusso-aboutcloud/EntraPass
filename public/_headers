@@ -1,0 +1,9 @@
+# Cloudflare Pages security headers. Applied to every response.
+# https://developers.cloudflare.com/pages/configuration/headers/
+
+/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: no-referrer
+  Permissions-Policy: geolocation=(), microphone=(), camera=()
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' https:; frame-src https://login.microsoftonline.com; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'

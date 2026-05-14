@@ -13,3 +13,6 @@ service = "ai-worker"
 
 [vars]
 ENVIRONMENT = "production"
+# Origin allowed to call the optional AI worker (workers/ai.js).
+# Set this to your deployed EntraPass URL. The worker rejects all other origins.
+ALLOWED_ORIGIN = "https://entrapass.pages.dev"

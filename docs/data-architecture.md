@@ -1,104 +1,107 @@
-# EntraPass � Data Architecture
+# EntraPass — Data Architecture
 
-> **Version:** 0.1.0  
-> **Last Updated:** 2026-05-14
-
----
-
-## Table of Contents
-
-1. [Data Flow Overview](#1-data-flow-overview)
-2. [Data at Each Step](#2-data-at-each-step)
-3. [Data Classification](#3-data-classification)
-4. [Storage & Retention](#4-storage--retention)
-5. [Data Lifecycle](#5-data-lifecycle)
+> **Version:** 0.1.0
+> **Last updated:** 2026-05-14
 
 ---
 
-## 1. Data Flow Overview
+## Table of contents
 
-EntraPass processes data exclusively in the user\'s browser. No data is sent to any server other than Microsoft Graph API for fetching. Here\'s where data lives at each stage:
+1. [Data flow overview](#1-data-flow-overview)
+2. [Data at each step](#2-data-at-each-step)
+3. [Data classification](#3-data-classification)
+4. [Storage and retention](#4-storage-and-retention)
+5. [Data lifecycle](#5-data-lifecycle)
+6. [AI Assistant data handling](#6-ai-assistant-data-handling)
+
+---
+
+## 1. Data flow overview
+
+EntraPass processes data exclusively in the user's browser. The only server it
+contacts for tenant data is the Microsoft Graph API. (The optional AI Assistant
+is the one exception — see [section 6](#6-ai-assistant-data-handling).) Here is
+where data lives at each stage:
 
 ```
 Step 0: App Registration
-+-----------------------------+     +-----------------------------+
-|  User\'s Azure Subscription |     |  User\'s Browser             |
-|  App Registration (SPA)     |     |  (No data yet)              |
-|  PKCE, 7 delegated perms   |     |                             |
-+-----------------------------+     +-----------------------------+
+┌─────────────────────────────┐     ┌─────────────────────────────┐
+│  User's Entra ID tenant     │     │  User's Browser             │
+│  App Registration (SPA)     │     │  (no data yet)              │
+│  PKCE, 7 delegated perms    │     │                             │
+└─────────────────────────────┘     └─────────────────────────────┘
 
 Step 1: Configuration
-                                    +-----------------------------+
-                                    |  sessionStorage             |
-                                    |  entrapass_config: {        |
-                                    |    clientId, tenantId,      |
-                                    |    redirectUri              |
-                                    |  }                          |
-                                    +-----------------------------+
+                                    ┌─────────────────────────────┐
+                                    │  sessionStorage             │
+                                    │  entrapass_config: {        │
+                                    │    clientId, tenantId,      │
+                                    │    redirectUri              │
+                                    │  }                          │
+                                    └─────────────────────────────┘
 
 Step 2: Authentication (MSAL PKCE)
-+-----------------------------+     +-----------------------------+
-|  Microsoft Entra ID         |     |  Browser Memory             |
-|  (User\'s Tenant)           |     |  Access Token (expires 1h)  |
-|  Validates credentials      |     |  ID Token (user info)       |
-+-----------------------------+     +-----------------------------+
+┌─────────────────────────────┐     ┌─────────────────────────────┐
+│  Microsoft Entra ID         │     │  Browser (MSAL cache)       │
+│  (user's tenant)            │     │  Access token (expires ~1h) │
+│  Validates credentials      │     │  ID token (user info)       │
+└─────────────────────────────┘     └─────────────────────────────┘
 
-Step 3: Data Fetching (Microsoft Graph)
-+-----------------------------+     +-----------------------------+
-|  Microsoft Graph API        |---->|  Browser Memory (variable)  |
-|  (User\'s Tenant Data)      |     |  Raw API responses stored   |
-|  Users, Devices, Policies,  |     |  temporarily for analysis  |
-|  Apps, Auth Methods, Logs   |     |                             |
-+-----------------------------+     +-----------------------------+
+Step 3: Data fetching (Microsoft Graph)
+┌─────────────────────────────┐     ┌─────────────────────────────┐
+│  Microsoft Graph API        │────▶│  Browser memory (variables) │
+│  (user's tenant data)       │     │  Raw API responses held     │
+│  Users, devices, policies,  │     │  temporarily for analysis   │
+│  apps, auth methods, logs   │     │                             │
+└─────────────────────────────┘     └─────────────────────────────┘
 
 Step 4: Analysis
-                                    +-----------------------------+
-                                    |  Browser Memory             |
-                                    |  Analyzer processes data    |
-                                    |  into structured results    |
-                                    +-----------------------------+
+                                    ┌─────────────────────────────┐
+                                    │  Browser memory             │
+                                    │  Analyzer processes data    │
+                                    │  into structured results    │
+                                    └─────────────────────────────┘
 
 Step 5: Storage
-                                    +-----------------------------+
-                                    |  sessionStorage             |
-                                    |  entrapass_results: {       |
-                                    |    passkeyReadiness,        |
-                                    |    apps, policies,          |
-                                    |    toxicCombos,             |
-                                    |    recommendations,         |
-                                    |    narrative,               |
-                                    |    timestamp                |
-                                    |  }                          |
-                                    +-----------------------------+
+                                    ┌─────────────────────────────┐
+                                    │  sessionStorage             │
+                                    │  entrapass_results: {       │
+                                    │    passkeyReadiness,        │
+                                    │    apps, policies,          │
+                                    │    toxicCombos,             │
+                                    │    recommendations,         │
+                                    │    narrative, timestamp     │
+                                    │  }                          │
+                                    └─────────────────────────────┘
 
 Step 6: Display
-                                    +-----------------------------+
-                                    |  Browser DOM (current tab)  |
-                                    |  Rendered HTML tables,      |
-                                    |  charts, summary            |
-                                    +-----------------------------+
+                                    ┌─────────────────────────────┐
+                                    │  Browser DOM (current tab)  │
+                                    │  Rendered tables, stats,    │
+                                    │  summary                    │
+                                    └─────────────────────────────┘
 
 Step 7: Cleanup
-                                    +-----------------------------+
-                                    |  sessionStorage.clear()     |
-                                    |  All data removed           |
-                                    +-----------------------------+
+                                    ┌─────────────────────────────┐
+                                    │  sessionStorage cleared     │
+                                    │  All data removed           │
+                                    └─────────────────────────────┘
 ```
 
 ---
 
-## 2. Data at Each Step
+## 2. Data at each step
 
-### Step 0 � App Registration (User\'s Azure)
+### Step 0 — App Registration (user's Azure tenant)
 
 | Data | Where | Duration | Security |
 |---|---|---|---|
-| App Registration metadata | User\'s Azure tenant | Until cleanup | User-controlled |
+| App Registration metadata | User's Entra ID tenant | Until cleanup | User-controlled |
 | Redirect URIs | App Registration config | Until cleanup | User-controlled |
-| OAuth2 permissions | App Registration config | Until cleanup | User-controlled |
+| OAuth2 permission grants | App Registration config | Until cleanup | User-controlled |
 | Client ID (public) | App Registration properties | Until cleanup | Public (SPA) |
 
-### Step 1 � Configuration (Browser)
+### Step 1 — Configuration (browser)
 
 | Data | Where | Duration | Security |
 |---|---|---|---|
@@ -106,139 +109,153 @@ Step 7: Cleanup
 | Tenant ID | `sessionStorage.entrapass_config` | Session | Same-origin only |
 | Redirect URI | `sessionStorage.entrapass_config` | Session | Same-origin only |
 
-### Step 2 � Authentication (MSAL)
+### Step 2 — Authentication (MSAL)
 
 | Data | Where | Duration | Security |
 |---|---|---|---|
-| Access Token | Browser memory (MSAL cache) | 60 min or session end | Same-origin, HTTPS |
-| ID Token | Browser memory (MSAL cache) | 60 min or session end | Same-origin, HTTPS |
-| Auth Code (transient) | Redirect URL fragment | Seconds (exchanged for token) | HTTPS, PKCE protected |
+| Access token | MSAL cache (`sessionStorage`) | ~60 min or until tab close | Same-origin, HTTPS |
+| ID token | MSAL cache (`sessionStorage`) | ~60 min or until tab close | Same-origin, HTTPS |
+| Auth code (transient) | Redirect URL fragment | Seconds (exchanged for a token) | HTTPS, PKCE-protected |
 
-### Step 3 � Fetched Data (Microsoft Graph)
+### Step 3 — Fetched data (Microsoft Graph)
 
 | Data | Where | Duration | Notes |
 |---|---|---|---|
-| User profiles (ids, names, UPNs) | Browser memory variable | Until page refresh | Up to 50 users |
-| Device info (OS, version, compliance) | Browser memory variable | Until page refresh | Up to 100 devices |
-| CA Policies | Browser memory variable | Until page refresh | All policies |
-| Applications / Service Principals | Browser memory variable | Until page refresh | All apps + SPs |
-| Auth Methods per user | Browser memory variable | Until page refresh | `GET /users/{id}/authMethods` |
-| Sign-in logs (last activity) | Browser memory variable | Until page refresh | `GET /users/{id}/signInActivity` |
-| Group membership | Browser memory variable | Until page refresh | `GET /users/{id}/memberOf` |
+| User profiles (id, name, UPN) | Browser memory variable | Until page reload | Up to 50 users analyzed in detail |
+| Device info (OS, version, compliance) | Browser memory variable | Until page reload | Up to 100 devices |
+| Conditional Access policies | Browser memory variable | Until page reload | All policies |
+| Applications / service principals | Browser memory variable | Until page reload | All apps and SPs |
+| Auth methods per user | Browser memory variable | Until page reload | `GET /users/{id}/authenticationMethods` |
+| Sign-in activity (last sign-in) | Browser memory variable | Until page reload | `GET /users/{id}/signInActivity` |
+| Group membership | Browser memory variable | Until page reload | `GET /users/{id}/memberOf` |
 
-### Step 4 � Analysis Results (Browser Memory)
+### Step 4 — Analysis results (browser memory)
 
-| Data | Where | Duration |
+| Data | Produced by | Duration |
 |---|---|---|
-| Per-user readiness (status, issues) | `analyzePasskeyReadiness()` output | Until saved or refreshed |
-| Per-app compatibility (severity, fix) | `analyzeAppCompatibility()` output | Until saved or refreshed |
-| Per-policy analysis | `analyzePolicies()` output | Until saved or refreshed |
-| Toxic combinations | `findToxicCombinations()` output | Until saved or refreshed |
-| Recommendations + Narrative | `generateRecommendations/Narrative()` | Until saved or refreshed |
+| Per-user readiness (status, issues) | `analyzePasskeyReadiness()` | Until saved or reloaded |
+| Per-app compatibility (severity, fix) | `analyzeAppCompatibility()` | Until saved or reloaded |
+| Per-policy analysis | `analyzePolicies()` | Until saved or reloaded |
+| Toxic combinations | `findToxicCombinations()` | Until saved or reloaded |
+| Recommendations + narrative | `generateRecommendations()` / `generateNarrative()` | Until saved or reloaded |
 
-### Step 5 � Stored Results (sessionStorage)
+### Step 5 — Stored results (`sessionStorage`)
 
-| Key | Content | Size Estimate | Duration |
+| Key | Content | Approx. size | Duration |
 |---|---|---|---|
-| `entrapass_config` | `{clientId, tenantId, redirectUri}` | ~150 bytes | Session |
-| `entrapass_results` | Full analysis result object | ~50-200 KB | Session |
-| MSAL cache keys | MSAL internal token cache | ~2-5 KB | Session |
+| `entrapass_config` | `{ clientId, tenantId, redirectUri }` | ~150 bytes | Session |
+| `entrapass_results` | Full analysis result object | ~50–200 KB | Session |
+| MSAL cache keys | MSAL internal token cache | ~2–5 KB | Session |
 
-### Step 6 � Rendered UI (DOM)
+### Step 6 — Rendered UI (DOM)
 
 | Data | Where | Duration |
 |---|---|---|
-| Stats grid (4 numbers) | `#stats-grid` element | Until re-render |
-| Readiness table | `#readiness-table` element | Until tab switch |
-| Apps table | `#apps-table` element | Until tab switch |
-| Policies table | `#policies-table` element | Until tab switch |
-| Recommendations list | `#summary-content` element | Until re-render |
+| Stats grid (4 numbers) | `#stats-grid` | Until re-render |
+| Readiness table | `#readiness-table` | Until tab switch |
+| Apps table | `#apps-table` | Until tab switch |
+| Policies table | `#policies-table` | Until tab switch |
+| Recommendations + summary | `#summary-content` | Until re-render |
 
-### Step 7 � Cleanup
+### Step 7 — Cleanup
 
 | Action | What happens |
 |---|---|
-| `sessionStorage.clear()` | Config + results + MSAL cache removed |
-| Browser tab close | All memory freed, sessionStorage cleared |
-| `cleanup-entrapass.ps1` | App registration + service principal deleted |
+| Browser tab close | `sessionStorage` cleared; all in-memory data freed |
+| "Reset app" button | `entrapass_config` and `entrapass_results` removed |
+| `cleanup-entrapass.ps1` | App Registration (and optionally the service principal / consent) deleted |
 
 ---
 
-## 3. Data Classification
+## 3. Data classification
 
 | Classification | Details |
 |---|---|
-| **Personal Data (PII)** | User names, UPNs, device registrations, sign-in activity |
-| **Security Data** | Auth methods (FIDO2 presence flag � NOT secrets), CA policies |
-| **App Data** | App registration names, API permission configs (public metadata) |
-| **Organizational Data** | Tenant ID (public), tenant display name |
-| **Credentials** | **NONE** � no passwords, no client secrets, no API keys stored or transmitted |
+| **Personal data (PII)** | User display names, UPNs, device registrations, sign-in activity |
+| **Security data** | Auth method *presence* flags (e.g. "has FIDO2" — **not** secrets), CA policies |
+| **App data** | App registration names and API permission configs (public metadata) |
+| **Organizational data** | Tenant ID (public), tenant display name |
+| **Credentials** | **None** — no passwords, client secrets, or API keys are stored or transmitted |
 
 ### What is NOT collected
 
 - Passwords or password hashes
-- Authentication method secrets (TOTP seeds, FIDO2 keys)
-- Emails or messages
-- File contents or SharePoint documents
-- Any data outside Microsoft Graph read scope
+- Authentication method secrets (TOTP seeds, FIDO2 private keys)
+- Emails, messages, or file/SharePoint content
+- Any data outside the read-only Microsoft Graph scopes listed in the architecture doc
 - Browser fingerprints, IP addresses, or analytics
 
 ---
 
-## 4. Storage & Retention
+## 4. Storage and retention
 
-| Storage Type | Content | Retention | Security |
+| Storage type | Content | Retention | Security |
 |---|---|---|---|
-| **sessionStorage** | Config + results + MSAL cache | Session (cleared on tab close) | Same-origin policy, not persisted to disk |
-| **Browser memory** | Raw API responses, intermediate analysis | While page is active | No cross-origin access |
-| **DOM** | Rendered tables, charts, text | While tab is visible | No cross-origin access |
-| **Server** | **NONE** | N/A | N/A |
-| **Cookies** | **NONE** | N/A | N/A |
-| **localStorage** | **NONE** (intentionally not used) | N/A | N/A |
+| **sessionStorage** | Config, results, MSAL cache | Session — cleared on tab close | Same-origin policy; not persisted to disk |
+| **Browser memory** | Raw API responses, intermediate analysis | While the page is active | No cross-origin access |
+| **DOM** | Rendered tables and text | While the tab is visible | No cross-origin access |
+| **Server** | **None** | N/A | N/A |
+| **Cookies** | **None** | N/A | N/A |
+| **localStorage** | **None** (intentionally unused) | N/A | N/A |
 
-### Why sessionStorage and NOT localStorage?
+### Why `sessionStorage` and not `localStorage`?
 
-- `sessionStorage` is cleared when the browser tab closes � no persistent storage
-- `localStorage` persists indefinitely � intentionally avoided
-- No user data should remain after the user is done
+- `sessionStorage` is cleared when the browser tab closes — no persistent storage.
+- `localStorage` persists indefinitely — intentionally avoided.
+- No tenant data should remain on the machine after the user is done.
 
 ---
 
-## 5. Data Lifecycle
+## 5. Data lifecycle
 
 ```
-User opens portal
-  |
-  +-- sessionStorage empty
-  |
-  +-- Setup: Configuration -> sessionStorage
-  |
-  +-- Sign in: Tokens -> MSAL cache (memory)
-  |
-  +-- Scan: Raw data -> Browser memory (variables)
-  |
-  +-- Analyze: Results -> Browser memory (objects)
-  |
-  +-- Render: Display -> DOM elements
-  |
-  +-- Save: Scan results -> sessionStorage
-  |
-User closes tab
-  |
-  +-- sessionStorage cleared (browser behavior)
-  |
-  +-- All memory freed (browser GC)
-  |
-  +-- [Optional] Run cleanup script -> Azure app reg deleted
-  |
-  +-- Zero data remaining on the machine
+User opens the portal
+  │
+  ├── sessionStorage empty
+  │
+  ├── Setup: configuration        → sessionStorage
+  │
+  ├── Sign in: tokens             → MSAL cache (sessionStorage)
+  │
+  ├── Scan: raw data              → browser memory (variables)
+  │
+  ├── Analyze: results            → browser memory (objects)
+  │
+  ├── Render: display             → DOM elements
+  │
+  ├── Save: scan results          → sessionStorage
+  │
+User closes the tab
+  │
+  ├── sessionStorage cleared (browser behavior)
+  │
+  ├── All memory freed (browser GC)
+  │
+  └── [Optional] run cleanup script → App Registration deleted
+        → zero data remaining on the machine
 ```
 
-### Emergency Data Removal
+### Emergency data removal
 
-| Situation | User Action |
+| Situation | User action |
 |---|---|
-| Working on shared computer | Close all browser tabs |
-| Need to clear immediately | Click "Reset app" button (clears config + results) |
+| Working on a shared computer | Close all browser tabs |
+| Need to clear immediately | Click the "Reset app" button (clears config + results) |
 | Remove all app artifacts | Run `cleanup-entrapass.ps1 -ClientId <id>` |
-| Browser crash (no cleanup) | MSAL cache is memory-only, sessionStorage cleared on next browser restart |
+| Browser crashed before cleanup | MSAL cache and `sessionStorage` are session-scoped and cleared on next browser start |
+
+---
+
+## 6. AI Assistant data handling
+
+The AI Assistant tab is **opt-in** and **off by default**. Its behavior depends
+on the selected mode:
+
+| Mode | Data leaving the browser |
+|---|---|
+| **Off** (default) | Nothing — rule-based responses only |
+| **Cloudflare Workers AI** | The scan results summary is sent to the Cloudflare Worker (`workers/ai.js`), which calls Cloudflare Workers AI |
+| **Bring your own key (BYOK)** | The scan results and your question are sent to the AI endpoint you configure (e.g. OpenAI, Azure OpenAI) using your own API key |
+
+If you must keep all tenant data inside the browser, leave the AI Assistant set
+to **Off**.

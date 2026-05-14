@@ -1,100 +1,126 @@
-# ?? EntraPass � Passkey Migration Assistant
+# 🔑 EntraPass — Passkey Migration Assistant
 
-> **Assess your Microsoft Entra ID tenant\'s readiness for passkey (FIDO2) authentication.**  
-> Open source (MIT) &bull; Browser-only &bull; No data leaves your machine
+> **Assess your Microsoft Entra ID tenant's readiness for passkey (FIDO2) authentication.**
+> Open source (MIT) · Browser-only · No data leaves your machine
 
 [![Deploy to Cloudflare](https://img.shields.io/badge/Deployed-Cloudflare%20Pages-f38020?logo=cloudflare)](https://entrapass.pages.dev)
-[![Security Scan](https://github.com/arusso-aboutcloud/EntraPass/actions/workflows/trivy-scan.yml/badge.svg)](https://github.com/arusso-aboutcloud/EntraPass/actions/workflows/trivy-scan.yml)
-[![CodeQL](https://github.com/arusso-aboutcloud/EntraPass/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/arusso-aboutcloud/EntraPass/security/code-scanning)
-[![Dependabot](https://img.shields.io/badge/dependabot-enabled-025e8c?logo=dependabot)](https://github.com/arusso-aboutcloud/EntraPass/security/dependabot)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Security Scan](https://github.com/arusso-aboutcloud/EntraPass/actions/workflows/security-scan.yml/badge.svg)](https://github.com/arusso-aboutcloud/EntraPass/actions/workflows/security-scan.yml)
+[![Deploy](https://github.com/arusso-aboutcloud/EntraPass/actions/workflows/deploy.yml/badge.svg)](https://github.com/arusso-aboutcloud/EntraPass/actions/workflows/deploy.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
 ---
 
-## ?? Features
+## What is EntraPass?
+
+EntraPass is a **client-side browser application** that scans a Microsoft Entra ID
+tenant and tells you how ready it is for **passkey (FIDO2) authentication**. It
+answers questions like:
+
+- Which users can use passkeys right now, and which are blocked?
+- Which devices are running an OS too old for passkeys?
+- Which Conditional Access policies block passkey registration?
+- Which apps may silently fall back to passwords?
+
+It runs entirely in your browser. The only network calls it makes are to the
+Microsoft Graph API — there is no EntraPass backend, no database, and no telemetry.
+
+---
+
+## ✨ Features
 
 | Feature | Description |
 |---|---|
-| **?? User Readiness Scan** | Analyzes users, devices, and auth methods to determine passkey readiness |
-| **?? Device Compatibility** | Checks OS versions (Windows 10+, iOS 16+, Android 14+, macOS 13+) |
-| **?? CA Policy Advisor** | Identifies policies blocking passkey registration |
-| **?? Toxic Combination Detector** | Flags privileged users without MFA/passkey |
-| **?? Entra Tip: App Check** | Bonus analysis of app compatibility including substrate apps |
-| **?? AI Assistant** | Optional AI chat (Cloudflare or BYOK) to analyze results |
-| **?? Executive Summary** | Prioritized recommendations + rollout plan |
-| **?? Security First** | PKCE auth, your own app reg, browser-only data |
+| **User Readiness Scan** | Analyzes users, devices, and auth methods to determine passkey readiness |
+| **Device Compatibility** | Checks OS versions (Windows 10+, iOS 16+, Android 14+, macOS 13+) |
+| **CA Policy Advisor** | Identifies Conditional Access policies blocking passkey registration |
+| **Toxic Combination Detector** | Flags privileged users without MFA or passkey |
+| **Entra Tip — App Check** | Bonus analysis of app compatibility, including Microsoft-managed apps |
+| **AI Assistant** | Optional AI chat (Cloudflare Workers AI or bring-your-own-key) to interpret results |
+| **Executive Summary** | Prioritized recommendations plus a phased rollout plan |
+| **Security First** | PKCE auth, your own app registration, browser-only data |
 
-### What it does NOT do
+### What it does **not** do
 
-- ? **No account takeovers** � read-only Microsoft Graph access
-- ? **No data storage** � everything stays in your browser\'s sessionStorage
-- ? **No telemetry** � no analytics, no cookies, no tracking
-- ? **No server** � zero backend, just static files on CDN
+- **No write access** — read-only Microsoft Graph scopes only
+- **No data storage** — everything stays in your browser's `sessionStorage`
+- **No telemetry** — no analytics, no cookies, no tracking
+- **No server** — zero backend, just static files on a CDN
 
 ---
 
-## ?? Architecture
+## 🏗️ Architecture
 
 ![Architecture Diagram](docs/diagrams/architecture.svg)
 
-### High-Level Flow
+### High-level flow
 
 ```
 User's Browser (SPA)                    Microsoft Graph API
-+---------------------+                 +-------------------+
-|  Setup Wizard        |                 |  Users            |
-|  -> T&C + Config     |                 |  Devices          |
-|  -> MSAL PKCE Auth   |--- Bearer ---->|  CA Policies      |
-|  -> GraphAPI Client  |    Token       |  Apps             |
-|  -> Analysis Engine  |<-- JSON -------|  Auth Methods     |
-|  -> Dashboard UI     |                 |  Sign-in Logs     |
-|  -> sessionStorage   |                 |  Org Info         |
-+---------------------+                 +-------------------+
+┌─────────────────────┐                 ┌───────────────────┐
+│  Setup Wizard       │                 │  Users            │
+│  → T&C + Config     │                 │  Devices          │
+│  → MSAL PKCE Auth   │── Bearer ──────▶│  CA Policies      │
+│  → Graph API Client │    Token        │  Applications     │
+│  → Analysis Engine  │◀── JSON ────────│  Auth Methods     │
+│  → Dashboard UI     │                 │  Sign-in Activity │
+│  → sessionStorage   │                 │  Org Info         │
+└─────────────────────┘                 └───────────────────┘
 ```
 
-See the full [Architecture Document](docs/architecture.md) and [Data Architecture](docs/data-architecture.md) for details.
+See the full [Architecture Document](docs/architecture.md) and
+[Data Architecture](docs/data-architecture.md) for details.
 
 ---
 
-## ? Quick Start
+## ⚡ Quick Start
 
-### 1. Open the Portal
+### 1. Open the portal
 
 Go to **[entrapass.pages.dev](https://entrapass.pages.dev)** (or your self-hosted URL).
 
-### 2. Accept Terms & Conditions
+### 2. Accept the Terms & Conditions
 
-Read and acknowledge the T&C � this is required before proceeding.
+Read and acknowledge the T&C — this is required before proceeding.
 
-### 3. Deploy App Registration to YOUR Tenant
+### 3. Create an App Registration in **your** tenant
 
-The scanner needs an App Registration in **your** Microsoft Entra ID tenant:
+The scanner needs an App Registration (a **PKCE-only SPA**, no client secret) in
+your Microsoft Entra ID tenant. The setup wizard offers three ways to create it:
 
-- **Recommended:** Click the **?? Deploy to Azure** button in the portal
-- **CLI alternative:** `az deployment group create --template-file infra/app-registration.bicep`
+| Method | Best for |
+|---|---|
+| **Azure Portal blade** (recommended) | Most users — the wizard links straight to the registration blade |
+| **Azure Cloud Shell script** | Fastest — one command creates the app and all 7 permissions |
+| **Manual PowerShell** | Advanced users who want full control |
 
-This creates a **PKCE-only SPA** with 7 delegated Graph permissions. No client secrets.
+See the [Installation Guide](docs/installation.md) for step-by-step instructions
+for each method.
 
-### 4. Configure & Sign In
+> **Note:** The Bicep template (`infra/app-registration.bicep`) is kept for
+> reference only — `Microsoft.Graph/applications` Bicep deployment is not
+> reliably supported, so use one of the three methods above instead.
 
-Enter your **Client ID** and **Tenant ID** from the deployment. Sign in with Microsoft.
+### 4. Configure & sign in
 
-### 5. Scan Your Tenant
+Enter your **Client ID** and **Tenant ID** from the deployment, then sign in with
+Microsoft and consent to the requested permissions.
 
-Click **?? Scan Tenant Now** � all analysis happens in your browser.
+### 5. Scan your tenant
 
-### 6. Review & Act
+Click **Scan Tenant Now** — all analysis happens in your browser.
+
+### 6. Review & act
 
 | Tab | What to look for |
 |---|---|
-| **?? Overview** | Stats + recommendations + rollout plan |
-| **? Readiness** | Per-user status and blockers |
-| **?? Entra Tip: Apps** | App compatibility with descriptions & fixes |
-| **?? Policies** | CA policies blocking passkeys |
-| **?? AI Assistant** | Ask questions about your results |
+| **Overview** | Stats, executive summary, recommendations, rollout plan |
+| **Passkey Readiness** | Per-user status and blockers |
+| **Entra Tip: Apps** | App compatibility with descriptions and fixes |
+| **CA Policies** | Conditional Access policies blocking passkeys |
+| **AI Assistant** | Ask questions about your results (opt-in) |
 
-### 7. Clean Up (Optional)
+### 7. Clean up (optional)
 
 ```powershell
 .\infra\cleanup-entrapass.ps1 -ClientId "<your-client-id>" -RevokeConsent
@@ -102,42 +128,41 @@ Click **?? Scan Tenant Now** � all analysis happens in your browser.
 
 ---
 
-## ?? Documentation
+## 📚 Documentation
 
 | Document | Description |
 |---|---|
 | [Architecture (HLD + LLD)](docs/architecture.md) | System architecture, components, flows |
 | [Data Architecture](docs/data-architecture.md) | Data at each step, classification, lifecycle |
-| [User Manual](docs/user-manual.md) | Full user guide with screenshots and workflows |
-| [Installation Guide](docs/installation.md) | Self-hosting, local dev, verification checklist |
+| [User Manual](docs/user-manual.md) | Full user guide with dashboard walkthrough |
+| [Installation Guide](docs/installation.md) | Hosting, local dev, app registration, verification |
+| [Contributing](CONTRIBUTING.md) | How to contribute |
 
 ---
 
-## ?? Trivy Security Scan Dashboard
+## 🛡️ Security Scanning
 
-The repository includes automated security scanning via **Trivy**:
+The repository runs automated security scanning on every push and weekly:
 
-| Scan Type | What it Checks | Frequency | Status |
-|---|---|---|---|
-| **Filesystem** | Vulns, secrets, misconfigurations | Every push | [![Security Scan](https://github.com/arusso-aboutcloud/EntraPass/actions/workflows/trivy-scan.yml/badge.svg)](https://github.com/arusso-aboutcloud/EntraPass/actions/workflows/trivy-scan.yml) |
-| **NPM Dependencies** | CRITICAL & HIGH vulns only | Every push | Same workflow |
-| **IaC (Dockerfile)** | Infrastructure misconfigs | Every push | When present |
-| **CodeQL** | Code quality & security | Every push | [![CodeQL](https://github.com/arusso-aboutcloud/EntraPass/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/arusso-aboutcloud/EntraPass/security/code-scanning) |
-| **Dependabot** | Supply chain vulns | Weekly (npm) + Monthly (GHA) | [View alerts](https://github.com/arusso-aboutcloud/EntraPass/security/dependabot) |
+| Scan | What it checks | Trigger |
+|---|---|---|
+| **Trivy — filesystem** | Vulnerabilities, secrets, misconfigurations | Push, PR, weekly |
+| **Trivy — npm dependencies** | CRITICAL & HIGH vulnerabilities | Push, PR, weekly |
+| **Dependabot** | Supply-chain vulnerabilities | Weekly (npm) + monthly (GitHub Actions) |
 
-Results are uploaded to the **GitHub Security tab**:  
-?? [github.com/arusso-aboutcloud/EntraPass/security/code-scanning](https://github.com/arusso-aboutcloud/EntraPass/security/code-scanning)
+Trivy results are uploaded as SARIF to the **GitHub Security → Code scanning** tab.
+The workflow is defined in [`.github/workflows/security-scan.yml`](.github/workflows/security-scan.yml).
 
 ---
 
-## ? Development
+## 🧑‍💻 Development
 
 ### Prerequisites
 
-- **Node.js 18+**
+- **Node.js 18+** (CI builds on Node 22)
 - **npm 9+**
-- **Azure CLI** (for Bicep deployment)
-- **Modern browser** (Chrome, Edge, Firefox, Safari)
+- A **modern browser** (Chrome, Edge, Firefox, Safari)
+- An **Entra ID tenant** plus rights to create an App Registration
 
 ### Setup
 
@@ -149,30 +174,41 @@ cd EntraPass
 # Install dependencies
 npm install
 
-# Build
+# Dev server with hot reload (http://localhost:5173)
+npm run dev
+
+# Production build → dist/
 npm run build
 
-# Dev server (with hot reload)
-npm run dev
+# Preview the production build locally
+npm run preview
 ```
 
-### Project Structure
+### Project structure
 
 ```
+index.html                 # SPA entry point: setup wizard + dashboard markup
+vite.config.js             # Vite build configuration
+wrangler.toml              # Cloudflare Pages / Workers configuration
+
 src/
-  index.html       # Entry point + setup wizard + dashboard UI
-  main.js          # Application orchestration
-  graph.js         # Microsoft Graph API client
-  analyzer.js      # Business logic / analysis engine
-  style.css        # UI styling
+  main.js                  # Application orchestration: MSAL, scan, rendering
+  graph.js                 # Microsoft Graph API client
+  analyzer.js              # Analysis engine (readiness, apps, policies, risks)
+  style.css                # UI styling
+
+workers/
+  ai.js                    # Optional Cloudflare Worker for the AI Assistant
 
 infra/
-  app-registration.bicep   # Bicep template
-  cleanup-entrapass.ps1    # Cleanup script
+  app-registration.bicep   # Bicep template (reference only — see note above)
+  app-registration.json    # ARM JSON template (reference)
+  deploy-entrapass.ps1     # Cloud Shell deployment script
+  cleanup-entrapass.ps1    # App Registration cleanup script
 
 .github/workflows/
   deploy.yml               # Cloudflare Pages deployment
-  trivy-scan.yml           # Security scanning
+  security-scan.yml        # Trivy security scanning
 
 docs/
   architecture.md          # HLD + LLD
@@ -183,68 +219,67 @@ docs/
     architecture.svg       # Architecture diagram
 ```
 
-### Environment Variables
+### Environment variables
 
 | Variable | Required | Description |
 |---|---|---|
-| `VITE_CLIENT_ID` | Optional | Client ID to skip setup wizard |
-| `VITE_TENANT_ID` | Optional | Tenant ID to skip setup wizard |
+| `VITE_CLIENT_ID` | Optional | Client ID — if set with `VITE_TENANT_ID`, skips the setup wizard |
+| `VITE_TENANT_ID` | Optional | Tenant ID — if set with `VITE_CLIENT_ID`, skips the setup wizard |
 
-If set, the setup wizard is bypassed and the app goes directly to sign-in.
-
----
-
-## ?? Security
-
-- **PKCE (S256)** � Authorization code flow with Proof Key for Code Exchange
-- **No client secret** � SPA apps don\'t need one
-- **Your own tenant** � App Registration deployed in YOUR tenant, not shared
-- **Delegated permissions** � App acts on behalf of the signed-in user
-- **Read-only scopes** � No write operations to Graph API
-- **Browser-only data** � No servers, no databases, no analytics
-- **No cookies** � sessionStorage only (cleared on tab close)
-- **Open source** � Full transparency, verifiable build
-
-### Required Permissions
-
-| Permission | Type | Purpose |
-|---|---|---|
-| `User.Read` | Delegated | Sign in and read profile |
-| `User.Read.All` | Delegated | List all users |
-| `Device.Read.All` | Delegated | List all devices |
-| `Policy.Read.All` | Delegated | Read CA policies |
-| `Application.Read.All` | Delegated | Read app registrations |
-| `AuditLog.Read.All` | Delegated | Read sign-in activity |
-| `Organization.Read.All` | Delegated | Read tenant info |
+Set them in a `.env` file (git-ignored) for local development, or as build-time
+secrets in CI. When both are present the wizard is bypassed and the app goes
+straight to sign-in.
 
 ---
 
-## ?? License
+## 🔐 Security model
 
-MIT License � see [LICENSE](LICENSE) for details.
+- **PKCE (S256)** — authorization code flow with Proof Key for Code Exchange
+- **No client secret** — SPA apps don't need one and can't store one securely
+- **Your own tenant** — the App Registration lives in *your* tenant, not a shared one
+- **Delegated permissions** — the app acts on behalf of the signed-in user
+- **Read-only scopes** — no write operations against Graph
+- **Browser-only data** — no servers, no databases, no analytics
+- **No cookies** — `sessionStorage` only, cleared when the tab closes
+- **Open source** — full transparency, build verifiable from source
 
-Copyright (c) 2026
+### Required permissions (Microsoft Graph, delegated)
+
+| Permission | Purpose |
+|---|---|
+| `User.Read` | Sign in and read the signed-in user's profile |
+| `User.Read.All` | List all users in the tenant |
+| `Device.Read.All` | List all devices and their OS versions |
+| `Policy.Read.All` | Read Conditional Access and authentication-method policies |
+| `Application.Read.All` | Read app registrations for the compatibility check |
+| `AuditLog.Read.All` | Read sign-in activity (last sign-in time) |
+| `Organization.Read.All` | Read the tenant display name |
 
 ---
 
-## ?? Contributing
+## 🤝 Contributing
 
-Contributions are welcome! Please:
+Contributions are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md), then:
 
 1. Fork the repository
 2. Create a feature branch
-3. Submit a Pull Request
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+3. Open a Pull Request
 
 ---
 
-## ?? Support
+## 📄 License
+
+MIT License — see [LICENSE](LICENSE) for details.
+
+---
+
+## 💬 Support
 
 - **Issues**: [GitHub Issues](https://github.com/arusso-aboutcloud/EntraPass/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/arusso-aboutcloud/EntraPass/discussions)
-- **Security**: Report vulnerabilities via GitHub Security Advisory
+- **Security**: report vulnerabilities privately via GitHub Security Advisories
 
 ---
 
-> *Built with ?? for the passkey community � because phishing-resistant authentication shouldn\'t be hard to adopt.*
+> Built for the passkey community — because phishing-resistant authentication
+> shouldn't be hard to adopt.

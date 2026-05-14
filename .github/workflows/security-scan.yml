@@ -65,7 +65,7 @@ jobs:
           exit-code: 0
           severity: CRITICAL,HIGH,MEDIUM
 
-      - name: Run Trivy on npm dependencies
+      - name: Run Trivy on npm dependencies (report HIGH)
         uses: aquasecurity/trivy-action@v0.36.0
         if: always()
         with:
@@ -73,7 +73,21 @@ jobs:
           scan-ref: .
           format: table
           exit-code: 0
-          severity: CRITICAL,HIGH
+          severity: HIGH
+          scanners: vuln
+          ignore-unfixed: true
+
+      # Fail the build on fixable CRITICAL dependency vulnerabilities so they
+      # cannot be merged unnoticed.
+      - name: Run Trivy on npm dependencies (fail on CRITICAL)
+        uses: aquasecurity/trivy-action@v0.36.0
+        if: always()
+        with:
+          scan-type: fs
+          scan-ref: .
+          format: table
+          exit-code: 1
+          severity: CRITICAL
           scanners: vuln
           ignore-unfixed: true
 

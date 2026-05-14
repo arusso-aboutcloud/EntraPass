@@ -35,7 +35,11 @@ jobs:
           VITE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
           VITE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
 
+      # Deploy only on push to main. Pull requests run build (above) for
+      # validation but never deploy, so a PR cannot overwrite production or
+      # exercise the deploy secrets.
       - name: Create Cloudflare Pages project (if needed)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
           npx wrangler pages project create entrapass --production-branch main || echo "Project already exists"
         env:
@@ -43,6 +47,7 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
       - name: Deploy to Cloudflare Pages
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}

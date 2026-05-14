@@ -9,6 +9,25 @@ export class Analyzer {
     return { passkeyReadiness, apps: appCompatibility, policies: policyAnalysis, toxicCombos, recommendations, narrative, timestamp: new Date().toISOString() };
   }
 
+  // A "strong" authentication method is MFA-grade. Password is intentionally
+  // excluded: a registered password is not an MFA method, so counting it would
+  // make "No MFA method registered" and the toxic-combination checks never fire.
+  isStrongAuthMethod(method) {
+    const t = (method['@odata.type'] || method.authenticationMethodType || '').toLowerCase();
+    return t.includes('fido2')
+      || t.includes('passkey')
+      || t.includes('windowshelloforbusiness')
+      || t.includes('microsoftauthenticator')
+      || t.includes('softwareoath')
+      || t.includes('phone')
+      || t.includes('temporaryaccesspass');
+  }
+
+  isPasskeyMethod(method) {
+    const t = (method['@odata.type'] || method.authenticationMethodType || '').toLowerCase();
+    return t.includes('fido2') || t.includes('passkey');
+  }
+
   analyzePasskeyReadiness({ users, devices, policies }) {
     const result = { total: users.length, ready: 0, needsAttention: 0, blocked: 0, users: [], breakdown: { byDevice: { ready: 0, outdated: 0, none: 0 }, byPolicy: { blocked: 0, allowed: 0 } } };
     const blockingPolicies = policies.filter(p => this.policyBlocksPasskeyRegistration(p));
@@ -16,8 +35,8 @@ export class Analyzer {
       const issues = [];
       const d = { modernDevice: false, blockedByPolicy: false };
       const am = user.authMethods || [];
-      const hasFido = am.some(m => (m.authenticationMethodType||"").toLowerCase().includes("fido") || (m.authenticationMethodType||"").toLowerCase().includes("passkey"));
-      const hasMfa = am.length > 0;
+      const hasFido = am.some(m => this.isPasskeyMethod(m));
+      const hasMfa = am.some(m => this.isStrongAuthMethod(m));
       if (!hasMfa) issues.push("No MFA method registered");
       if (hasFido) issues.push("Already has passkey/FIDO2 registered");
       const userDevices = devices.filter(d2 => (d2.registeredOwners || []).some(o => o.id === user.id || o.userPrincipalName === user.userPrincipalName));
@@ -72,8 +91,12 @@ export class Analyzer {
       }
       // Classify app source: Microsoft-managed apps arent configurable by the tenant
       const msDomains = ["microsoft.com", "microsoftonline.com", "windows.net", "sharepoint.com", "skype.com", "office.com", "live.com", "azure.com", "graph.microsoft.com"];
-      const domain = app.publisherDomain || "";
-      const isSubstrate = msDomains.some(d => domain.includes(d) || domain.endsWith(d)) || app.signInAudience === "AzureADMultipleOrgs";
+      // Microsoft's first-party tenant IDs (service principals carry appOwnerOrganizationId).
+      const msTenantIds = ["f8cdef31-a31e-4b4a-93e4-5f571e91255a", "72f988bf-86f1-41af-91ab-2d7cd011db47"];
+      const domain = (app.publisherDomain || "").toLowerCase();
+      const isSubstrate = msDomains.some(d => domain.includes(d))
+        || app.signInAudience === "AzureADMultipleOrgs"
+        || msTenantIds.includes((app.appOwnerOrganizationId || "").toLowerCase());
       const appSeverity = isSubstrate ? 'info' : (severity.includes('high') ? 'high' : severity.includes('medium') ? 'medium' : severity.includes('low') ? 'low' : 'good');
       return {
         id: app.id,
@@ -111,8 +134,8 @@ export class Analyzer {
       const groups = (u.groups || []).map(g => (g.displayName||"").toLowerCase());
       const isPrivileged = groups.some(g => g.includes("admin") || g.includes("global") || g.includes("privileged") || g.includes("exchange") || g.includes("administrator"));
       if (isPrivileged) {
-        const hasFido = (u.authMethods || []).some(m => (m.authenticationMethodType||"").toLowerCase().includes("fido") || (m.authenticationMethodType||"").toLowerCase().includes("passkey"));
-        const hasMfa = (u.authMethods || []).length > 0;
+        const hasFido = (u.authMethods || []).some(m => this.isPasskeyMethod(m));
+        const hasMfa = (u.authMethods || []).some(m => this.isStrongAuthMethod(m));
         if (!hasFido && !hasMfa) {
           combos.push({ severity: "critical", displayName: u.displayName || u.userPrincipalName, groups: (u.groups||[]).map(g => g.displayName), description: "No MFA and NO passkey on high-privilege account", fix: "Enable MFA immediately. Register passkey/FIDO2 as primary auth method." });
         }
@@ -131,17 +154,17 @@ export class Analyzer {
 
   generateRecommendations(passkeyReadiness, appCompatibility, policyAnalysis, toxicCombos) {
     const recs = [];
-    toxicCombos.filter(t => t.severity === "critical").forEach(t => recs.push({ severity: "critical", icon: "\U0001F6A8", category: "Security Risk", title: t.displayName, text: t.description, fix: t.fix }));
-    policyAnalysis.filter(p => p.blocksPasskeyRegistration).forEach(p => recs.push({ severity: "high", icon: "\U0001F534", category: "Policy", title: "CA policy blocks passkeys: " + p.displayName, text: p.warning || "Blocks passkey registration", fix: p.fixGuide || "Review policy" }));
+    toxicCombos.filter(t => t.severity === "critical").forEach(t => recs.push({ severity: "critical", icon: "\u{1F6A8}", category: "Security Risk", title: t.displayName, text: t.description, fix: t.fix }));
+    policyAnalysis.filter(p => p.blocksPasskeyRegistration).forEach(p => recs.push({ severity: "high", icon: "\u{1F534}", category: "Policy", title: "CA policy blocks passkeys: " + p.displayName, text: p.warning || "Blocks passkey registration", fix: p.fixGuide || "Review policy" }));
     if (passkeyReadiness.blocked > 0)
-      recs.push({ severity: "high", icon: "\U0001F534", category: "Blocked", title: passkeyReadiness.blocked + " user(s) blocked", text: "Blocked by CA policies or device limitations.", fix: "Address policy and device issues." });
+      recs.push({ severity: "high", icon: "\u{1F534}", category: "Blocked", title: passkeyReadiness.blocked + " user(s) blocked", text: "Blocked by CA policies or device limitations.", fix: "Address policy and device issues." });
     if (passkeyReadiness.needsAttention > 0)
-      recs.push({ severity: "medium", icon: "\U0001F7E1", category: "Attention", title: passkeyReadiness.needsAttention + " user(s) need prep", text: "Devices or MFA need updating.", fix: "Guide users to register modern devices." });
+      recs.push({ severity: "medium", icon: "\u{1F7E1}", category: "Attention", title: passkeyReadiness.needsAttention + " user(s) need prep", text: "Devices or MFA need updating.", fix: "Guide users to register modern devices." });
     const badApps = appCompatibility.filter(a => !a.passkeyCompatible);
     if (badApps.length > 0)
       recs.push({ severity: "low", icon: "\uD83D\uDCA1", category: "Apps", title: badApps.length + " app(s) flagged - see Entra Tip tab", text: badApps.map(a => a.displayName + (a.isSubstrate ? " (Microsoft-managed)" : "")).join(", "), fix: "Review the App Compatibility tab for descriptions and fixes." });
     if (passkeyReadiness.ready > 0)
-      recs.push({ severity: "low", icon: "\U0001F7E2", category: "Ready", title: passkeyReadiness.ready + " user(s) ready!", text: "Start a pilot program.", fix: "Enable passkey for pilot group." });
+      recs.push({ severity: "low", icon: "\u{1F7E2}", category: "Ready", title: passkeyReadiness.ready + " user(s) ready!", text: "Start a pilot program.", fix: "Enable passkey for pilot group." });
     if (recs.length === 0)
       recs.push({ severity: "low", icon: "\u2705", category: "All Clear", title: "Tenant is ready!", text: "Great job!", fix: "Proceed with rollout." });
     return recs;
