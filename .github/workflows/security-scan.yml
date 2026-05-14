@@ -36,7 +36,7 @@ jobs:
           VITE_TENANT_ID: dummy
 
       - name: Run Trivy vulnerability scanner (filesystem)
-        uses: aquasecurity/trivy-action@0.30.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: fs
           scan-ref: .
@@ -47,14 +47,14 @@ jobs:
           scanners: vuln,secret,misconfig
 
       - name: Upload Trivy filesystem results to GitHub Security
-        uses: github/codeql-action/upload-sarif@v5
+        uses: github/codeql-action/upload-sarif@v3
         if: always()
         with:
           sarif_file: trivy-fs-results.sarif
           category: trivy-fs
 
       - name: Run Trivy on repo (table output)
-        uses: aquasecurity/trivy-action@0.30.0
+        uses: aquasecurity/trivy-action@v0.36.0
         if: always()
         with:
           scan-type: fs
@@ -64,7 +64,7 @@ jobs:
           severity: CRITICAL,HIGH,MEDIUM
 
       - name: Run Trivy on npm dependencies
-        uses: aquasecurity/trivy-action@0.30.0
+        uses: aquasecurity/trivy-action@v0.36.0
         if: always()
         with:
           scan-type: fs
@@ -76,7 +76,7 @@ jobs:
           ignore-unfixed: true
 
       - name: Run Trivy on Dockerfile (if exists)
-        uses: aquasecurity/trivy-action@0.30.0
+        uses: aquasecurity/trivy-action@v0.36.0
         if: hashFiles('Dockerfile') != ''
         continue-on-error: true
         with:
@@ -86,22 +86,14 @@ jobs:
           exit-code: 0
           severity: CRITICAL,HIGH
 
-      - name: Generate Trivy summary badge
+      - name: Generate Trivy summary
         run: |
-          echo '| Severity | Count |' >> \
-          echo '|----------|-------|' >> \
-          echo '| ?? Critical | ?? See SARIF report |' >> \
-          echo '| ?? High | ?? See SARIF report |' >> \
-          echo '| ?? Medium | ?? See SARIF report |' >> \
-          echo '| ?? Low | ? Checked by Trivy |' >> \
-          echo '' >> \
-          echo '### ?? Trivy Security Scan Complete' >> \
-          echo '' >> \
-          echo 'Results uploaded to **GitHub Security** tab ? Code Scanning Alerts' >> \
-          echo '' >> \
-          echo '| Scan Type | Status |' >> \
-          echo '|-----------|--------|' >> \
-          echo '| Filesystem (vulns + secrets + misconfigs) | ? SARIF uploaded |' >> \
-          echo '| NPM dependencies (CRITICAL/HIGH only) | ? Checked |' >> \
-          echo '| IaC misconfigurations | ? Scanned |' >> \
-
+          echo "### Trivy Security Scan Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Category | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Filesystem (vulns + secrets + misconfigs) | SARIF uploaded to Security tab |" >> $GITHUB_STEP_SUMMARY
+          echo "| NPM dependencies (CRITICAL/HIGH) | Scanned |" >> $GITHUB_STEP_SUMMARY
+          echo "| IaC misconfigurations | Scanned |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "See GitHub Security > Code Scanning for the full report" >> $GITHUB_STEP_SUMMARY
