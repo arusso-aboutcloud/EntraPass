@@ -53,25 +53,51 @@ export class Analyzer {
     const all = [...(apps||[]), ...(servicePrincipals||[])];
     return all.map(app => {
       const issues = [];
-      if (app.signInAudience === "AzureADMyOrg" && !app.requiredResourceAccess?.length)
+      const severity = [];
+      let description = "";
+      if (app.signInAudience === "AzureADMyOrg" && !app.requiredResourceAccess?.length) {
         issues.push("No delegated permissions - may use legacy auth");
-      if (app.passwordCredentials?.length > 0)
-        issues.push("Has password credentials - not compatible with passkeys");
-      if (app.keyCredentials?.length > 0)
-        issues.push("Uses certificate-based auth - verify passkey support");
-      return { id: app.id, displayName: app.displayName || app.appId || "Unnamed", passkeyCompatible: issues.length === 0, issues, fixGuide: issues.length > 0 ? this.getAppFixGuide(issues) : null };
-    }).filter(a => a.displayName !== "Unnamed");
+        severity.push("medium");
+        description = "This app has no delegated permissions configured. Users signing in with a passkey may be prompted for a password instead, because the app does not request modern token flows.";
+      }
+      if (app.passwordCredentials?.length > 0) {
+        issues.push("Has password credentials");
+        severity.push("high");
+        description = (description ? description + " " : "") + "Password credentials allow the app to authenticate with a client secret, which bypasses passkey altogether. Users will be prompted for credentials instead of using their passkey.";
+      }
+      if (app.keyCredentials?.length > 0) {
+        issues.push("Uses certificate-based auth");
+        severity.push("low");
+        description = (description ? description + " " : "") + "Certificate-based authentication can coexist with passkeys, but verify that the app supports FIDO2 token binding.";
+      }
+      // Classify app source: Microsoft-managed apps arent configurable by the tenant
+      const msDomains = ["microsoft.com", "microsoftonline.com", "windows.net", "sharepoint.com", "skype.com", "office.com", "live.com", "azure.com", "graph.microsoft.com"];
+      const domain = app.publisherDomain || "";
+      const isSubstrate = msDomains.some(d => domain.includes(d) || domain.endsWith(d)) || app.signInAudience === "AzureADMultipleOrgs";
+      const appSeverity = isSubstrate ? 'info' : (severity.includes('high') ? 'high' : severity.includes('medium') ? 'medium' : severity.includes('low') ? 'low' : 'good');
+      return {
+        id: app.id,
+        displayName: app.displayName || app.appId || 'Unnamed',
+        passkeyCompatible: issues.length === 0,
+        issues,
+        severity: appSeverity,
+        description: description || 'No issues detected. This app should work with passkey authentication.',
+        isSubstrate,
+        fixGuide: !isSubstrate && issues.length > 0 ? this.getAppFixGuide(issues) : (isSubstrate && issues.length > 0 ? 'Microsoft-managed app - not directly configurable. Monitor for updates from Microsoft.' : null)
+      };
+    }).filter(a => a.displayName !== 'Unnamed');
   }
 
   getAppFixGuide(issues) {
     const guides = [];
-    if (issues.some(i => i.includes("password")))
-      guides.push("Remove password credentials. Migrate to OAuth 2.0 OIDC with PKCE.");
-    if (issues.some(i => i.includes("legacy auth")))
-      guides.push("Configure delegated permissions in Azure Portal.");
-    return guides.join(" ");
+    if (issues.some(i => i.includes('password')))
+      guides.push('Remove password credentials. Migrate to OAuth 2.0 OIDC with PKCE.');
+    if (issues.some(i => i.includes('legacy auth')))
+      guides.push('Configure delegated permissions in Azure Portal. The app needs to request token delegation via the requiredResourceAccess property.');
+    if (issues.some(i => i.includes('certificate')))
+      guides.push('Verify FIDO2 token binding support in the certificate auth configuration.');
+    return guides.join(' ');
   }
-
   analyzePolicies({ policies }) {
     return (policies||[]).map(policy => {
       const blocks = this.policyBlocksPasskeyRegistration(policy);
@@ -113,7 +139,7 @@ export class Analyzer {
       recs.push({ severity: "medium", icon: "\U0001F7E1", category: "Attention", title: passkeyReadiness.needsAttention + " user(s) need prep", text: "Devices or MFA need updating.", fix: "Guide users to register modern devices." });
     const badApps = appCompatibility.filter(a => !a.passkeyCompatible);
     if (badApps.length > 0)
-      recs.push({ severity: "medium", icon: "\U0001F7E1", category: "Apps", title: badApps.length + " app(s) not compatible", text: badApps.map(a => a.displayName).join(", "), fix: "Review app auth config." });
+      recs.push({ severity: "low", icon: "\uD83D\uDCA1", category: "Apps", title: badApps.length + " app(s) flagged - see Entra Tip tab", text: badApps.map(a => a.displayName + (a.isSubstrate ? " (Microsoft-managed)" : "")).join(", "), fix: "Review the App Compatibility tab for descriptions and fixes." });
     if (passkeyReadiness.ready > 0)
       recs.push({ severity: "low", icon: "\U0001F7E2", category: "Ready", title: passkeyReadiness.ready + " user(s) ready!", text: "Start a pilot program.", fix: "Enable passkey for pilot group." });
     if (recs.length === 0)

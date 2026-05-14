@@ -337,17 +337,58 @@ function renderReadiness(r) {
 }
 
 function renderApps(r) {
-  let h = '<table><thead><tr>' + '<th>App</th><th>Passkey</th><th>Issue</th></tr></thead><tbody>';
-  r.apps.forEach(a => {
-    const ok = a.passkeyCompatible ? '&#128994; Yes' : '&#128308; No';
-    h += `<tr>\
-      <td>${a.displayName}</td>\
-      <td>${ok}</td>\
-      <td>${a.passkeyIssue || 'None'}</td>\
-    </tr>`;
+  const compatible = r.apps.filter(a => a.passkeyCompatible).length;
+  const total = r.apps.length;
+  const flagged = total - compatible;
+
+  let h = "";
+
+  // Summary line
+  h += "<div style=\"margin-bottom:1rem;font-size:0.95rem;color:var(--text-secondary);\">";
+  h += "<span style=\"color:var(--good);\">&#128994; " + compatible + " compatible</span>";
+  if (flagged > 0) h += " <span style=\"color:var(--danger);margin-left:0.5rem;\">&#128308; " + flagged + " need review</span>";
+  h += " <span style=\"margin-left:0.5rem;\">out of " + total + " apps scanned</span>";
+  h += "</div>";
+
+  h += "<div style=\"overflow-x:auto;\">";
+  h += "<table><thead><tr><th>App</th><th>Status</th><th>Issues</th><th>Description &amp; Fix</th></tr></thead><tbody>";
+
+  // Sort: flagged apps first, then by severity
+  const sorted = [...r.apps].sort((a, b) => {
+    const order = { high: 0, medium: 1, low: 2, good: 3, info: 4 };
+    return (order[a.severity] || 5) - (order[b.severity] || 5);
   });
-  h += '</tbody></table>';
+
+  sorted.forEach(a => {
+    let badge, statusText;
+    if (a.isSubstrate && !a.passkeyCompatible) {
+      badge = "&#128196;";
+      statusText = "Info";
+    } else if (a.passkeyCompatible) {
+      badge = "&#128994;";
+      statusText = "OK";
+    } else {
+      badge = "&#128308;";
+      statusText = "Flagged";
+    }
+
+    const issueText = a.issues.length > 0 ? a.issues.join("; ") : "None";
+    const descBg = a.severity === "high" ? "#fff0f0" : a.severity === "medium" ? "#fff8f0" : "#f8f8f8";
+    const descBorder = a.severity === "high" ? "var(--danger)" : a.severity === "medium" ? "var(--warn)" : "var(--border)";
+
+    h += "<tr>";
+    h += "<td><strong>" + a.displayName + "</strong>" + (a.isSubstrate ? "<br><span style=\"font-size:0.75rem;color:#888;\">Microsoft-managed</span>" : "") + "</td>";
+    h += "<td>" + badge + " " + statusText + "</td>";
+    h += "<td>" + issueText + "</td>";
+    h += "<td style=\"font-size:0.85rem;background:" + descBg + ";border-left:3px solid " + descBorder + ";padding:0.5rem 0.75rem;\">";
+    h += "<p style=\"margin-bottom:0.3rem;\">" + a.description + "</p>";
+    if (a.fixGuide) h += "<p style=\"margin-top:0.3rem;color:var(--primary);\"><strong>Fix:</strong> " + a.fixGuide + "</p>";
+    h += "</td></tr>";
+  });
+
+  h += "</tbody></table></div>";
   document.getElementById('apps-table').innerHTML = h;
+}
 }
 
 function renderPolicies(r) {
@@ -363,3 +404,4 @@ function renderPolicies(r) {
   h += '</tbody></table>';
   document.getElementById('policies-table').innerHTML = h;
 }
+

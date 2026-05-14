@@ -47,7 +47,7 @@
           ? Passkey Readiness
         </button>
         <button class="tab" data-tab="apps" onclick="switchTab('apps')">
-          ?? App Compatibility
+          ?? Entra Tip: Apps
         </button>
         <button class="tab" data-tab="policies" onclick="switchTab('policies')">
           ?? CA Policies
@@ -84,7 +84,12 @@
         <!-- Apps Tab -->
         <div id="tab-apps" class="tab-content hidden">
           <div class="card">
-            <h2>Application Passkey Compatibility</h2>
+            <h2>?? Entra Tip: App Compatibility Check</h2>
+            <div style="background:#f0f6ff;border-left:3px solid var(--primary);padding:1rem;margin-bottom:1.5rem;border-radius:6px;font-size:0.9rem;line-height:1.6;">
+              <p><strong>Why this matters:</strong> Apps that use password credentials, legacy auth, or lack delegated permissions can silently <strong>bypass passkey authentication</strong>. Even if a user registers a passkey, the app may fall back to a password prompt, creating a confusing user experience.</p>
+              <p style="margin-top:0.5rem;"><strong>What you can do:</strong> Each app flagged below includes a recommendation. Focus on your <strong>custom enterprise apps</strong> first — Microsoft first-party and SaaS apps are typically managed by their respective teams.</p>
+              <p style="margin-top:0.5rem;color:var(--text-secondary);font-size:0.85rem;">Note: Substrate (Microsoft-managed) apps are included for completeness but are not actionable by you.</p>
+            </div>
             <div id="apps-table"></div>
           </div>
         </div>
@@ -139,3 +144,4 @@
   <script type="module" src="/src/main.js"></script>
 </body>
 </html>
+

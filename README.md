@@ -5,8 +5,8 @@
 ## ?? Features
 
 - **? Passkey Readiness Scan** - See which users can use passkeys today
-- **?? Conditional Access Analysis** - Find policies blocking passkey registration
-- **?? App Compatibility Check** - Identify apps incompatible with passkey auth
+- **?? Policy Advisor** - Find CA policies blocking passkey registration + misconfigurations
+- **?? Entra Tip: App Check** - Bonus analysis of app compatibility (incl. substrate)
 - **?? AI Assistant (optional)** - Ask questions about your passkey migration
 - **?? 100% Browser-Only** - Your data never leaves your browser
 - **?? Free to Deploy** - Runs on Cloudflare free tier
@@ -57,4 +57,5 @@ PRs welcome! Focus on passkey analysis features.
 
 ---
 First deployment trigger: 05/14/2026 16:33:11
+
 
