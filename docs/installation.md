@@ -81,9 +81,11 @@ requires a **Global Administrator** (see [Step 3](#4-step-3-grant-admin-consent)
    ```powershell
    irm https://raw.githubusercontent.com/arusso-aboutcloud/EntraPass/main/infra/deploy-entrapass.ps1 | iex
    ```
-3. Enter your portal URL when prompted.
-4. The script creates the app registration, adds all seven permissions, and
-   prints your **Client ID** and **Tenant ID**.
+3. When prompted for the portal URL, **press Enter** to accept the default
+   (`https://entrapass.pages.dev`), or type your own URL if you self-host.
+4. The script creates the app registration and its service principal, adds all
+   seven permissions, grants admin consent, and prints your **Client ID** and
+   **Tenant ID**. It is idempotent — re-running it reuses the existing app.
 
 ### Method 3: Manual PowerShell
 
@@ -214,6 +216,11 @@ Node.js 18+ (CI uses Node 22).
 
 Several Graph permissions require **admin consent** before EntraPass can use them.
 
+> **Method 2 (Cloud Shell script) already does this for you** — it grants admin
+> consent automatically and prints a confirmation. Only follow the steps below
+> if you used Method 1 or Method 3, or if the script reported it could not
+> grant consent.
+
 ### In the Azure Portal (recommended)
 
 1. Go to **Azure Portal → App registrations → entrapass-scanner**.
@@ -285,10 +292,13 @@ simply close the browser tab.
 | `.github/workflows/deploy.yml` | CI/CD: deploys the SPA to Cloudflare Pages |
 | `.github/workflows/security-scan.yml` | CI: Trivy filesystem and dependency scanning |
 
-### Cloud Shell script parameter
+### Cloud Shell script prompt
 
-The `deploy-entrapass.ps1` script prompts for:
+The `deploy-entrapass.ps1` script asks one question:
 
 | Prompt | Description |
 |---|---|
-| **Portal URL** | Your EntraPass deployment URL, used as the SPA redirect URI (e.g. `https://entrapass.pages.dev`) |
+| **Portal URL** | The EntraPass deployment URL, used as the SPA redirect URI. **Press Enter** to accept the default `https://entrapass.pages.dev`, or type your own URL if you self-host. |
+
+The script is idempotent: re-running it finds the existing `entrapass-scanner`
+app instead of creating a duplicate, and ensures the redirect URI is present.
