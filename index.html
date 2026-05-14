@@ -56,22 +56,44 @@
         <p>EntraPass needs an App Registration in <strong>your</strong> tenant to run the scan. Two options:</p>
 
         <div class="option-card">
-          <h3>?? Option 1: Deploy to Azure (Recommended)</h3>
-          <p>Click the button below to open Azure Portal and deploy the Bicep template:</p>
+          <h3>?? Option 1: Create in Azure Portal (Recommended)</h3>
+          <p>Click below to open the Azure Portal App Registration creation blade:</p>
           <a id="deploy-to-azure-link" href="#" target="_blank" class="btn-primary" style="display:inline-block;text-decoration:none;">
-            ?? Deploy to Azure
+            ?? Create App Registration
           </a>
-          <p class="note" style="margin-top:0.5rem;">
-            You'll be prompted to select a Resource Group and provide:
-            <br/>- <strong>redirectUri</strong>: Your EntraPass portal URL (e.g., https://entrapass.pages.dev)
-            <br/>- <strong>tenantId</strong>: Your tenant ID
+          <p class="note" style="margin-top:0.5rem;font-size:0.85rem;">
+            In Azure Portal, configure:
+            <br/>1. <strong>Name</strong>: <code>entrapass-scanner</code>
+            <br/>2. <strong>Accounts</strong>: "Only this organizational directory"
+            <br/>3. <strong>Redirect URI</strong>: SPA -&gt; <code id="current-url-display">your-portal-url</code>
+            <br/>4. Click <strong>Register</strong>
+            <br/>5. Go to <strong>API Permissions</strong> &gt; Add permissions
+            <br/>6. Add Microsoft Graph delegated permissions (7 scopes)
+            <br/>7. <strong>Grant admin consent</strong>
           </p>
         </div>
 
         <div class="option-card" style="margin-top:1rem;">
-          <h3>?? Option 2: Deploy via CLI</h3>
-          <p>Or deploy from your terminal:</p>
-          <pre class="code-block">az deployment group create \<br/>  --resource-group &lt;your-rg&gt; \<br/>  --template-file infra/app-registration.bicep \<br/>  --parameters redirectUri="https://entrapass.pages.dev" tenantId="&lt;your-tenant-id&gt;"</pre>
+          <h3>?? Option 2: Deploy via Azure Cloud Shell</h3>
+          <p>Fastest option &mdash; one script creates everything:</p>
+          <ol style="font-size:0.9rem;line-height:1.8;margin-left:1rem;">
+            <li>Open <a href="https://shell.azure.com" target="_blank">Azure Cloud Shell</a> (PowerShell)</li>
+            <li>Run this one-liner:</li>
+          </ol>
+          <pre class="code-block" style="font-size:0.75rem;">irm https://raw.githubusercontent.com/arusso-aboutcloud/EntraPass/main/infra/deploy-entrapass.ps1 | iex</pre>
+          <p class="note" style="font-size:0.85rem;color:var(--text-secondary);">
+            The script creates the app reg, adds all 7 permissions, and outputs your Client ID.
+          </p>
+        </div>
+
+        <div class="option-card" style="margin-top:1rem;">
+          <h3>?? Option 3: Manual (PowerShell Module)</h3>
+          <p>For advanced users who want full control:</p>
+          <pre class="code-block">Connect-MgGraph -Scopes Application.ReadWrite.All
+$app = New-MgApplication -DisplayName "entrapass-scanner" -SignInAudience AzureADMyOrg -Spa @{RedirectUris=@("https://entrapass.pages.dev")}</pre>
+          <p class="note" style="font-size:0.85rem;">
+            See the <a href="https://github.com/arusso-aboutcloud/EntraPass/blob/main/docs/installation.md" target="_blank">installation guide</a> for the full script with all 7 permissions.
+          </p>
         </div>
 
         <p style="margin-top:1rem;font-size:0.9rem;color:var(--text-secondary);">
@@ -233,6 +255,7 @@
   <script type="module" src="/src/main.js"></script>
 </body>
 </html>
+
 
 
 

@@ -81,11 +81,11 @@ window.showTcStep = function() { showAuthScreen("setup-tc"); };
 
 window.showDeployStep = function() {
   showAuthScreen("setup-deploy");
-  // Build the Deploy to Azure URL with the Bicep template
-  const baseUrl = 'https://portal.azure.com/#create/Microsoft.Template/uri/'
-  const templateUri = encodeURIComponent('https://raw.githubusercontent.com/arusso-aboutcloud/EntraPass/main/infra/app-registration.bicep');
-  const params = encodeURIComponent(JSON.stringify({ redirectUri: window.location.origin }));
-  document.getElementById('deploy-to-azure-link').href = baseUrl + templateUri;
+  // Link to Azure Portal App Registration creation blade (pre-filled)
+  const portalUrl = 'https://portal.azure.com/#view/Microsoft_AAD_RegisteredApps/CreateApplicationBlade';
+  const redirectEncoded = encodeURIComponent(window.location.origin);
+  document.getElementById('deploy-to-azure-link').href = portalUrl;
+  document.getElementById('current-url-display').textContent = window.location.origin;
 };
 
 window.showConfigStep = function() { showAuthScreen("setup-config"); };
