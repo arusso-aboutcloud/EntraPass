@@ -1,0 +1,433 @@
+/* ============================================
+   EntraPass - Passkey Migration Assistant
+   ============================================ */
+
+:root {
+  --primary: #0078d4;
+  --primary-hover: #106ebe;
+  --bg: #f5f5f5;
+  --card-bg: #ffffff;
+  --border: #e0e0e0;
+  --text: #1a1a1a;
+  --text-secondary: #666;
+  --good: #107c10;
+  --warn: #ff8c00;
+  --danger: #d13438;
+  --font: 'Segoe UI', system-ui, -apple-system, sans-serif;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+}
+
+.hidden { display: none !important; }
+
+/* ============================================
+   Auth Screen
+   ============================================ */
+#auth-screen {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 2rem;
+}
+
+.logo {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.logo h1 {
+  font-size: 2.5rem;
+  color: var(--primary);
+}
+
+.tagline {
+  color: var(--text-secondary);
+  font-size: 1.1rem;
+  margin-top: 0.5rem;
+}
+
+.card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 2rem;
+  max-width: 600px;
+  width: 100%;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+#auth-card {
+  text-align: center;
+  margin: 0 auto;
+}
+
+#auth-card h2 {
+  margin-bottom: 1rem;
+}
+
+#auth-card p {
+  color: var(--text-secondary);
+  margin-bottom: 1rem;
+}
+
+.privacy-note {
+  font-size: 0.9rem;
+  background: #f0f6ff;
+  padding: 0.75rem;
+  border-radius: 6px;
+  border-left: 3px solid var(--primary);
+}
+
+/* ============================================
+   Buttons
+   ============================================ */
+.btn-primary {
+  background: var(--primary);
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 6px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.2s;
+  font-family: var(--font);
+}
+
+.btn-primary:hover {
+  background: var(--primary-hover);
+}
+
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  padding: 0.4rem 0.8rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: var(--font);
+}
+
+.btn-ghost:hover {
+  background: var(--bg);
+}
+
+/* ============================================
+   Dashboard
+   ============================================ */
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 2rem;
+  background: var(--card-bg);
+  border-bottom: 1px solid var(--border);
+}
+
+header h1 {
+  font-size: 1.4rem;
+  color: var(--primary);
+  display: inline;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.tenant-badge {
+  background: #e8f4fd;
+  padding: 0.25rem 0.6rem;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  color: var(--primary);
+}
+
+.user-badge {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+/* ============================================
+   Tabs
+   ============================================ */
+.tabs {
+  display: flex;
+  gap: 0;
+  background: var(--card-bg);
+  border-bottom: 1px solid var(--border);
+  padding: 0 2rem;
+  overflow-x: auto;
+}
+
+.tab {
+  padding: 0.8rem 1.5rem;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  border-bottom: 2px solid transparent;
+  font-family: var(--font);
+  white-space: nowrap;
+}
+
+.tab.active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+  font-weight: 600;
+}
+
+.tab:hover {
+  color: var(--text);
+  background: var(--bg);
+}
+
+/* ============================================
+   Main Content
+   ============================================ */
+main {
+  padding: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* ============================================
+   Stats Grid
+   ============================================ */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.stat-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1.5rem;
+  text-align: center;
+}
+
+.stat-value {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.stat-label {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  margin-top: 0.3rem;
+}
+
+.stat-card.good .stat-value { color: var(--good); }
+.stat-card.warn .stat-value { color: var(--warn); }
+.stat-card.danger .stat-value { color: var(--danger); }
+
+/* ============================================
+   Tables
+   ============================================ */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+}
+
+th, td {
+  text-align: left;
+  padding: 0.75rem;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.9rem;
+}
+
+th {
+  background: var(--bg);
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+tr:hover {
+  background: #f8f8f8;
+}
+
+/* ============================================
+   Recommendations
+   ============================================ */
+.summary-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.recommendation {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+}
+
+.recommendation.high {
+  background: #fff0f0;
+  border-left: 3px solid var(--danger);
+}
+
+.recommendation.medium {
+  background: #fff8f0;
+  border-left: 3px solid var(--warn);
+}
+
+.recommendation.low {
+  background: #f0fff0;
+  border-left: 3px solid var(--good);
+}
+
+.rec-icon {
+  font-size: 1.1rem;
+}
+
+/* ============================================
+   AI Chat
+   ============================================ */
+#ai-chat {
+  margin-top: 1rem;
+}
+
+#chat-messages {
+  max-height: 400px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.message {
+  padding: 0.75rem;
+  border-radius: 8px;
+  max-width: 80%;
+}
+
+.message.user {
+  background: var(--primary);
+  color: white;
+  align-self: flex-end;
+}
+
+.message.bot {
+  background: var(--bg);
+  align-self: flex-start;
+}
+
+.message.bot.error {
+  background: #fff0f0;
+  color: var(--danger);
+}
+
+.chat-input {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.chat-input input {
+  flex: 1;
+  padding: 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-family: var(--font);
+}
+
+/* ============================================
+   Loading Overlay
+   ============================================ */
+#loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255,255,255,0.9);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid var(--border);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-bottom: 1rem;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+#loading-text {
+  color: var(--text-secondary);
+}
+
+/* ============================================
+   Inputs
+   ============================================ */
+input, select {
+  padding: 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-family: var(--font);
+  width: 100%;
+  margin-bottom: 0.5rem;
+}
+
+select {
+  background: white;
+}
+
+/* ============================================
+   Footer
+   ============================================ */
+footer {
+  text-align: center;
+  padding: 2rem;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+}
+
+footer a {
+  color: var(--primary);
+  text-decoration: none;
+}

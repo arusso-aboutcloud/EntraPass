@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EntraPass - Passkey Migration Assistant</title>
+  <link rel="stylesheet" href="/src/style.css" />
+</head>
+<body>
+  <div id="app">
+    <!-- Auth Screen -->
+    <div id="auth-screen" class="screen">
+      <div class="logo">
+        <h1>?? EntraPass</h1>
+        <p class="tagline">Passkey Migration Assistant for Microsoft Entra ID</p>
+      </div>
+      <div id="auth-card" class="card">
+        <h2>Sign in with Microsoft</h2>
+        <p>Connect to your Entra ID tenant to assess passkey readiness.</p>
+        <p class="privacy-note">
+          ?? Your data stays in your browser. Nothing is stored on servers.
+        </p>
+        <button id="sign-in-btn" class="btn-primary" onclick="signIn()">
+          Sign in with Microsoft
+        </button>
+      </div>
+    </div>
+
+    <!-- Dashboard -->
+    <div id="dashboard" class="screen hidden">
+      <header>
+        <div class="header-left">
+          <h1>?? EntraPass</h1>
+          <span id="tenant-name" class="tenant-badge"></span>
+        </div>
+        <div class="header-right">
+          <span id="user-info" class="user-badge"></span>
+          <button class="btn-ghost" onclick="signOut()">Sign out</button>
+        </div>
+      </header>
+
+      <nav class="tabs">
+        <button class="tab active" data-tab="overview" onclick="switchTab('overview')">
+          ?? Overview
+        </button>
+        <button class="tab" data-tab="readiness" onclick="switchTab('readiness')">
+          ? Passkey Readiness
+        </button>
+        <button class="tab" data-tab="apps" onclick="switchTab('apps')">
+          ?? App Compatibility
+        </button>
+        <button class="tab" data-tab="policies" onclick="switchTab('policies')">
+          ?? CA Policies
+        </button>
+        <button class="tab" data-tab="ai" onclick="switchTab('ai')">
+          ?? AI Assistant (opt-in)
+        </button>
+      </nav>
+
+      <main id="main-content">
+        <!-- Overview Tab -->
+        <div id="tab-overview" class="tab-content active">
+          <div class="stats-grid" id="stats-grid">
+            <div class="stat-card loading">Loading...</div>
+          </div>
+          <div class="card" id="summary-card">
+            <h2>Passkey Migration Summary</h2>
+            <div id="summary-content">Scan your tenant to get started.</div>
+          </div>
+          <button class="btn-primary" onclick="startScan()" id="scan-btn">
+            ?? Scan Tenant Now
+          </button>
+        </div>
+
+        <!-- Readiness Tab -->
+        <div id="tab-readiness" class="tab-content hidden">
+          <div class="card">
+            <h2>User Passkey Readiness</h2>
+            <div id="readiness-chart"></div>
+            <div id="readiness-table"></div>
+          </div>
+        </div>
+
+        <!-- Apps Tab -->
+        <div id="tab-apps" class="tab-content hidden">
+          <div class="card">
+            <h2>Application Passkey Compatibility</h2>
+            <div id="apps-table"></div>
+          </div>
+        </div>
+
+        <!-- Policies Tab -->
+        <div id="tab-policies" class="tab-content hidden">
+          <div class="card">
+            <h2>Conditional Access Policy Analysis</h2>
+            <div id="policies-table"></div>
+          </div>
+        </div>
+
+        <!-- AI Tab -->
+        <div id="tab-ai" class="tab-content hidden">
+          <div class="card">
+            <h2>?? AI Assistant</h2>
+            <div id="ai-setup">
+              <p>Bring your own AI API key or use Cloudflare free tier.</p>
+              <select id="ai-mode" onchange="toggleAiMode()">
+                <option value="off">Off (rule-based only)</option>
+                <option value="cloudflare">Cloudflare Free AI</option>
+                <option value="byok">Bring Your Own Key</option>
+              </select>
+              <div id="byok-config" class="hidden">
+                <input type="text" id="ai-endpoint" placeholder="API Endpoint (e.g., https://api.openai.com/v1)" />
+                <input type="password" id="ai-key" placeholder="API Key" />
+                <input type="text" id="ai-model" placeholder="Model (e.g., gpt-4o-mini)" />
+              </div>
+              <div id="ai-chat" class="hidden">
+                <div id="chat-messages"></div>
+                <div class="chat-input">
+                  <input type="text" id="chat-input" placeholder="Ask about passkey readiness..." />
+                  <button onclick="sendChat()">Send</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <footer>
+        <p>Open source (MIT) &bull; <a href="https://github.com/arusso-aboutcloud/EntraPass" target="_blank">GitHub</a></p>
+      </footer>
+    </div>
+  </div>
+
+  <div id="loading-overlay" class="hidden">
+    <div class="spinner"></div>
+    <p id="loading-text">Scanning your tenant...</p>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
