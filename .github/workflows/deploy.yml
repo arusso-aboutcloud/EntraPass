@@ -35,11 +35,11 @@ jobs:
           VITE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
 
       - name: Create Cloudflare Pages project (if needed)
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages project create entrapass --production-branch main || echo "Project already exists"
+        run: |
+          npx wrangler pages project create entrapass --production-branch main || echo "Project already exists"
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
