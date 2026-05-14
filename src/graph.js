@@ -6,16 +6,23 @@ export class GraphAPI {
   }
 
   async getToken() {
-    const account = this.msalInstance.getActiveAccount();
-    if (!account) throw new Error('No active account');
-    
-    const resp = await this.msalInstance.acquireTokenSilent({
-      scopes: this.scopes,
-      account,
-    });
-    return resp.accessToken;
+    const account = this.msalInstance.getActiveAccount()
+      || this.msalInstance.getAllAccounts()[0];
+    if (!account) throw new Error('No active account. Please sign in again.');
+
+    try {
+      const resp = await this.msalInstance.acquireTokenSilent({ scopes: this.scopes, account });
+      return resp.accessToken;
+    } catch (err) {
+      // Silent acquisition can fail when the session/refresh token has expired
+      // or additional consent is required. Fall back to an interactive redirect.
+      console.warn('Silent token acquisition failed, redirecting for interaction:', err);
+      await this.msalInstance.acquireTokenRedirect({ scopes: this.scopes, account });
+      throw new Error('Re-authentication required.');
+    }
   }
 
+  // Fetches a single Graph resource. `path` is relative to baseUrl.
   async fetch(path) {
     const token = await this.getToken();
     const resp = await fetch(this.baseUrl + path, {
@@ -24,58 +31,88 @@ export class GraphAPI {
         'Content-Type': 'application/json',
       },
     });
-    
+
     if (!resp.ok) {
-      const err = await resp.text();
-      throw new Error('Graph API error: ' + err);
+      // Log the raw body for debugging, but do not surface it to the UI.
+      const body = await resp.text().catch(() => '');
+      console.error(`Graph API ${resp.status} for ${path}:`, body);
+      throw new Error(`Graph API error (${resp.status}) for ${path}`);
     }
-    
+
     return resp.json();
   }
 
+  // Fetches a collection, following @odata.nextLink so results are not
+  // silently truncated at Graph's default page size.
+  async fetchAll(path) {
+    const results = [];
+    let next = this.baseUrl + path;
+    let guard = 0;
+    while (next && guard < 100) {
+      guard++;
+      const token = await this.getToken();
+      const resp = await fetch(next, {
+        headers: {
+          'Authorization': 'Bearer ' + token,
+          'Content-Type': 'application/json',
+        },
+      });
+      if (!resp.ok) {
+        const body = await resp.text().catch(() => '');
+        console.error(`Graph API ${resp.status} for ${next}:`, body);
+        throw new Error(`Graph API error (${resp.status})`);
+      }
+      const data = await resp.json();
+      if (Array.isArray(data.value)) results.push(...data.value);
+      next = data['@odata.nextLink'] || null;
+    }
+    return results;
+  }
+
   async getOrganization() {
-    const data = await this.fetch('/organization');
+    const data = await this.fetch('/organization?$select=id,displayName');
     return data.value?.[0] || null;
   }
 
   async getUsers() {
-    const data = await this.fetch('/users?=id,displayName,userPrincipalName,userType,createdDateTime&=999');
-    return data.value || [];
+    return this.fetchAll(
+      '/users?$select=id,displayName,userPrincipalName,userType,createdDateTime&$top=999'
+    );
   }
 
   async getDevices() {
-    const data = await this.fetch('/devices?=id,displayName,deviceId,operatingSystem,operatingSystemVersion,isCompliant,isManaged,trustType&=999');
-    return data.value || [];
+    return this.fetchAll(
+      '/devices?$select=id,displayName,deviceId,operatingSystem,operatingSystemVersion,isCompliant,isManaged,trustType&$top=999'
+    );
   }
 
   async getConditionalAccessPolicies() {
-    const data = await this.fetch('/identity/conditionalAccess/policies');
-    return data.value || [];
+    return this.fetchAll('/identity/conditionalAccess/policies');
   }
 
   async getApplications() {
-    const data = await this.fetch('/applications?=id,displayName,signInAudience,requiredResourceAccess&=999');
-    return data.value || [];
-  }
-
-  async getAuthenticationMethods() {
-    const data = await this.fetch('/users?=id,displayName,userPrincipalName&=authenticationMethods&=999');
-    return data.value || [];
+    return this.fetchAll(
+      '/applications?$select=id,appId,displayName,signInAudience,publisherDomain,requiredResourceAccess,passwordCredentials,keyCredentials&$top=999'
+    );
   }
 
   async getAuthenticationMethodsForUser(userId) {
     try {
-      const data = await this.fetch('/users/' + userId + '/authenticationMethods');
+      const data = await this.fetch('/users/' + encodeURIComponent(userId) + '/authenticationMethods');
       return data.value || [];
     } catch {
       return [];
     }
   }
 
+  // signInActivity is a property of the user resource, not a navigation
+  // endpoint, so it must be retrieved via $select on the user object.
   async getUserSignInActivity(userId) {
     try {
-      const data = await this.fetch('/users/' + userId + '/signInActivity');
-      return data || {};
+      const data = await this.fetch(
+        '/users/' + encodeURIComponent(userId) + '?$select=signInActivity'
+      );
+      return data.signInActivity || {};
     } catch {
       return {};
     }
@@ -83,7 +120,9 @@ export class GraphAPI {
 
   async getUserMemberOf(userId) {
     try {
-      const data = await this.fetch('/users/' + userId + '/memberOf?$select=id,displayName');
+      const data = await this.fetch(
+        '/users/' + encodeURIComponent(userId) + '/memberOf?$select=id,displayName'
+      );
       return data.value || [];
     } catch {
       return [];
@@ -92,7 +131,9 @@ export class GraphAPI {
 
   async getDeviceRegisteredOwners(deviceId) {
     try {
-      const data = await this.fetch('/devices/' + deviceId + '/registeredOwners?$select=id,displayName,userPrincipalName');
+      const data = await this.fetch(
+        '/devices/' + encodeURIComponent(deviceId) + '/registeredOwners?$select=id,displayName,userPrincipalName'
+      );
       return data.value || [];
     } catch {
       return [];
@@ -101,8 +142,9 @@ export class GraphAPI {
 
   async getServicePrincipals() {
     try {
-      const data = await this.fetch('/servicePrincipals?$select=id,displayName,appRoles,passwordCredentials,keyCredentials&$top=999');
-      return data.value || [];
+      return await this.fetchAll(
+        '/servicePrincipals?$select=id,appId,displayName,appOwnerOrganizationId,passwordCredentials,keyCredentials&$top=999'
+      );
     } catch {
       return [];
     }
@@ -110,8 +152,7 @@ export class GraphAPI {
 
   async getAuthorizationPolicy() {
     try {
-      const data = await this.fetch('/policies/authorizationPolicy');
-      return data || {};
+      return await this.fetch('/policies/authorizationPolicy');
     } catch {
       return {};
     }
@@ -119,16 +160,16 @@ export class GraphAPI {
 
   async getAuthenticationMethodsPolicy() {
     try {
-      const data = await this.fetch('/policies/authenticationMethodsPolicy/authenticationMethodConfigurations');
-      return data.value || [];
+      return await this.fetchAll(
+        '/policies/authenticationMethodsPolicy/authenticationMethodConfigurations'
+      );
     } catch {
       return [];
     }
   }
 
   async getSignInLogs(filter) {
-    const url = '/auditLogs/signIns' + (filter ? '?=' + encodeURIComponent(filter) : '') + '&=999';
-    const data = await this.fetch(url);
-    return data.value || [];
+    const query = filter ? '?$filter=' + encodeURIComponent(filter) + '&$top=999' : '?$top=999';
+    return this.fetchAll('/auditLogs/signIns' + query);
   }
 }

@@ -293,6 +293,11 @@ tr:hover {
   font-size: 0.9rem;
 }
 
+.recommendation.critical {
+  background: #ffe8e8;
+  border-left: 3px solid var(--danger);
+}
+
 .recommendation.high {
   background: #fff0f0;
   border-left: 3px solid var(--danger);
@@ -310,6 +315,35 @@ tr:hover {
 
 .rec-icon {
   font-size: 1.1rem;
+}
+
+/* ============================================
+   Scan Notices (sampling limits / fetch errors)
+   ============================================ */
+#scan-notices {
+  margin-bottom: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.notice {
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.notice-error {
+  background: #fff0f0;
+  border-left: 3px solid var(--danger);
+  color: var(--text);
+}
+
+.notice-info {
+  background: #f0f6ff;
+  border-left: 3px solid var(--primary);
+  color: var(--text);
 }
 
 /* ============================================
