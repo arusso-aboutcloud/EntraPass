@@ -75,22 +75,62 @@ window.startScan = async () => {
   const btn = document.getElementById('scan-btn');
   btn.disabled = true;
   btn.textContent = 'Scanning...';
-  showLoading('Scanning...');
+  showLoading('Fetching users, devices, policies, apps, auth methods...');
   try {
-    const [u, d, p, a, o] = await Promise.all([
+    // Phase 1: Get basic data
+    const [users, devices, policies, apps, org, sps, authPolicy, authMethodsConfig] = await Promise.all([
       graphApi.getUsers().catch(() => []),
       graphApi.getDevices().catch(() => []),
       graphApi.getConditionalAccessPolicies().catch(() => []),
       graphApi.getApplications().catch(() => []),
       graphApi.getOrganization().catch(() => null),
+      graphApi.getServicePrincipals().catch(() => []),
+      graphApi.getAuthorizationPolicy().catch(() => ({})),
+      graphApi.getAuthenticationMethodsPolicy().catch(() => []),
     ]);
+
+    showLoading('Analyzing authentication methods and device ownership...');
+
+    // Phase 2: Get per-user rich data
+    const userDetails = await Promise.all(
+      users.slice(0, 50).map(async (u) => {  // Limit to 50 for performance
+        const [authMethods, activity, groups] = await Promise.all([
+          graphApi.getAuthenticationMethodsForUser(u.id).catch(() => []),
+          graphApi.getUserSignInActivity(u.id).catch(() => ({})),
+          graphApi.getUserMemberOf(u.id).catch(() => []),
+        ]);
+        return { ...u, authMethods, signInActivity: activity, groups };
+      })
+    );
+
+    // Phase 3: Get device ownership
+    const deviceDetails = await Promise.all(
+      devices.slice(0, 100).map(async (d) => {
+        const owners = await graphApi.getDeviceRegisteredOwners(d.id).catch(() => []);
+        return { ...d, registeredOwners: owners };
+      })
+    );
+
+    showLoading('Running AI-powered analysis...');
+
     scanResults = analyzer.analyzeAll({
-      users: u, devices: d, policies: p, apps: a, org: o,
+      users: userDetails,
+      devices: deviceDetails,
+      policies,
+      apps,
+      org,
+      servicePrincipals: sps,
+      authorizationPolicy: authPolicy,
+      authMethodsConfig,
     });
+
     sessionStorage.setItem('entrapass_results',
       JSON.stringify(scanResults));
     renderDashboard(scanResults);
-  } catch (err) { alert('Scan failed: ' + err.message); }
+  } catch (err) {
+    console.error('Scan failed:', err);
+    alert('Scan failed: ' + err.message);
+  }
   finally {
     hideLoading();
     btn.disabled = false;
@@ -226,24 +266,58 @@ function renderStats(r) {
 }
 
 function renderSummary(r) {
-  let h = '<div class="summary-list">';
-  if (!r.recommendations.length) {
-    h += '<p>No issues found.</p>';
+  const el = document.getElementById("summary-content");
+  let html = "";
+
+  // Narrative
+  if (r.narrative) {
+    html += "<div style=\"margin-bottom:1rem;padding:1rem;background:#f8f9fa;border-radius:8px;\">";
+    html += "<h3 style=\"margin-bottom:0.5rem;\">Executive Summary</h3>";
+    html += "<pre style=\"white-space:pre-wrap;font-family:inherit;font-size:0.95rem;line-height:1.6;margin:0;\">"
+      + r.narrative.replace(/\\n/g, "<br>")
+      + "</pre></div>";
+  }
+
+  // Toxic combos
+  if (r.toxicCombos && r.toxicCombos.length > 0) {
+    html += "<div style=\"margin-bottom:1rem;\">";
+    html += "<h3 style=\"color:#d13438;margin-bottom:0.5rem;\">Toxic Combinations Found</h3>";
+    r.toxicCombos.forEach(t => {
+      const bg = t.severity === "critical" ? "#fff0f0" : "#fff8f0";
+      const border = t.severity === "critical" ? "#d13438" : "#ff8c00";
+      html += "<div style=\"background:" + bg + ";border-left:4px solid " + border + ";padding:0.75rem;margin-bottom:0.5rem;border-radius:4px;\">";
+      html += "<strong>" + (t.displayName || t.fix) + "</strong><br>";
+      html += "<span style=\"font-size:0.9rem;\">" + (t.description || "") + "</span>";
+      if (t.fix) html += "<br><span style=\"font-size:0.85rem;color:#666;\">Fix: " + t.fix + "</span>";
+      html += "</div>";
+    });
+    html += "</div>";
+  }
+
+  // Recommendations
+  html += "<div class=\"summary-list\">";
+  if (!r.recommendations || !r.recommendations.length) {
+    html += "<p>No issues found.</p>";
   } else {
-    r.recommendations.slice(0,5).forEach(rec => {
-      const ic = rec.severity === 'high'
-        ? '&#128308;'
-        : rec.severity === 'medium'
-        ? '&#128993;'
-        : '&#128994;';
-      h += `<div class='recommendation ${rec.severity}'>\
-        <span class='rec-icon'>${ic}</span>\
-        <span class='rec-text'>${rec.text}</span>\
-      </div>`;
+    r.recommendations.forEach(rec => {
+      let icon;
+      switch(rec.severity) {
+        case "critical": icon = "\ud83d\udea8"; break;
+        case "high": icon = "\ud83d\udd34"; break;
+        case "medium": icon = "\ud83d\udfe1"; break;
+        default: icon = "\ud83d\udfe2";
+      }
+      html += "<div class=\"recommendation " + rec.severity + "\">";
+      html += "<div><span class=\"rec-icon\">" + icon + "</span></div>";
+      html += "<div><strong>" + (rec.title || rec.text) + "</strong>";
+      if (rec.text && rec.title && rec.text !== rec.title)
+        html += "<br><span style=\"font-size:0.9rem;\">" + rec.text + "</span>";
+      if (rec.fix) html += "<br><span style=\"font-size:0.85rem;color:#0078d4;\">Fix: " + rec.fix + "</span>";
+      html += "</div></div>";
     });
   }
-  h += '</div>';
-  document.getElementById('summary-content').innerHTML = h;
+  html += "</div>";
+  el.innerHTML = html;
 }
 
 function renderReadiness(r) {

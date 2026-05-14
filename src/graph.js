@@ -63,6 +63,69 @@ export class GraphAPI {
     return data.value || [];
   }
 
+  async getAuthenticationMethodsForUser(userId) {
+    try {
+      const data = await this.fetch('/users/' + userId + '/authenticationMethods');
+      return data.value || [];
+    } catch {
+      return [];
+    }
+  }
+
+  async getUserSignInActivity(userId) {
+    try {
+      const data = await this.fetch('/users/' + userId + '/signInActivity');
+      return data || {};
+    } catch {
+      return {};
+    }
+  }
+
+  async getUserMemberOf(userId) {
+    try {
+      const data = await this.fetch('/users/' + userId + '/memberOf?$select=id,displayName');
+      return data.value || [];
+    } catch {
+      return [];
+    }
+  }
+
+  async getDeviceRegisteredOwners(deviceId) {
+    try {
+      const data = await this.fetch('/devices/' + deviceId + '/registeredOwners?$select=id,displayName,userPrincipalName');
+      return data.value || [];
+    } catch {
+      return [];
+    }
+  }
+
+  async getServicePrincipals() {
+    try {
+      const data = await this.fetch('/servicePrincipals?$select=id,displayName,appRoles,passwordCredentials,keyCredentials&$top=999');
+      return data.value || [];
+    } catch {
+      return [];
+    }
+  }
+
+  async getAuthorizationPolicy() {
+    try {
+      const data = await this.fetch('/policies/authorizationPolicy');
+      return data || {};
+    } catch {
+      return {};
+    }
+  }
+
+  async getAuthenticationMethodsPolicy() {
+    try {
+      const data = await this.fetch('/policies/authenticationMethodsPolicy/authenticationMethodConfigurations');
+      return data.value || [];
+    } catch {
+      return [];
+    }
+  }
+
   async getSignInLogs(filter) {
     const url = '/auditLogs/signIns' + (filter ? '?=' + encodeURIComponent(filter) : '') + '&=999';
     const data = await this.fetch(url);
