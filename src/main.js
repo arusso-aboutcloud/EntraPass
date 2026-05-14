@@ -2,30 +2,23 @@ import { PublicClientApplication } from '@azure/msal-browser';
 import { GraphAPI } from './graph.js';
 import { Analyzer } from './analyzer.js';
 
-// ============================================
-// MSAL Configuration (PKCE - SPA)
-// ============================================
 const msalConfig = {
   auth: {
-    clientId: import.meta.env.VITE_CLIENT_ID || '885e7b72-5a73-44d7-9b42-bdd0e33b01f6',
-    authority: 'https://login.microsoftonline.com/' + (import.meta.env.VITE_TENANT_ID || '0b259eac-5a5e-4c47-bc9f-f29ed875b165'),
+    clientId: import.meta.env.VITE_CLIENT_ID
+      || '885e7b72-5a73-44d7-9b42-bdd0e33b01f6',
+    authority: 'https://login.microsoftonline.com/'
+      + (import.meta.env.VITE_TENANT_ID
+        || '0b259eac-5a5e-4c47-bc9f-f29ed875b165'),
     redirectUri: window.location.origin,
   },
-  cache: {
-    cacheLocation: 'sessionStorage',
-    storeAuthStateInCookie: false,
-  },
+  cache: { cacheLocation: 'sessionStorage', storeAuthStateInCookie: false },
 };
 
 const loginRequest = {
   scopes: [
-    'User.Read',
-    'User.Read.All',
-    'Device.Read.All',
-    'Policy.Read.All',
-    'Application.Read.All',
-    'AuditLog.Read.All',
-    'Organization.Read.All',
+    'User.Read', 'User.Read.All', 'Device.Read.All',
+    'Policy.Read.All', 'Application.Read.All',
+    'AuditLog.Read.All', 'Organization.Read.All',
   ],
 };
 
@@ -34,72 +27,42 @@ let graphApi = null;
 let analyzer = null;
 let scanResults = null;
 
-// ============================================
-// Initialize
-// ============================================
 window.addEventListener('DOMContentLoaded', async () => {
   msalInstance = new PublicClientApplication(msalConfig);
   await msalInstance.initialize();
-  
-  // Handle redirect promise
-  const resp = await msalInstance.handleRedirectPromise().catch(() => null);
-  
+  await msalInstance.handleRedirectPromise().catch(() => null);
   const accounts = msalInstance.getAllAccounts();
-  if (accounts.length > 0) {
-    await initializeApp(accounts[0]);
-  } else {
-    showAuthScreen();
-  }
+  if (accounts.length > 0) await initializeApp(accounts[0]);
+  else showAuthScreen();
 });
 
-// ============================================
-// Auth Functions (PKCE)
-// ============================================
-window.signIn = async function() {
-  try {
-    await msalInstance.loginRedirect(loginRequest);
-  } catch (err) {
-    console.error('Sign-in failed:', err);
-    alert('Sign-in failed. Please try again.');
-  }
+window.signIn = async () => {
+  try { await msalInstance.loginRedirect(loginRequest); }
+  catch (err) { console.error(err); alert('Sign-in failed.'); }
 };
 
-window.signOut = function() {
-  msalInstance.logoutRedirect({
-    postLogoutRedirectUri: window.location.origin,
-  });
-};
+window.signOut = () => msalInstance.logoutRedirect({
+  postLogoutRedirectUri: window.location.origin,
+});
 
 async function initializeApp(account) {
   msalInstance.setActiveAccount(account);
-  
   graphApi = new GraphAPI(msalInstance, loginRequest.scopes);
   analyzer = new Analyzer();
-  
-  // Show dashboard
   document.getElementById('auth-screen').classList.add('hidden');
   document.getElementById('dashboard').classList.remove('hidden');
-  
-  // Set user info
   document.getElementById('user-info').textContent = account.username;
-  
-  // Get tenant name
   try {
     const org = await graphApi.getOrganization();
-    document.getElementById('tenant-name').textContent = org.displayName || 'Unknown Tenant';
-  } catch (e) {
-    document.getElementById('tenant-name').textContent = 'Connected';
-  }
-  
-  // Check if we have cached results
+    document.getElementById('tenant-name').textContent
+      = org.displayName || 'Tenant';
+  } catch { document.getElementById('tenant-name').textContent = 'Connected'; }
   const cached = sessionStorage.getItem('entrapass_results');
   if (cached) {
     try {
       scanResults = JSON.parse(cached);
       renderDashboard(scanResults);
-    } catch (e) {
-      // ignore
-    }
+    } catch (e) {}
   }
 }
 
@@ -108,266 +71,221 @@ function showAuthScreen() {
   document.getElementById('dashboard').classList.add('hidden');
 }
 
-// ============================================
-// Scan Functions
-// ============================================
-window.startScan = async function() {
+window.startScan = async () => {
   const btn = document.getElementById('scan-btn');
   btn.disabled = true;
-  btn.textContent = '? Scanning...';
-  
-  showLoading('Scanning users, devices, policies, and applications...');
-  
+  btn.textContent = 'Scanning...';
+  showLoading('Scanning...');
   try {
-    const token = await getToken();
-    
-    // Fetch all data in parallel
-    const [users, devices, policies, apps, org] = await Promise.all([
-      graphApi.getUsers().catch(e => { console.error('Users fetch failed:', e); return []; }),
-      graphApi.getDevices().catch(e => { console.error('Devices fetch failed:', e); return []; }),
-      graphApi.getConditionalAccessPolicies().catch(e => { console.error('Policies fetch failed:', e); return []; }),
-      graphApi.getApplications().catch(e => { console.error('Apps fetch failed:', e); return []; }),
-      graphApi.getOrganization().catch(e => { console.error('Org fetch failed:', e); return null; }),
+    const [u, d, p, a, o] = await Promise.all([
+      graphApi.getUsers().catch(() => []),
+      graphApi.getDevices().catch(() => []),
+      graphApi.getConditionalAccessPolicies().catch(() => []),
+      graphApi.getApplications().catch(() => []),
+      graphApi.getOrganization().catch(() => null),
     ]);
-    
-    // Analyze
-    scanResults = analyzer.analyzeAll({ users, devices, policies, apps, org });
-    
-    // Cache in session storage (browser-only, no server)
-    sessionStorage.setItem('entrapass_results', JSON.stringify(scanResults));
-    
+    scanResults = analyzer.analyzeAll({
+      users: u, devices: d, policies: p, apps: a, org: o,
+    });
+    sessionStorage.setItem('entrapass_results',
+      JSON.stringify(scanResults));
     renderDashboard(scanResults);
-    
-  } catch (err) {
-    console.error('Scan failed:', err);
-    alert('Scan failed: ' + err.message);
-  } finally {
+  } catch (err) { alert('Scan failed: ' + err.message); }
+  finally {
     hideLoading();
     btn.disabled = false;
-    btn.textContent = '?? Scan Tenant Now';
+    btn.textContent = 'Scan Tenant Now';
   }
 };
-
-async function getToken() {
-  const account = msalInstance.getActiveAccount();
-  if (!account) throw new Error('No active account');
-  
-  const resp = await msalInstance.acquireTokenSilent({
-    scopes: loginRequest.scopes,
-    account,
-  });
-  return resp.accessToken;
-}
-
-// ============================================
-// Tab Switching
-// ============================================
-window.switchTab = function(tabName) {
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
-  
-  document.querySelector(.tab[data-tab=""]).classList.add('active');
-  document.getElementById(	ab-).classList.remove('hidden');
+window.switchTab = (tabName) => {
+  document.querySelectorAll('.tab').forEach(
+    t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(
+    t => t.classList.add('hidden'));
+  document.querySelector(
+    `.tab[data-tab='${tabName}']`)
+    .classList.add('active');
+  document.getElementById(
+    `tab-${tabName}`)
+    .classList.remove('hidden');
 };
 
-// ============================================
-// AI Functions
-// ============================================
-window.toggleAiMode = function() {
+window.toggleAiMode = () => {
   const mode = document.getElementById('ai-mode').value;
-  document.getElementById('byok-config').classList.toggle('hidden', mode !== 'byok');
-  document.getElementById('ai-chat').classList.toggle('hidden', mode === 'off');
+  document.getElementById('byok-config')
+    .classList.toggle('hidden', mode !== 'byok');
+  document.getElementById('ai-chat')
+    .classList.toggle('hidden', mode === 'off');
 };
 
-window.sendChat = async function() {
+window.sendChat = async () => {
   const input = document.getElementById('chat-input');
-  const question = input.value.trim();
-  if (!question || !scanResults) return;
-  
-  const messages = document.getElementById('chat-messages');
-  messages.innerHTML += <div class="message user"></div>;
+  const q = input.value.trim();
+  if (!q || !scanResults) return;
+  const m = document.getElementById('chat-messages');
+  m.innerHTML += `<div class='message user'>${q}</div>`;
   input.value = '';
-  
-  messages.innerHTML += <div class="message bot">Thinking...</div>;
-  
+  m.innerHTML += `<div class='message bot'>Thinking...</div>`;
   try {
-    const answer = await getAiAnswer(question, scanResults);
-    messages.removeChild(messages.lastChild);
-    messages.innerHTML += <div class="message bot"></div>;
-    messages.scrollTop = messages.scrollHeight;
+    const a = await getAiAnswer(q, scanResults);
+    m.removeChild(m.lastChild);
+    m.innerHTML += `<div class='message bot'>${formatAiAnswer(a)}</div>`;
+    m.scrollTop = m.scrollHeight;
   } catch (err) {
-    messages.removeChild(messages.lastChild);
-    messages.innerHTML += <div class="message bot error">Error: </div>;
+    m.removeChild(m.lastChild);
+    m.innerHTML += `<div class='message bot error'>Error: ${err.message}</div>`;
   }
 };
 
 async function getAiAnswer(question, results) {
   const mode = document.getElementById('ai-mode').value;
-  
   if (mode === 'cloudflare') {
-    // Call Cloudflare AI Worker
-    const resp = await fetch('/ai/ask', {
+    const r = await fetch('/ai/ask', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ question, results }),
     });
-    if (!resp.ok) throw new Error('AI request failed');
-    const data = await resp.json();
-    return data.answer;
-  } else if (mode === 'byok') {
-    const endpoint = document.getElementById('ai-endpoint').value;
-    const key = document.getElementById('ai-key').value;
-    const model = document.getElementById('ai-model').value;
-    
-    if (!endpoint || !key) throw new Error('Please configure BYOK endpoint and key');
-    
-    const resp = await fetch(endpoint + '/chat/completions', {
+    if (!r.ok) throw new Error('AI error');
+    return (await r.json()).answer;
+  }
+  if (mode === 'byok') {
+    const ep = document.getElementById('ai-endpoint').value;
+    const k = document.getElementById('ai-key').value;
+    const m = document.getElementById('ai-model').value;
+    if (!ep || !k) throw new Error('Configure BYOK');
+    const r = await fetch(ep + '/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + key,
+        'Authorization': 'Bearer ' + k,
       },
       body: JSON.stringify({
-        model: model || 'gpt-4o-mini',
+        model: m || 'gpt-4o-mini',
         messages: [
-          { role: 'system', content: 'You are a Microsoft Entra ID passkey migration expert. Answer concisely based on the scan results.' },
-          { role: 'user', content: Scan results: \n\nQuestion:  }
+          { role: 'system',
+            content: 'You are an Entra ID passkey expert.' },
+          { role: 'user',
+            content: `Results: ${JSON.stringify(results)}`
+              + `Q: ${question}` },
         ],
       }),
     });
-    if (!resp.ok) throw new Error('BYOK request failed');
-    const data = await resp.json();
-    return data.choices?.[0]?.message?.content || 'No response';
+    if (!r.ok) throw new Error('BYOK error');
+    return (await r.json()).choices?.[0]?.message?.content
+      || 'No response';
   }
-  
-  return 'AI is off. Enable AI mode above.';
+  return 'AI is off.';
 }
 
-function formatAiAnswer(text) {
-  return text.replace(/\\n/g, '<br>').replace(/\\*\\*(.*?)\\*\\*/g, '<strong></strong>');
+function formatAiAnswer(t) {
+  return t.replace(/\\n/g, '<br>')
+    .replace(/\\*\\*(.*?)\\*\\*/g,
+      '<strong>$1</strong>');
 }
 
-// ============================================
-// Loading Overlay
-// ============================================
-function showLoading(text) {
-  document.getElementById('loading-text').textContent = text || 'Loading...';
-  document.getElementById('loading-overlay').classList.remove('hidden');
+function showLoading(t) {
+  document.getElementById('loading-text').textContent
+    = t || 'Loading...';
+  document.getElementById('loading-overlay')
+    .classList.remove('hidden');
 }
 
 function hideLoading() {
-  document.getElementById('loading-overlay').classList.add('hidden');
+  document.getElementById('loading-overlay')
+    .classList.add('hidden');
 }
 
-// ============================================
-// Render Dashboard
-// ============================================
-function renderDashboard(results) {
-  renderStats(results);
-  renderReadiness(results);
-  renderApps(results);
-  renderPolicies(results);
-  renderSummary(results);
+function renderDashboard(r) {
+  renderStats(r);
+  renderReadiness(r);
+  renderApps(r);
+  renderPolicies(r);
+  renderSummary(r);
 }
 
-function renderStats(results) {
-  const grid = document.getElementById('stats-grid');
-  const { total, ready, needsAttention, blocked } = results.passkeyReadiness;
-  
-  grid.innerHTML = 
-    <div class="stat-card">
-      <div class="stat-value"></div>
-      <div class="stat-label">Total Users</div>
-    </div>
-    <div class="stat-card good">
-      <div class="stat-value"></div>
-      <div class="stat-label">Ready for Passkeys</div>
-    </div>
-    <div class="stat-card warn">
-      <div class="stat-value"></div>
-      <div class="stat-label">Needs Attention</div>
-    </div>
-    <div class="stat-card danger">
-      <div class="stat-value"></div>
-      <div class="stat-label">Blocked</div>
-    </div>
-  ;
+function renderStats(r) {
+  const { total, ready, needsAttention, blocked }
+    = r.passkeyReadiness;
+  document.getElementById('stats-grid').innerHTML
+    = `<div class='stat-card'>\
+      <div class='stat-value'>${total}</div>\
+      <div class='stat-label'>Total Users</div>\
+    </div>\
+    <div class='stat-card good'>\
+      <div class='stat-value'>${ready}</div>\
+      <div class='stat-label'>Ready</div>\
+    </div>\
+    <div class='stat-card warn'>\
+      <div class='stat-value'>${needsAttention}</div>\
+      <div class='stat-label'>Needs Attention</div>\
+    </div>\
+    <div class='stat-card danger'>\
+      <div class='stat-value'>${blocked}</div>\
+      <div class='stat-label'>Blocked</div>\
+    </div>`;
 }
 
-function renderSummary(results) {
-  const div = document.getElementById('summary-content');
-  
-  let html = '<div class="summary-list">';
-  
-  if (results.recommendations.length === 0) {
-    html += '<p>No specific recommendations. Your tenant looks good!</p>';
+function renderSummary(r) {
+  let h = '<div class="summary-list">';
+  if (!r.recommendations.length) {
+    h += '<p>No issues found.</p>';
   } else {
-    results.recommendations.slice(0, 5).forEach(rec => {
-      const icon = rec.severity === 'high' ? '??' : rec.severity === 'medium' ? '??' : '??';
-      html += <div class="recommendation ">
-        <span class="rec-icon"></span>
-        <span class="rec-text"></span>
-      </div>;
+    r.recommendations.slice(0,5).forEach(rec => {
+      const ic = rec.severity === 'high'
+        ? '&#128308;'
+        : rec.severity === 'medium'
+        ? '&#128993;'
+        : '&#128994;';
+      h += `<div class='recommendation ${rec.severity}'>\
+        <span class='rec-icon'>${ic}</span>\
+        <span class='rec-text'>${rec.text}</span>\
+      </div>`;
     });
   }
-  
-  html += '</div>';
-  div.innerHTML = html;
+  h += '</div>';
+  document.getElementById('summary-content').innerHTML = h;
 }
 
-function renderReadiness(results) {
-  const table = document.getElementById('readiness-table');
-  const { users } = results.passkeyReadiness;
-  
-  let html = '<table><thead><tr><th>User</th><th>Status</th><th>Issues</th></tr></thead><tbody>';
-  
+function renderReadiness(r) {
+  const { users } = r.passkeyReadiness;
+  let h = '<table><thead><tr>' + '<th>User</th><th>Status</th><th>Issues</th></tr></thead><tbody>';
   users.forEach(u => {
-    const icon = u.status === 'ready' ? '??' : u.status === 'attention' ? '??' : '??';
-    html += <tr>
-      <td></td>
-      <td> </td>
-      <td></td>
-    </tr>;
+    const ic = u.status === 'ready' ? '&#128994;'
+      : u.status === 'attention' ? '&#128993;' : '&#128308;';
+    h += `<tr>\
+      <td>${u.displayName}</td>\
+      <td>${ic} ${u.status}</td>\
+      <td>${u.issues.join(', ') || 'None'}</td>\
+    </tr>`;
   });
-  
-  html += '</tbody></table>';
-  table.innerHTML = html;
+  h += '</tbody></table>';
+  document.getElementById('readiness-table').innerHTML = h;
 }
 
-function renderApps(results) {
-  const table = document.getElementById('apps-table');
-  const { apps } = results;
-  
-  let html = '<table><thead><tr><th>App</th><th>Passkey Compatible</th><th>Issue</th></tr></thead><tbody>';
-  
-  apps.forEach(a => {
-    const icon = a.passkeyCompatible ? '?? Yes' : '?? No';
-    html += <tr>
-      <td></td>
-      <td></td>
-      <td></td>
-    </tr>;
+function renderApps(r) {
+  let h = '<table><thead><tr>' + '<th>App</th><th>Passkey</th><th>Issue</th></tr></thead><tbody>';
+  r.apps.forEach(a => {
+    const ok = a.passkeyCompatible ? '&#128994; Yes' : '&#128308; No';
+    h += `<tr>\
+      <td>${a.displayName}</td>\
+      <td>${ok}</td>\
+      <td>${a.passkeyIssue || 'None'}</td>\
+    </tr>`;
   });
-  
-  html += '</tbody></table>';
-  table.innerHTML = html;
+  h += '</tbody></table>';
+  document.getElementById('apps-table').innerHTML = h;
 }
 
-function renderPolicies(results) {
-  const table = document.getElementById('policies-table');
-  const { policies } = results;
-  
-  let html = '<table><thead><tr><th>Policy Name</th><th>Blocks Passkeys?</th><th>Action</th></tr></thead><tbody>';
-  
-  policies.forEach(p => {
-    const icon = p.blocksPasskeyRegistration ? '?? Yes' : '?? No';
-    html += <tr>
-      <td></td>
-      <td></td>
-      <td></td>
-    </tr>;
+function renderPolicies(r) {
+  let h = '<table><thead><tr>' + '<th>Policy</th><th>Blocks Passkeys?</th><th>Action</th></tr></thead><tbody>';
+  r.policies.forEach(p => {
+    const blk = p.blocksPasskeyRegistration ? '&#128308; Yes' : '&#128994; No';
+    h += `<tr>\
+      <td>${p.displayName}</td>\
+      <td>${blk}</td>\
+      <td>${p.recommendation || 'None'}</td>\
+    </tr>`;
   });
-  
-  html += '</tbody></table>';
-  table.innerHTML = html;
+  h += '</tbody></table>';
+  document.getElementById('policies-table').innerHTML = h;
 }
