@@ -8,21 +8,109 @@
 </head>
 <body>
   <div id="app">
-    <!-- Auth Screen -->
+    <!-- Auth / Setup Screen -->
     <div id="auth-screen" class="screen">
       <div class="logo">
         <h1>?? EntraPass</h1>
         <p class="tagline">Passkey Migration Assistant for Microsoft Entra ID</p>
+        <p class="version-badge">v0.1.0 &bull; MIT License</p>
       </div>
-      <div id="auth-card" class="card">
-        <h2>Sign in with Microsoft</h2>
-        <p>Connect to your Entra ID tenant to assess passkey readiness.</p>
-        <p class="privacy-note">
-          ?? Your data stays in your browser. Nothing is stored on servers.
-        </p>
-        <button id="sign-in-btn" class="btn-primary" onclick="signIn()">
-          Sign in with Microsoft
+
+      <!-- Terms & Conditions -->
+      <div id="setup-tc" class="card">
+        <h2>?? Before You Start</h2>
+        <div class="tc-box">
+          <p>EntraPass is an <strong>open-source (MIT) tool</strong> for assessing passkey readiness in your Microsoft Entra ID tenant.</p>
+          <h3>? What this tool does:</h3>
+          <ul>
+            <li>Reads user profiles, devices, auth methods, and CA policies from your tenant via Microsoft Graph</li>
+            <li>Analyzes everything <strong>in your browser</strong> — no data leaves your machine</li>
+            <li>Deploys a <strong>temporary App Registration</strong> to your tenant for authentication</li>
+          </ul>
+          <h3>? Security &amp; Privacy</h3>
+          <ul>
+            <li>All data stays in your browser's memory &mdash; <strong>nothing is stored on servers</strong></li>
+            <li>The scanner creates a <strong>SPA (PKCE) app registration</strong> with no client secrets</li>
+            <li>You can <strong>delete the app registration</strong> after scanning using the cleanup script</li>
+            <li>No external API calls beyond Microsoft Graph</li>
+          </ul>
+          <h3>? Prerequisites</h3>
+          <ul>
+            <li>A Microsoft Entra ID tenant (the one you want to scan)</li>
+            <li>Permissions to create App Registrations (Application Developer role or higher)</li>
+            <li>Admin consent for Graph delegated permissions (or consent interactively)</li>
+          </ul>
+        </div>
+        <label class="checkbox-label">
+          <input type="checkbox" id="tc-checkbox" onchange="document.getElementById('setup-deploy-btn').disabled = !this.checked" />
+          <span>I understand and acknowledge the above terms. I am authorized to scan this tenant.</span>
+        </label>
+        <button id="setup-deploy-btn" class="btn-primary" onclick="showDeployStep()" disabled>
+          ?? Continue to Setup
         </button>
+      </div>
+
+      <!-- Deploy Bicep Step -->
+      <div id="setup-deploy" class="card hidden">
+        <h2>?? Deploy Scanner to Your Tenant</h2>
+        <p>EntraPass needs an App Registration in <strong>your</strong> tenant to run the scan. Two options:</p>
+
+        <div class="option-card">
+          <h3>?? Option 1: Deploy to Azure (Recommended)</h3>
+          <p>Click the button below to open Azure Portal and deploy the Bicep template:</p>
+          <a id="deploy-to-azure-link" href="#" target="_blank" class="btn-primary" style="display:inline-block;text-decoration:none;">
+            ?? Deploy to Azure
+          </a>
+          <p class="note" style="margin-top:0.5rem;">
+            You'll be prompted to select a Resource Group and provide:
+            <br/>- <strong>redirectUri</strong>: Your EntraPass portal URL (e.g., https://entrapass.pages.dev)
+            <br/>- <strong>tenantId</strong>: Your tenant ID
+          </p>
+        </div>
+
+        <div class="option-card" style="margin-top:1rem;">
+          <h3>?? Option 2: Deploy via CLI</h3>
+          <p>Or deploy from your terminal:</p>
+          <pre class="code-block">az deployment group create \<br/>  --resource-group &lt;your-rg&gt; \<br/>  --template-file infra/app-registration.bicep \<br/>  --parameters redirectUri="https://entrapass.pages.dev" tenantId="&lt;your-tenant-id&gt;"</pre>
+        </div>
+
+        <p style="margin-top:1rem;font-size:0.9rem;color:var(--text-secondary);">
+          ?? After deployment, come back here and click below.
+        </p>
+        <button class="btn-primary" onclick="showConfigStep()">
+          ?? I Deployed It — Let's Configure
+        </button>
+        <button class="btn-ghost" onclick="showTcStep()" style="margin-top:0.5rem;">
+          ?? Back to Terms
+        </button>
+      </div>
+
+      <!-- Configuration Step -->
+      <div id="setup-config" class="card hidden">
+        <h2>?? Configure Your App Registration</h2>
+        <p>Enter the values from your deployed App Registration.</p>
+        <div class="config-form">
+          <label>Client ID (from Bicep output)</label>
+          <input type="text" id="config-client-id" placeholder="11111111-2222-3333-4444-555555555555" />
+          <label>Tenant ID (your directory ID)</label>
+          <input type="text" id="config-tenant-id" placeholder="00000000-1111-2222-3333-444444444444" />
+          <label>Portal URL (redirect URI)</label>
+          <input type="text" id="config-redirect-uri" placeholder="https://entrapass.pages.dev" value="http://localhost:5173" />
+        </div>
+        <button class="btn-primary" onclick="saveConfiguration()">
+          ?? Save &amp; Start Scanning
+        </button>
+        <button class="btn-ghost" onclick="showDeployStep()" style="margin-top:0.5rem;">
+          ?? Back to Deploy
+        </button>
+        <p id="config-error" class="error-message hidden"></p>
+      </div>
+
+      <!-- Loading step -->
+      <div id="setup-loading" class="card hidden">
+        <div class="spinner"></div>
+        <h2>?? Configuring...</h2>
+        <p id="setup-loading-text">Saving configuration...</p>
       </div>
     </div>
 
@@ -36,6 +124,7 @@
         <div class="header-right">
           <span id="user-info" class="user-badge"></span>
           <button class="btn-ghost" onclick="signOut()">Sign out</button>
+          <button class="btn-ghost" onclick="clearConfiguration()" title="Remove config and start fresh">Reset app</button>
         </div>
       </header>
 
@@ -144,4 +233,6 @@
   <script type="module" src="/src/main.js"></script>
 </body>
 </html>
+
+
 

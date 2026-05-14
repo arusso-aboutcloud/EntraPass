@@ -2,17 +2,35 @@ import { PublicClientApplication } from '@azure/msal-browser';
 import { GraphAPI } from './graph.js';
 import { Analyzer } from './analyzer.js';
 
-const msalConfig = {
-  auth: {
-    clientId: import.meta.env.VITE_CLIENT_ID
-      || '885e7b72-5a73-44d7-9b42-bdd0e33b01f6',
-    authority: 'https://login.microsoftonline.com/'
-      + (import.meta.env.VITE_TENANT_ID
-        || '0b259eac-5a5e-4c47-bc9f-f29ed875b165'),
-    redirectUri: window.location.origin,
-  },
-  cache: { cacheLocation: 'sessionStorage', storeAuthStateInCookie: false },
-};
+// Configuration - loaded from sessionStorage (user-supplied)
+function loadConfig() {
+  try {
+    const saved = JSON.parse(sessionStorage.getItem('entrapass_config'));
+    if (saved && saved.clientId && saved.tenantId) return saved;
+  } catch (e) {}
+  // Check for Vite env vars (for self-hosted deployments)
+  const envClientId = import.meta.env.VITE_CLIENT_ID;
+  const envTenantId = import.meta.env.VITE_TENANT_ID;
+  if (envClientId && envTenantId) {
+    return { clientId: envClientId, tenantId: envTenantId, redirectUri: window.location.origin };
+  }
+  return null;
+}
+
+function getMsalConfig() {
+  const config = loadConfig();
+  if (!config) return null;
+  return {
+    auth: {
+      clientId: config.clientId,
+      authority: 'https://login.microsoftonline.com/' + config.tenantId,
+      redirectUri: config.redirectUri || window.location.origin,
+    },
+    cache: { cacheLocation: 'sessionStorage', storeAuthStateInCookie: false },
+  };
+}
+
+const msalConfig = getMsalConfig();
 
 const loginRequest = {
   scopes: [
@@ -28,48 +46,127 @@ let analyzer = null;
 let scanResults = null;
 
 window.addEventListener('DOMContentLoaded', async () => {
-  msalInstance = new PublicClientApplication(msalConfig);
-  await msalInstance.initialize();
-  await msalInstance.handleRedirectPromise().catch(() => null);
-  const accounts = msalInstance.getAllAccounts();
-  if (accounts.length > 0) await initializeApp(accounts[0]);
-  else showAuthScreen();
-});
-
-window.signIn = async () => {
-  try { await msalInstance.loginRedirect(loginRequest); }
-  catch (err) { console.error(err); alert('Sign-in failed.'); }
-};
-
-window.signOut = () => msalInstance.logoutRedirect({
-  postLogoutRedirectUri: window.location.origin,
-});
-
-async function initializeApp(account) {
-  msalInstance.setActiveAccount(account);
-  graphApi = new GraphAPI(msalInstance, loginRequest.scopes);
-  analyzer = new Analyzer();
-  document.getElementById('auth-screen').classList.add('hidden');
-  document.getElementById('dashboard').classList.remove('hidden');
-  document.getElementById('user-info').textContent = account.username;
-  try {
-    const org = await graphApi.getOrganization();
-    document.getElementById('tenant-name').textContent
-      = org.displayName || 'Tenant';
-  } catch { document.getElementById('tenant-name').textContent = 'Connected'; }
-  const cached = sessionStorage.getItem('entrapass_results');
-  if (cached) {
-    try {
-      scanResults = JSON.parse(cached);
-      renderDashboard(scanResults);
-    } catch (e) {}
+  // Check if user has already configured the app registration
+  const msalConfig = getMsalConfig();
+  if (!msalConfig) {
+    showAuthScreen('setup-tc');
+    return;
   }
-}
+  try {
+    window.msalInstance = new PublicClientApplication(msalConfig);
+    await window.msalInstance.initialize();
+    await window.msalInstance.handleRedirectPromise().catch(() => null);
+    const accounts = window.msalInstance.getAllAccounts();
+    if (accounts.length > 0) await initializeApp(accounts[0]);
+    else showAuthScreen('setup-tc');
+  } catch (err) {
+    console.error('MSAL init failed:', err);
+    showAuthScreen('setup-tc');
+  }
+});
 
-function showAuthScreen() {
+// (Setup wizard replaces the original showAuthScreen)
+// ============================================
+// Setup Wizard Functions
+// ============================================
+
+function showAuthScreen(section) {
   document.getElementById('auth-screen').classList.remove('hidden');
   document.getElementById('dashboard').classList.add('hidden');
+  ['setup-tc', 'setup-deploy', 'setup-config', 'setup-loading'].forEach(id => document.getElementById(id).classList.add('hidden'));
+  if (section) document.getElementById(section).classList.remove('hidden');
 }
+
+window.showTcStep = function() { showAuthScreen("setup-tc"); };
+
+window.showDeployStep = function() {
+  showAuthScreen("setup-deploy");
+  // Build the Deploy to Azure URL with the Bicep template
+  const baseUrl = 'https://portal.azure.com/#create/Microsoft.Template/uri/'
+  const templateUri = encodeURIComponent('https://raw.githubusercontent.com/arusso-aboutcloud/EntraPass/main/infra/app-registration.bicep');
+  const params = encodeURIComponent(JSON.stringify({ redirectUri: window.location.origin }));
+  document.getElementById('deploy-to-azure-link').href = baseUrl + templateUri;
+};
+
+window.showConfigStep = function() { showAuthScreen("setup-config"); };
+
+window.saveConfiguration = function() {
+  const clientId = document.getElementById('config-client-id').value.trim();
+  const tenantId = document.getElementById('config-tenant-id').value.trim();
+  const redirectUri = document.getElementById('config-redirect-uri').value.trim() || window.location.origin;
+  const errorEl = document.getElementById('config-error');
+  errorEl.classList.add('hidden');
+
+  // Validate GUID format
+  const guidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!guidPattern.test(clientId)) {
+    errorEl.textContent = 'Invalid Client ID format. Expected a GUID (e.g., 11111111-2222-3333-4444-555555555555).';
+    errorEl.classList.remove('hidden');
+    return;
+  }
+  if (!guidPattern.test(tenantId)) {
+    errorEl.textContent = 'Invalid Tenant ID format. Expected a GUID.';
+    errorEl.classList.remove('hidden');
+    return;
+  }
+
+  showAuthScreen('setup-loading');
+  document.getElementById('setup-loading-text').textContent = 'Validating configuration...';
+
+  try {
+    const config = { clientId, tenantId, redirectUri };
+    sessionStorage.setItem('entrapass_config', JSON.stringify(config));
+
+    // Reinitialize MSAL with new config
+    const msalConfig = getMsalConfig();
+    window.msalInstance = new PublicClientApplication(msalConfig);
+    window.msalInstance.initialize().then(() => {
+      document.getElementById('setup-loading-text').textContent = 'Configuration saved! Redirecting to sign in...';
+      window.signIn();
+    }).catch(err => {
+      errorEl.textContent = 'Failed to initialize: ' + err.message;
+      errorEl.classList.remove('hidden');
+      showAuthScreen('setup-config');
+    });
+  } catch (err) {
+    errorEl.textContent = 'Error saving configuration: ' + err.message;
+    errorEl.classList.remove('hidden');
+    showAuthScreen('setup-config');
+  }
+};
+
+window.clearConfiguration = function() {
+  sessionStorage.removeItem('entrapass_config');
+  sessionStorage.removeItem('entrapass_results');
+  location.reload();
+};
+
+// ============================================
+// Auth Functions
+// ============================================
+
+window.signIn = async () => {
+  const msalConfig = getMsalConfig();
+  if (!msalConfig) { showAuthScreen("setup-tc"); return; }
+  try {
+    if (!window.msalInstance) {
+      window.msalInstance = new PublicClientApplication(msalConfig);
+      await window.msalInstance.initialize();
+    }
+    await window.msalInstance.loginRedirect(loginRequest);
+  } catch (err) {
+    console.error(err);
+    alert('Sign-in failed. Check your Client ID and Tenant ID.');
+  }
+};
+
+window.signOut = () => {
+  if (window.msalInstance) {
+    window.msalInstance.logoutRedirect({
+      postLogoutRedirectUri: window.location.origin,
+    });
+  }
+};
 
 window.startScan = async () => {
   const btn = document.getElementById('scan-btn');
