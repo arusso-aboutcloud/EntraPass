@@ -1,0 +1,197 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" font-family="Segoe UI, system-ui, sans-serif">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#555"/>
+    </marker>
+    <marker id="arrow-blue" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#0078d4"/>
+    </marker>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#f5f5f5"/>
+      <stop offset="100%" stop-color="#e8e8e8"/>
+    </linearGradient>
+    <linearGradient id="header-grad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#0078d4"/>
+      <stop offset="100%" stop-color="#106ebe"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="900" fill="url(#bg)" rx="4"/>
+
+  <!-- Title -->
+  <rect x="0" y="0" width="1200" height="50" fill="url(#header-grad)"/>
+  <text x="600" y="32" fill="white" font-size="20" font-weight="700" text-anchor="middle">EntraPass — Architecture Diagram</text>
+
+  <!-- ============================================ -->
+  <!-- Layer 0: Infrastructure / Deployment -->
+  <!-- ============================================ -->
+  <text x="30" y="80" fill="#333" font-size="13" font-weight="600">Deployment Infrastructure</text>
+
+  <!-- GitHub -->
+  <rect x="30" y="90" width="200" height="60" rx="8" fill="#fff" stroke="#0366d6" stroke-width="2"/>
+  <text x="130" y="115" fill="#0366d6" font-size="13" font-weight="700" text-anchor="middle">GitHub Repository</text>
+  <text x="130" y="135" fill="#666" font-size="11" text-anchor="middle">Source code + CI/CD</text>
+
+  <!-- Cloudflare Pages -->
+  <rect x="330" y="90" width="220" height="60" rx="8" fill="#fff" stroke="#f38020" stroke-width="2"/>
+  <text x="440" y="115" fill="#f38020" font-size="13" font-weight="700" text-anchor="middle">Cloudflare Pages</text>
+  <text x="440" y="135" fill="#666" font-size="11" text-anchor="middle">Static file hosting (CDN)</text>
+
+  <!-- Arrow GitHub -> CF -->
+  <line x1="230" y1="120" x2="325" y2="120" stroke="#555" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="278" y="112" fill="#555" font-size="10" text-anchor="middle">auto-deploy</text>
+
+  <!-- User Azure Subscription -->
+  <rect x="650" y="90" width="250" height="60" rx="8" fill="#fff" stroke="#0078d4" stroke-width="2"/>
+  <text x="775" y="115" fill="#0078d4" font-size="13" font-weight="700" text-anchor="middle">User\'s Azure Subscription</text>
+  <text x="775" y="135" fill="#666" font-size="11" text-anchor="middle">App Registration (Bicep)</text>
+
+  <!-- Arrow Bicep -> Azure -->
+  <path d="M 550 120 Q 590 90 645 120" fill="none" stroke="#0078d4" stroke-width="2" marker-end="url(#arrow-blue)" stroke-dasharray="5,3"/>
+  <text x="598" y="102" fill="#0078d4" font-size="10" text-anchor="middle">Bicep deploy</text>
+
+  <!-- ============================================ -->
+  <!-- Layer 1: Browser Application -->
+  <!-- ============================================ -->
+  <text x="30" y="200" fill="#333" font-size="13" font-weight="600">Browser Application (User\'s Machine)</text>
+
+  <!-- Browser boundary box -->
+  <rect x="30" y="210" width="870" height="380" rx="12" fill="none" stroke="#0078d4" stroke-width="2" stroke-dasharray="8,4"/>
+  <text x="460" y="205" fill="#0078d4" font-size="11" font-weight="600" text-anchor="middle">Browser</text>
+
+  <!-- Setup Wizard -->
+  <rect x="55" y="230" width="240" height="100" rx="8" fill="#e8f4fd" stroke="#0078d4" stroke-width="1.5"/>
+  <text x="175" y="255" fill="#0078d4" font-size="13" font-weight="700" text-anchor="middle">Setup Wizard</text>
+  <text x="175" y="275" fill="#333" font-size="11" text-anchor="middle">1. T&amp;C Acknowledgment</text>
+  <text x="175" y="292" fill="#333" font-size="11" text-anchor="middle">2. Bicep Deploy Guide</text>
+  <text x="175" y="309" fill="#333" font-size="11" text-anchor="middle">3. Config Entry</text>
+
+  <!-- MSAL Auth -->
+  <rect x="340" y="230" width="240" height="100" rx="8" fill="#fff3e0" stroke="#f38020" stroke-width="1.5"/>
+  <text x="460" y="255" fill="#e65100" font-size="13" font-weight="700" text-anchor="middle">MSAL.js (PKCE Auth)</text>
+  <text x="460" y="275" fill="#333" font-size="11" text-anchor="middle">Sign in via User\'s App Reg</text>
+  <text x="460" y="292" fill="#333" font-size="11" text-anchor="middle">Access Token (delegated)</text>
+  <text x="460" y="309" fill="#333" font-size="11" text-anchor="middle">No client secret</text>
+
+  <!-- GraphAPI Client -->
+  <rect x="55" y="360" width="240" height="100" rx="8" fill="#e8f5e9" stroke="#43a047" stroke-width="1.5"/>
+  <text x="175" y="385" fill="#2e7d32" font-size="13" font-weight="700" text-anchor="middle">GraphAPI Client</text>
+  <text x="175" y="405" fill="#333" font-size="11" text-anchor="middle">12 data-fetching methods</text>
+  <text x="175" y="422" fill="#333" font-size="11" text-anchor="middle">Promise.all batching</text>
+  <text x="175" y="439" fill="#333" font-size="11" text-anchor="middle">Bearer token auth</text>
+
+  <!-- Analyzer -->
+  <rect x="340" y="360" width="240" height="100" rx="8" fill="#f3e5f5" stroke="#7b1fa2" stroke-width="1.5"/>
+  <text x="460" y="385" fill="#6a1b9a" font-size="13" font-weight="700" text-anchor="middle">Analysis Engine</text>
+  <text x="460" y="405" fill="#333" font-size="11" text-anchor="middle">6 analysis methods</text>
+  <text x="460" y="422" fill="#333" font-size="11" text-anchor="middle">User/Device/Auth analysis</text>
+  <text x="460" y="439" fill="#333" font-size="11" text-anchor="middle">Recommendations engine</text>
+
+  <!-- Dashboard UI -->
+  <rect x="625" y="290" width="250" height="180" rx="8" fill="#fff" stroke="#333" stroke-width="1.5"/>
+  <text x="750" y="315" fill="#333" font-size="13" font-weight="700" text-anchor="middle">Dashboard UI</text>
+  <text x="750" y="340" fill="#0078d4" font-size="11" text-anchor="middle">?? Overview (stats + summary)</text>
+  <text x="750" y="358" fill="#0078d4" font-size="11" text-anchor="middle">? Passkey Readiness</text>
+  <text x="750" y="376" fill="#0078d4" font-size="11" text-anchor="middle">?? Entra Tip: Apps</text>
+  <text x="750" y="394" fill="#0078d4" font-size="11" text-anchor="middle">?? CA Policies</text>
+  <text x="750" y="412" fill="#0078d4" font-size="11" text-anchor="middle">?? AI Assistant</text>
+  <text x="750" y="440" fill="#666" font-size="10" text-anchor="middle">(5 interactive tabs)</text>
+
+  <!-- Storage -->
+  <rect x="625" y="490" width="250" height="80" rx="8" fill="#fff8e1" stroke="#f9a825" stroke-width="1.5"/>
+  <text x="750" y="515" fill="#f57f17" font-size="13" font-weight="700" text-anchor="middle">sessionStorage</text>
+  <text x="750" y="535" fill="#333" font-size="11" text-anchor="middle">entrapass_config (150 bytes)</text>
+  <text x="750" y="552" fill="#333" font-size="11" text-anchor="middle">entrapass_results (50-200 KB)</text>
+
+  <!-- ============================================ -->
+  <!-- Arrows between browser components -->
+  <!-- ============================================ -->
+  <!-- Setup -> MSAL -->
+  <line x1="295" y1="280" x2="335" y2="280" stroke="#555" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="315" y="272" fill="#555" font-size="9" text-anchor="middle">config</text>
+
+  <!-- MSAL -> GraphAPI -->
+  <line x1="460" y1="330" x2="460" y2="355" stroke="#555" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="472" y="345" fill="#555" font-size="9">token</text>
+
+  <!-- GraphAPI -> Analyzer -->
+  <path d="M 295 410 Q 317 410 335 410" fill="none" stroke="#555" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="315" y="402" fill="#555" font-size="9" text-anchor="middle">data</text>
+
+  <!-- Analyzer -> Dashboard -->
+  <line x1="580" y1="410" x2="620" y2="380" stroke="#555" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="600" y="392" fill="#555" font-size="9" text-anchor="middle">results</text>
+
+  <!-- Analyzer -> Storage -->
+  <line x1="580" y1="430" x2="620" y2="530" stroke="#555" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="600" y="480" fill="#555" font-size="9" text-anchor="middle">cache</text>
+
+  <!-- ============================================ -->
+  <!-- Layer 2: External Services -->
+  <!-- ============================================ -->
+  <text x="30" y="630" fill="#333" font-size="13" font-weight="600">External Services</text>
+
+  <!-- Microsoft Graph -->
+  <rect x="55" y="650" width="400" height="100" rx="8" fill="#fff" stroke="#0078d4" stroke-width="2"/>
+  <text x="255" y="675" fill="#0078d4" font-size="15" font-weight="700" text-anchor="middle">Microsoft Graph API (v1.0)</text>
+  <text x="255" y="695" fill="#666" font-size="11" text-anchor="middle">12 endpoints, read-only, delegated permissions</text>
+  <text x="255" y="715" fill="#666" font-size="11" text-anchor="middle">Users | Devices | Policies | Apps | Auth Methods | Logs</text>
+  <text x="255" y="735" fill="#666" font-size="11" text-anchor="middle">Runs in user\'s own tenant</text>
+
+  <!-- Microsoft Entra ID -->
+  <rect x="55" y="770" width="400" height="100" rx="8" fill="#fff" stroke="#0078d4" stroke-width="2"/>
+  <text x="255" y="795" fill="#0078d4" font-size="15" font-weight="700" text-anchor="middle">Microsoft Entra ID</text>
+  <text x="255" y="815" fill="#666" font-size="11" text-anchor="middle">User authentication (PKCE)</text>
+  <text x="255" y="835" fill="#666" font-size="11" text-anchor="middle">Token issuance &amp; validation</text>
+  <text x="255" y="855" fill="#666" font-size="11" text-anchor="middle">App Registration (user-controlled)</text>
+
+  <!-- Arrows to external -->
+  <!-- Browser -> Graph API -->
+  <line x1="175" y1="590" x2="175" y2="645" stroke="#0078d4" stroke-width="2" marker-end="url(#arrow-blue)"/>
+  <text x="185" y="620" fill="#0078d4" font-size="11">Microsoft Graph</text>
+
+  <!-- Browser -> Enta ID -->
+  <line x1="460" y1="330" x2="700" y2="820" stroke="#0078d4" stroke-width="2" marker-end="url(#arrow-blue)"/>
+  <text x="600" y="570" fill="#0078d4" font-size="11">Microsoft Entra ID</text>
+
+  <!-- User Azure -> Entra ID (they're the same tenant) -->
+  <line x1="900" y1="120" x2="460" y2="770" stroke="#555" stroke-width="1.5" stroke-dasharray="5,3"/>
+  <text x="700" y="440" fill="#555" font-size="10" text-anchor="middle">Same tenant</text>
+
+  <!-- ============================================ -->
+  <!-- Legend -->
+  <!-- ============================================ -->
+  <rect x="940" y="80" width="240" height="300" rx="8" fill="#fff" stroke="#ddd" stroke-width="1"/>
+  <text x="1060" y="105" fill="#333" font-size="13" font-weight="600" text-anchor="middle">Legend</text>
+
+  <rect x="960" y="120" width="30" height="15" rx="3" fill="#e8f4fd" stroke="#0078d4" stroke-width="1"/>
+  <text x="1000" y="133" fill="#333" font-size="11">Setup / Onboarding</text>
+
+  <rect x="960" y="145" width="30" height="15" rx="3" fill="#fff3e0" stroke="#f38020" stroke-width="1"/>
+  <text x="1000" y="158" fill="#333" font-size="11">Authentication</text>
+
+  <rect x="960" y="170" width="30" height="15" rx="3" fill="#e8f5e9" stroke="#43a047" stroke-width="1"/>
+  <text x="1000" y="183" fill="#333" font-size="11">Data Fetching</text>
+
+  <rect x="960" y="195" width="30" height="15" rx="3" fill="#f3e5f5" stroke="#7b1fa2" stroke-width="1"/>
+  <text x="1000" y="208" fill="#333" font-size="11">Analysis</text>
+
+  <rect x="960" y="220" width="30" height="15" rx="3" fill="#fff" stroke="#333" stroke-width="1"/>
+  <text x="1000" y="233" fill="#333" font-size="11">User Interface</text>
+
+  <rect x="960" y="245" width="30" height="15" rx="3" fill="#fff8e1" stroke="#f9a825" stroke-width="1"/>
+  <text x="1000" y="258" fill="#333" font-size="11">Session Storage</text>
+
+  <rect x="960" y="275" width="30" height="15" rx="3" fill="#fff" stroke="#0078d4" stroke-width="2"/>
+  <text x="1000" y="288" fill="#333" font-size="11">Microsoft Azure/Graph</text>
+
+  <rect x="960" y="305" width="30" height="15" rx="3" fill="none" stroke="#555" stroke-width="1.5" stroke-dasharray="5,3"/>
+  <text x="1000" y="318" fill="#333" font-size="11">Deploy-time action</text>
+
+  <line x1="960" y1="345" x2="990" y2="345" stroke="#0078d4" stroke-width="2" marker-end="url(#arrow-blue)"/>
+  <text x="1000" y="358" fill="#333" font-size="11">API call (Graph)</text>
+
+  <line x1="960" y1="370" x2="990" y2="370" stroke="#555" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="1000" y="373" fill="#333" font-size="11">Internal data flow</text>
+</svg>
