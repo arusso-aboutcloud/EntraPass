@@ -98,30 +98,40 @@ When you first open the portal, you are greeted with the **Terms & Conditions** 
 
 ### Step 2: Deploy the App Registration
 
-Two deployment options:
+Three deployment options:
 
-#### Option A: Deploy to Azure (Recommended)
+#### ?? Option A: Create in Azure Portal (Recommended)
 
-1. Click the **?? Deploy to Azure** button
-2. You will be redirected to the Azure Portal
-3. Sign in if prompted
-4. Fill in the parameters:
-   - **Resource Group**: Select or create one
-   - **Region**: Choose your region
-   - **redirectUri**: Your EntraPass portal URL
-   - **tenantId**: Your tenant ID
-5. Click **Review + Create**, then **Create**
-6. After deployment, copy the **Client ID** from the output
+1. Click the **?? Create App Registration** button in the portal
+2. You will be redirected to the Azure Portal App Registration creation blade
+3. Configure:
+   - **Name**: `entrapass-scanner`
+   - **Accounts**: "Only this organizational directory"
+   - **Redirect URI**: SPA ? your portal URL
+4. Click **Register**
+5. Go to **API Permissions** ? **Add a permission** ? **Microsoft Graph** ? **Delegated permissions**
+6. Add all 7 scopes:
+   - User.Read, User.Read.All, Device.Read.All, Policy.Read.All
+   - Application.Read.All, AuditLog.Read.All, Organization.Read.All
+7. Click **Grant admin consent** (requires Global Admin)
 
-#### Option B: Deploy via CLI
+#### ?? Option B: Azure Cloud Shell (Fastest)
 
-```bash
-az deployment group create \
-  --resource-group <your-rg> \
-  --template-file infra/app-registration.bicep \
-  --parameters redirectUri="https://entrapass.pages.dev" \
-               tenantId="<your-tenant-id>"
+1. Open [Azure Cloud Shell](https://shell.azure.com) in PowerShell mode
+2. Run this one-liner:
+   ```powershell
+   irm https://raw.githubusercontent.com/arusso-aboutcloud/EntraPass/main/infra/deploy-entrapass.ps1 | iex
+   ```
+3. Enter your portal URL when prompted
+4. The script creates the App Registration, adds all permissions, and outputs your **Client ID**
+
+#### ?? Option C: Manual PowerShell
+
+```powershell
+Connect-MgGraph -Scopes Application.ReadWrite.All
+$app = New-MgApplication -DisplayName "entrapass-scanner" -SignInAudience AzureADMyOrg -Spa @{RedirectUris=@("https://entrapass.pages.dev")}
 ```
+See the [installation guide](installation.md) for the full script.
 
 ### Step 3: Configure
 
@@ -403,3 +413,4 @@ EntraPass is **MIT-licensed** with no warranty. It is intended as an **assessmen
 ### How do I get support?
 
 Open an issue on the [GitHub repository](https://github.com/arusso-aboutcloud/EntraPass/issues). As an open-source project, support is community-driven.
+

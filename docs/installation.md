@@ -42,10 +42,38 @@ The hosted version is available at a Cloudflare Pages deployment URL (configured
 
 ### Step 2: Deploy the App Registration
 
-1. Click **?? Deploy to Azure**
-2. Sign in to the Azure Portal
-3. Fill in the template parameters
-4. After deployment, copy the **Client ID** from outputs
+Choose one of three methods:
+
+#### ?? Option A: Azure Portal (Recommended)
+
+1. Click the **?? Create App Registration** button in the portal
+2. You will be redirected to the Azure Portal App Registration creation blade
+3. Configure:
+   - **Name**: `entrapass-scanner`
+   - **Accounts**: "Only this organizational directory"
+   - **Redirect URI**: SPA ? your portal URL (e.g., `https://entrapass.pages.dev`)
+4. Click **Register**
+5. Go to **API Permissions** ? **Add a permission** ? **Microsoft Graph** ? **Delegated permissions**
+6. Add all 7 scopes: User.Read, User.Read.All, Device.Read.All, Policy.Read.All, Application.Read.All, AuditLog.Read.All, Organization.Read.All
+7. Click **Grant admin consent** (requires Global Admin)
+
+#### ?? Option B: Azure Cloud Shell (Fastest)
+
+1. Open [Azure Cloud Shell](https://shell.azure.com) in PowerShell mode
+2. Run this one-liner:
+   ```powershell
+   irm https://raw.githubusercontent.com/arusso-aboutcloud/EntraPass/main/infra/deploy-entrapass.ps1 | iex
+   ```
+3. Enter your portal URL when prompted
+4. The script creates the App Registration, adds all permissions, and outputs your **Client ID**
+
+#### ?? Option C: Manual PowerShell
+
+```powershell
+Connect-MgGraph -Scopes Application.ReadWrite.All,DelegatedPermissionGrant.ReadWrite.All
+$app = New-MgApplication -DisplayName "entrapass-scanner" -SignInAudience AzureADMyOrg -Spa @{RedirectUris=@("https://entrapass.pages.dev")}
+# Then add required permissions (see deploy-entrapass.ps1 for full script)
+```
 
 ### Step 3: Configure
 
@@ -264,15 +292,27 @@ Use this checklist to ensure your installation is complete:
 
 | File | Purpose |
 |---|---|
-| `infra/app-registration.bicep` | Bicep template for the App Registration |
+| `infra/deploy-entrapass.ps1` | Cloud Shell one-click deployment script (recommended) |
+| `infra/app-registration.bicep` | Bicep template (CLI deployment) |
+| `infra/app-registration.json` | ARM JSON template (portal reference) |
 | `infra/cleanup-entrapass.ps1` | PowerShell script to remove the App Registration |
 | `.github/workflows/deploy.yml` | CI/CD for Cloudflare Pages deployment |
 | `.github/workflows/trivy-scan.yml` | Security scanning |
 
-### Bicep Parameters
+### Bicep Parameters (if using CLI)
 
 | Parameter | Default | Description |
 |---|---|---|
 | `appName` | `entrapass-scanner` | Base name for the app registration |
 | `redirectUri` | `http://localhost:5173` | SPA redirect URI (your portal URL) |
 | `tenantId` | (required) | Your Entra ID tenant ID |
+
+### Cloud Shell Script Parameters
+
+The `deploy-entrapass.ps1` script prompts for:
+
+| Prompt | Description |
+|---|---|
+| **Portal URL** | Your EntraPass deployment URL (e.g., `https://entrapass.pages.dev`) |
+
+
