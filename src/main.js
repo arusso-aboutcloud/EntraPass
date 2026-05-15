@@ -63,10 +63,40 @@ let analyzer = null;
 let scanResults = null;
 
 // ============================================
+// Microsoft documentation references
+// ============================================
+const MS_DOCS = [
+  { icon: '🗺️', title: 'Plan a passwordless deployment', desc: 'Step-by-step guide for rolling out passkeys across your tenant', url: 'https://learn.microsoft.com/en-us/entra/identity/authentication/howto-authentication-passwordless-deployment' },
+  { icon: '🔑', title: 'Enable FIDO2 security keys', desc: 'Configure the FIDO2 authentication method policy in Entra ID', url: 'https://learn.microsoft.com/en-us/entra/identity/authentication/howto-authentication-passwordless-security-key' },
+  { icon: '🛡️', title: 'Authentication strengths (CA)', desc: 'Enforce passkey-only sign-in via Conditional Access policies', url: 'https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-authentication-strengths' },
+  { icon: '📱', title: 'Passkeys in Microsoft Authenticator', desc: 'Enable and manage passkeys in Microsoft Authenticator (preview)', url: 'https://learn.microsoft.com/en-us/entra/identity/authentication/how-to-enable-authenticator-passkey' },
+  { icon: '🖥️', title: 'FIDO2 compatibility matrix', desc: 'Supported browsers, platforms, and device OS requirements', url: 'https://learn.microsoft.com/en-us/entra/identity/authentication/fido2-compatibility' },
+  { icon: '📚', title: 'Passwordless authentication overview', desc: "Microsoft's complete passwordless strategy and available methods", url: 'https://learn.microsoft.com/en-us/entra/identity/authentication/concept-authentication-passwordless' },
+];
+
+const CATEGORY_DOCS = {
+  'Security Risk': 'https://learn.microsoft.com/en-us/entra/id-protection/concept-identity-protection-risks',
+  'Policy':        'https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-authentication-strengths',
+  'Blocked':       'https://learn.microsoft.com/en-us/entra/identity/authentication/howto-authentication-passwordless-deployment',
+  'Attention':     'https://learn.microsoft.com/en-us/entra/identity/authentication/concept-fido2-hardware-vendor',
+  'Apps':          'https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-conditional-access-cloud-apps',
+  'Ready':         'https://learn.microsoft.com/en-us/entra/identity/authentication/howto-authentication-passwordless-deployment',
+  'All Clear':     'https://learn.microsoft.com/en-us/entra/identity/authentication/howto-authentication-passwordless-deployment',
+};
+
+const EFFORT = {
+  critical: { cls: 'immediate', label: 'Immediate' },
+  high:     { cls: 'short',     label: '1–2 hrs'   },
+  medium:   { cls: 'medium',    label: '1–2 days'  },
+  low:      { cls: 'long',      label: '2–4 hrs'   },
+};
+
+// ============================================
 // Bootstrap
 // ============================================
 window.addEventListener('DOMContentLoaded', async () => {
   setupEventListeners();
+  renderOverviewReferences();
 
   const msalConfig = getMsalConfig();
   if (!msalConfig) {
@@ -447,11 +477,175 @@ function hideLoading() {
 // ============================================
 function renderDashboard(r) {
   renderScanNotices(r);
-  renderStats(r);
+  renderOverviewHero(r);
+  renderOverviewAlerts(r);
+  renderOverviewActions(r);
   renderReadiness(r);
   renderApps(r);
   renderPolicies(r);
-  renderSummary(r);
+}
+
+function renderOverviewReferences() {
+  const el = document.getElementById('overview-references');
+  if (!el) return;
+  el.innerHTML = `
+    <div class="references-section">
+      <div class="references-header">
+        <span>📖</span>
+        <h3>Microsoft Documentation</h3>
+        <span class="ms-logo">learn.microsoft.com</span>
+      </div>
+      <div class="ref-grid">
+        ${MS_DOCS.map((d) => `
+          <a class="ref-item" href="${d.url}" target="_blank" rel="noopener noreferrer">
+            <div class="ref-icon">${d.icon}</div>
+            <div>
+              <div class="ref-title">${escapeHtml(d.title)}</div>
+              <div class="ref-desc">${escapeHtml(d.desc)}</div>
+              <div class="ref-source">learn.microsoft.com</div>
+            </div>
+          </a>`).join('')}
+      </div>
+    </div>`;
+}
+
+function renderOverviewHero(r) {
+  const hero = document.getElementById('overview-hero');
+  const prescan = document.getElementById('overview-prescan');
+  if (!hero) return;
+
+  const { total, ready, needsAttention, blocked } = r.passkeyReadiness;
+  const score = r.readinessScore ?? 0;
+  const scoreClass = score >= 70 ? 'score-good' : score >= 40 ? 'score-warn' : 'score-danger';
+  const verdictClass = score >= 70 ? 'good' : score >= 40 ? 'warn' : 'danger';
+  const verdictText = score >= 70 ? 'Ready to roll out' : score >= 40 ? 'Needs preparation' : 'Action required';
+  const ringColor = score >= 70 ? 'var(--good)' : score >= 40 ? 'var(--accent)' : 'var(--danger)';
+  const circ = 2 * Math.PI * 50;
+  const targetOffset = circ * (1 - score / 100);
+  const sampled = r.meta && r.meta.usersFound > total;
+
+  hero.innerHTML = `
+    <div class="score-ring-card">
+      <div class="ring-label">Readiness Score</div>
+      <div class="ring-svg-wrapper">
+        <svg width="128" height="128" viewBox="0 0 120 120">
+          <circle cx="60" cy="60" r="50" fill="none" stroke="var(--border-subtle)" stroke-width="10" stroke-linecap="round"/>
+          <circle cx="60" cy="60" r="50" fill="none" stroke="${ringColor}" stroke-width="10"
+            stroke-dasharray="${circ.toFixed(1)}" stroke-dashoffset="${circ.toFixed(1)}"
+            stroke-linecap="round" class="ring-progress" id="ring-arc"/>
+        </svg>
+        <div class="ring-center-text">
+          <span class="ring-score-number ${scoreClass}">${score}</span>
+          <span class="ring-score-sub">/ 100</span>
+        </div>
+      </div>
+      <span class="score-verdict ${verdictClass}">${verdictText}</span>
+    </div>
+    <div class="stat-tiles">
+      <div class="stat-tile total">
+        <div class="stat-tile-value">${escapeHtml(String(total))}</div>
+        <div class="stat-tile-label">Users scanned</div>
+        <div class="stat-tile-sub">${sampled ? `of ${escapeHtml(String(r.meta.usersFound))} total (sampled)` : 'full coverage'}</div>
+      </div>
+      <div class="stat-tile good">
+        <div class="stat-tile-value">${escapeHtml(String(ready))}</div>
+        <div class="stat-tile-label">Ready for passkeys</div>
+        <div class="stat-tile-sub">${total > 0 ? Math.round(ready / total * 100) : 0}% of scanned users</div>
+      </div>
+      <div class="stat-tile warn">
+        <div class="stat-tile-value">${escapeHtml(String(needsAttention))}</div>
+        <div class="stat-tile-label">Need preparation</div>
+        <div class="stat-tile-sub">Device or MFA update required</div>
+      </div>
+      <div class="stat-tile danger">
+        <div class="stat-tile-value">${escapeHtml(String(blocked))}</div>
+        <div class="stat-tile-label">Blocked</div>
+        <div class="stat-tile-sub">CA policy or device blockers</div>
+      </div>
+    </div>`;
+
+  hero.classList.remove('hidden');
+  if (prescan) prescan.classList.add('hidden');
+
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    const arc = document.getElementById('ring-arc');
+    if (arc) arc.style.strokeDashoffset = targetOffset.toFixed(1);
+  }));
+}
+
+function renderOverviewAlerts(r) {
+  const el = document.getElementById('overview-alerts');
+  if (!el) return;
+
+  const alerts = [];
+  (r.toxicCombos || []).forEach((t) => {
+    alerts.push({
+      cls: t.severity === 'critical' ? 'critical' : 'high',
+      icon: t.severity === 'critical' ? '🚨' : '🔴',
+      title: t.displayName || 'Security risk detected',
+      desc: t.description || '',
+      fix: t.fix || null,
+      docUrl: 'https://learn.microsoft.com/en-us/entra/id-protection/concept-identity-protection-risks',
+    });
+  });
+  (r.policies || []).filter((p) => p.blocksPasskeyRegistration).forEach((p) => {
+    alerts.push({
+      cls: 'high',
+      icon: '🛡️',
+      title: `CA policy blocks passkeys: ${p.displayName}`,
+      desc: p.warning || 'This policy prevents passkey registration.',
+      fix: p.fixGuide || null,
+      docUrl: 'https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-authentication-strengths',
+    });
+  });
+
+  if (alerts.length === 0) { el.classList.add('hidden'); return; }
+  el.classList.remove('hidden');
+  el.innerHTML = `
+    <div class="section-heading">⚠️ Findings requiring attention</div>
+    ${alerts.map((a) => `
+      <div class="alert-card ${escapeHtml(a.cls)}">
+        <span class="alert-icon">${a.icon}</span>
+        <div class="alert-body">
+          <div class="alert-title">${escapeHtml(a.title)}</div>
+          ${a.desc ? `<div class="alert-desc">${escapeHtml(a.desc)}</div>` : ''}
+          ${a.fix ? `<div class="alert-fix">→ ${escapeHtml(a.fix)}</div>` : ''}
+          <div style="margin-top:0.4rem;">
+            <a class="doc-link" href="${a.docUrl}" target="_blank" rel="noopener">📄 Microsoft guidance ↗</a>
+          </div>
+        </div>
+      </div>`).join('')}`;
+}
+
+function renderOverviewActions(r) {
+  const el = document.getElementById('overview-actions');
+  if (!el) return;
+
+  const recs = (r.recommendations || []).filter((rec) => rec.severity === 'critical' || rec.severity === 'high' || rec.severity === 'medium');
+  if (recs.length === 0) { el.classList.add('hidden'); return; }
+
+  el.classList.remove('hidden');
+  el.innerHTML = `
+    <div class="actions-section">
+      <div class="actions-header"><span>⚡</span><h3>Priority Actions</h3></div>
+      ${recs.map((rec, i) => {
+        const effort = EFFORT[rec.severity] || EFFORT.low;
+        const docUrl = CATEGORY_DOCS[rec.category] || CATEGORY_DOCS['Ready'];
+        return `
+          <div class="action-item">
+            <span class="action-number">${i + 1}</span>
+            <div class="action-body">
+              <div class="action-title">${escapeHtml(rec.title || rec.text)}</div>
+              ${rec.text && rec.title && rec.text !== rec.title ? `<div class="action-detail">${escapeHtml(rec.text)}</div>` : ''}
+              ${rec.fix ? `<div class="action-detail" style="color:var(--primary);margin-top:0.15rem;">→ ${escapeHtml(rec.fix)}</div>` : ''}
+              <div class="action-meta">
+                <span class="effort-badge ${effort.cls}">⏱ ${effort.label}</span>
+                <a class="doc-link" href="${docUrl}" target="_blank" rel="noopener">Microsoft docs ↗</a>
+              </div>
+            </div>
+          </div>`;
+      }).join('')}
+    </div>`;
 }
 
 // Surfaces sampling limits and failed data sources so partial results are
@@ -479,83 +673,7 @@ function renderScanNotices(r) {
   else { el.classList.add('hidden'); el.innerHTML = ''; }
 }
 
-function renderStats(r) {
-  const { total, ready, needsAttention, blocked } = r.passkeyReadiness;
-  const sampled = r.meta && r.meta.usersFound > r.meta.usersAnalyzed;
-  const totalLabel = sampled ? 'Users Analyzed' : 'Total Users';
-  document.getElementById('stats-grid').innerHTML =
-    `<div class='stat-card'>
-      <div class='stat-value'>${escapeHtml(String(total))}</div>
-      <div class='stat-label'>${totalLabel}</div>
-    </div>
-    <div class='stat-card good'>
-      <div class='stat-value'>${escapeHtml(String(ready))}</div>
-      <div class='stat-label'>Ready</div>
-    </div>
-    <div class='stat-card warn'>
-      <div class='stat-value'>${escapeHtml(String(needsAttention))}</div>
-      <div class='stat-label'>Needs Attention</div>
-    </div>
-    <div class='stat-card danger'>
-      <div class='stat-value'>${escapeHtml(String(blocked))}</div>
-      <div class='stat-label'>Blocked</div>
-    </div>`;
-}
 
-function renderSummary(r) {
-  const el = document.getElementById('summary-content');
-  let html = '';
-
-  // Narrative
-  if (r.narrative) {
-    html += '<div style="margin-bottom:1rem;padding:1rem;background:#f8f9fa;border-radius:8px;">';
-    html += '<h3 style="margin-bottom:0.5rem;">Executive Summary</h3>';
-    html += '<pre style="white-space:pre-wrap;font-family:inherit;font-size:0.95rem;line-height:1.6;margin:0;">'
-      + escapeHtml(r.narrative)
-      + '</pre></div>';
-  }
-
-  // Toxic combinations
-  if (r.toxicCombos && r.toxicCombos.length > 0) {
-    html += '<div style="margin-bottom:1rem;">';
-    html += '<h3 style="color:#d13438;margin-bottom:0.5rem;">Toxic Combinations Found</h3>';
-    r.toxicCombos.forEach((t) => {
-      const bg = t.severity === 'critical' ? '#fff0f0' : '#fff8f0';
-      const border = t.severity === 'critical' ? '#d13438' : '#ff8c00';
-      html += '<div style="background:' + bg + ';border-left:4px solid ' + border + ';padding:0.75rem;margin-bottom:0.5rem;border-radius:4px;">';
-      html += '<strong>' + escapeHtml(t.displayName || t.fix) + '</strong><br>';
-      html += '<span style="font-size:0.9rem;">' + escapeHtml(t.description || '') + '</span>';
-      if (t.fix) html += '<br><span style="font-size:0.85rem;color:#666;">Fix: ' + escapeHtml(t.fix) + '</span>';
-      html += '</div>';
-    });
-    html += '</div>';
-  }
-
-  // Recommendations
-  html += '<div class="summary-list">';
-  if (!r.recommendations || !r.recommendations.length) {
-    html += '<p>No issues found.</p>';
-  } else {
-    r.recommendations.forEach((rec) => {
-      let icon;
-      switch (rec.severity) {
-        case 'critical': icon = '\u{1F6A8}'; break;
-        case 'high': icon = '\u{1F534}'; break;
-        case 'medium': icon = '\u{1F7E1}'; break;
-        default: icon = '\u{1F7E2}';
-      }
-      html += '<div class="recommendation ' + escapeHtml(rec.severity) + '">';
-      html += '<div><span class="rec-icon">' + icon + '</span></div>';
-      html += '<div><strong>' + escapeHtml(rec.title || rec.text) + '</strong>';
-      if (rec.text && rec.title && rec.text !== rec.title)
-        html += '<br><span style="font-size:0.9rem;">' + escapeHtml(rec.text) + '</span>';
-      if (rec.fix) html += '<br><span style="font-size:0.85rem;color:#0078d4;">Fix: ' + escapeHtml(rec.fix) + '</span>';
-      html += '</div></div>';
-    });
-  }
-  html += '</div>';
-  el.innerHTML = html;
-}
 
 function renderReadiness(r) {
   const { users } = r.passkeyReadiness;

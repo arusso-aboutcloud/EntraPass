@@ -6,7 +6,19 @@ export class Analyzer {
     const toxicCombos = this.findToxicCombinations(passkeyReadiness, data);
     const recommendations = this.generateRecommendations(passkeyReadiness, appCompatibility, policyAnalysis, toxicCombos);
     const narrative = this.generateNarrative(passkeyReadiness, appCompatibility, policyAnalysis, toxicCombos);
-    return { passkeyReadiness, apps: appCompatibility, policies: policyAnalysis, toxicCombos, recommendations, narrative, timestamp: new Date().toISOString() };
+    const readinessScore = this.computeReadinessScore(passkeyReadiness, toxicCombos, policyAnalysis);
+    return { readinessScore, passkeyReadiness, apps: appCompatibility, policies: policyAnalysis, toxicCombos, recommendations, narrative, timestamp: new Date().toISOString() };
+  }
+
+  computeReadinessScore(passkeyReadiness, toxicCombos, policyAnalysis) {
+    const { total, blocked, needsAttention } = passkeyReadiness;
+    if (total === 0) return 50;
+    let score = 100;
+    score -= (blocked / total) * 45;
+    score -= (needsAttention / total) * 20;
+    score -= Math.min(toxicCombos.filter(t => t.severity === 'critical').length * 15, 20);
+    score -= Math.min(policyAnalysis.filter(p => p.blocksPasskeyRegistration).length * 5, 15);
+    return Math.max(0, Math.min(100, Math.round(score)));
   }
 
   // A "strong" authentication method is MFA-grade. Password is intentionally

@@ -173,45 +173,54 @@ $app = New-MgApplication -DisplayName "entrapass-scanner" -SignInAudience AzureA
         <!-- Overview Tab -->
         <div id="tab-overview" class="tab-content active">
           <div id="scan-notices" class="hidden"></div>
-          <div class="stats-grid" id="stats-grid">
-            <div class="stat-card loading">Loading...</div>
+          <div id="overview-prescan">
+            <div class="pre-scan">
+              <h3>Ready to scan your tenant</h3>
+              <p>Click <strong>Scan Tenant Now</strong> below to assess passkey readiness across users, devices, Conditional Access policies, and applications.</p>
+            </div>
           </div>
-          <div class="card" id="summary-card">
-            <h2>Passkey Migration Summary</h2>
-            <div id="summary-content">Scan your tenant to get started.</div>
+          <div id="overview-hero" class="overview-hero hidden"></div>
+          <div id="overview-alerts" class="alerts-section hidden"></div>
+          <div id="overview-actions" class="hidden"></div>
+          <div id="overview-references"></div>
+          <div class="scan-bar">
+            <button class="btn-primary btn-scan" id="scan-btn">Scan Tenant Now</button>
           </div>
-          <button class="btn-primary" id="scan-btn">
-            Scan Tenant Now
-          </button>
         </div>
 
         <!-- Readiness Tab -->
         <div id="tab-readiness" class="tab-content hidden">
-          <div class="card">
-            <h2>User Passkey Readiness</h2>
-            <div id="readiness-chart"></div>
-            <div id="readiness-table"></div>
+          <div class="section-card">
+            <div class="section-card-header"><h2>User Passkey Readiness</h2></div>
+            <div class="section-card-body">
+              <div id="readiness-chart"></div>
+              <div id="readiness-table"></div>
+            </div>
           </div>
         </div>
 
         <!-- Apps Tab -->
         <div id="tab-apps" class="tab-content hidden">
-          <div class="card">
-            <h2>Entra Tip: App Compatibility Check</h2>
-            <div style="background:#f0f6ff;border-left:3px solid var(--primary);padding:1rem;margin-bottom:1.5rem;border-radius:6px;font-size:0.9rem;line-height:1.6;">
-              <p><strong>Why this matters:</strong> Apps that use password credentials, legacy auth, or lack delegated permissions can silently <strong>bypass passkey authentication</strong>. Even if a user registers a passkey, the app may fall back to a password prompt, creating a confusing user experience.</p>
-              <p style="margin-top:0.5rem;"><strong>What you can do:</strong> Each app flagged below includes a recommendation. Focus on your <strong>custom enterprise apps</strong> first &mdash; Microsoft first-party and SaaS apps are typically managed by their respective teams.</p>
-              <p style="margin-top:0.5rem;color:var(--text-secondary);font-size:0.85rem;">Note: Substrate (Microsoft-managed) apps are included for completeness but are not actionable by you.</p>
+          <div class="section-card">
+            <div class="section-card-header"><h2>App Compatibility</h2></div>
+            <div class="section-card-body">
+              <div class="section-intro">
+                <strong>Why this matters:</strong> Apps using password credentials or legacy auth can silently <strong>bypass passkey authentication</strong> — even when a user has a passkey registered.
+                Focus on <strong>custom enterprise apps</strong> first; Microsoft-managed apps are updated by Microsoft.
+                Each flagged app below includes a description and fix guidance.
+              </div>
+              <div id="apps-table"></div>
             </div>
-            <div id="apps-table"></div>
           </div>
         </div>
 
         <!-- Policies Tab -->
         <div id="tab-policies" class="tab-content hidden">
-          <div class="card">
-            <h2>Conditional Access Policy Analysis</h2>
-            <div id="policies-table"></div>
+          <div class="section-card">
+            <div class="section-card-header"><h2>Conditional Access Policy Analysis</h2></div>
+            <div class="section-card-body">
+              <div id="policies-table"></div>
+            </div>
           </div>
         </div>
 
