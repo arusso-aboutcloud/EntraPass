@@ -16,9 +16,9 @@ function Invoke-EntraPassDeploy {
     $appName = "entrapass-scanner"
 
     # --- Portal URL (where EntraPass is hosted) -----------------------------
-    # The hosted build lives at entrapass.pages.dev, so that is the default.
+    # The hosted build lives at entrapass.aboutcloud.io, so that is the default.
     # Press Enter to accept it; only type something if you self-host.
-    $defaultUri = "https://entrapass.pages.dev"
+    $defaultUri = "https://entrapass.aboutcloud.io"
     $redirectUri = Read-Host "EntraPass portal URL [press Enter for $defaultUri]"
     if ([string]::IsNullOrWhiteSpace($redirectUri)) { $redirectUri = $defaultUri }
     $redirectUri = $redirectUri.TrimEnd("/")

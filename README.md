@@ -3,7 +3,7 @@
 > **Assess your Microsoft Entra ID tenant's readiness for passkey (FIDO2) authentication.**
 > Open source (MIT) · Browser-only · No data leaves your machine
 
-[![Deploy to Cloudflare](https://img.shields.io/badge/Deployed-Cloudflare%20Pages-f38020?logo=cloudflare)](https://entrapass.pages.dev)
+[![Live App](https://img.shields.io/badge/Live-entrapass.aboutcloud.io-0078d4?logo=cloudflare)](https://entrapass.aboutcloud.io)
 [![Security Scan](https://github.com/arusso-aboutcloud/EntraPass/actions/workflows/security-scan.yml/badge.svg)](https://github.com/arusso-aboutcloud/EntraPass/actions/workflows/security-scan.yml)
 [![Deploy](https://github.com/arusso-aboutcloud/EntraPass/actions/workflows/deploy.yml/badge.svg)](https://github.com/arusso-aboutcloud/EntraPass/actions/workflows/deploy.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
@@ -77,7 +77,7 @@ See the full [Architecture Document](docs/architecture.md) and
 
 ### 1. Open the portal
 
-Go to **[entrapass.pages.dev](https://entrapass.pages.dev)** (or your self-hosted URL).
+Go to **[entrapass.aboutcloud.io](https://entrapass.aboutcloud.io)** (or your self-hosted URL).
 
 ### 2. Accept the Terms & Conditions
 

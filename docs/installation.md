@@ -63,7 +63,7 @@ requires a **Global Administrator** (see [Step 3](#4-step-3-grant-admin-consent)
    - **Name:** `entrapass-scanner`
    - **Supported account types:** *Accounts in this organizational directory only*
    - **Redirect URI:** select **Single-page application (SPA)** and enter your
-     portal URL (e.g. `https://entrapass.pages.dev`, or `http://localhost:5173`
+     portal URL (e.g. `https://entrapass.aboutcloud.io`, or `http://localhost:5173`
      for local development).
 3. Click **Register**.
 4. Go to **API permissions → Add a permission → Microsoft Graph → Delegated
@@ -82,7 +82,7 @@ requires a **Global Administrator** (see [Step 3](#4-step-3-grant-admin-consent)
    irm https://raw.githubusercontent.com/arusso-aboutcloud/EntraPass/main/infra/deploy-entrapass.ps1 | iex
    ```
 3. When prompted for the portal URL, **press Enter** to accept the default
-   (`https://entrapass.pages.dev`), or type your own URL if you self-host.
+   (`https://entrapass.aboutcloud.io`), or type your own URL if you self-host.
 4. The script creates the app registration and its service principal, adds all
    seven permissions, grants admin consent, and prints your **Client ID** and
    **Tenant ID**. It is idempotent — re-running it reuses the existing app.
@@ -94,7 +94,7 @@ For full control, run the equivalent of the Cloud Shell script yourself:
 ```powershell
 Connect-MgGraph -Scopes "Application.ReadWrite.All","DelegatedPermissionGrant.ReadWrite.All"
 
-$redirectUri = "https://entrapass.pages.dev"   # or http://localhost:5173
+$redirectUri = "https://entrapass.aboutcloud.io"   # or http://localhost:5173
 
 $app = New-MgApplication `
   -DisplayName "entrapass-scanner" `
@@ -127,8 +127,7 @@ Then grant admin consent — see [Step 3](#4-step-3-grant-admin-consent).
 
 ### Option A: Use the hosted version
 
-The hosted version is available at the Cloudflare Pages URL published by the
-repository owner (e.g. `https://entrapass.pages.dev`).
+The hosted version is available at **[entrapass.aboutcloud.io](https://entrapass.aboutcloud.io)**.
 
 1. Open the portal URL in your browser.
 2. Read and accept the **Terms & Conditions**.
@@ -298,7 +297,7 @@ The `deploy-entrapass.ps1` script asks one question:
 
 | Prompt | Description |
 |---|---|
-| **Portal URL** | The EntraPass deployment URL, used as the SPA redirect URI. **Press Enter** to accept the default `https://entrapass.pages.dev`, or type your own URL if you self-host. |
+| **Portal URL** | The EntraPass deployment URL, used as the SPA redirect URI. **Press Enter** to accept the default `https://entrapass.aboutcloud.io`, or type your own URL if you self-host. |
 
 The script is idempotent: re-running it finds the existing `entrapass-scanner`
 app instead of creating a duplicate, and ensures the redirect URI is present.

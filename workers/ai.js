@@ -6,7 +6,7 @@
  *
  * Configuration (wrangler.toml [vars] or dashboard):
  *   ALLOWED_ORIGIN  - the exact origin of the EntraPass site allowed to call
- *                     this worker (e.g. "https://entrapass.pages.dev"). If
+ *                     this worker (e.g. "https://entrapass.aboutcloud.io"). If
  *                     unset, requests are rejected — the worker is not a
  *                     public, unauthenticated AI relay.
  */

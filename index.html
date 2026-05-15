@@ -90,7 +90,7 @@
           <h3>Option 3: Manual (PowerShell Module)</h3>
           <p>For advanced users who want full control:</p>
           <pre class="code-block">Connect-MgGraph -Scopes Application.ReadWrite.All
-$app = New-MgApplication -DisplayName "entrapass-scanner" -SignInAudience AzureADMyOrg -Spa @{RedirectUris=@("https://entrapass.pages.dev")}</pre>
+$app = New-MgApplication -DisplayName "entrapass-scanner" -SignInAudience AzureADMyOrg -Spa @{RedirectUris=@("https://entrapass.aboutcloud.io")}</pre>
           <p class="note" style="font-size:0.85rem;">
             See the <a href="https://github.com/arusso-aboutcloud/EntraPass/blob/main/docs/installation.md" target="_blank" rel="noopener">installation guide</a> for the full script with all 7 permissions.
           </p>
@@ -117,7 +117,7 @@ $app = New-MgApplication -DisplayName "entrapass-scanner" -SignInAudience AzureA
           <label>Tenant ID (your directory ID)</label>
           <input type="text" id="config-tenant-id" placeholder="00000000-1111-2222-3333-444444444444" />
           <label>Portal URL (redirect URI)</label>
-          <input type="text" id="config-redirect-uri" placeholder="https://entrapass.pages.dev" />
+          <input type="text" id="config-redirect-uri" placeholder="https://entrapass.aboutcloud.io" />
         </div>
         <button id="btn-save-config" class="btn-primary">
           Save &amp; Start Scanning
