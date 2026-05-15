@@ -114,6 +114,18 @@ function Invoke-EntraPassDeploy {
         Write-Host "Service principal created." -ForegroundColor Green
     }
 
+    # --- Set app registration logo ------------------------------------------
+    try {
+        $logoUrl = "https://raw.githubusercontent.com/arusso-aboutcloud/EntraPass/main/infra/entrapass_appreg_logo.png"
+        $logoBytes = (Invoke-WebRequest -Uri $logoUrl -UseBasicParsing).Content
+        Invoke-MgGraphRequest -Method PUT `
+            -Uri "https://graph.microsoft.com/v1.0/applications/$($app.Id)/logo" `
+            -Body $logoBytes -ContentType "image/png" | Out-Null
+        Write-Host "App registration logo set." -ForegroundColor Green
+    } catch {
+        Write-Host "Logo upload skipped (non-critical): $($_.Exception.Message)" -ForegroundColor Yellow
+    }
+
     # --- Grant admin consent for all 7 delegated scopes --------------------
     $consentGranted = $false
     try {
