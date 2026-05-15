@@ -1,4 +1,8 @@
-# 🔑 EntraPass — Passkey Migration Assistant
+<p align="center">
+  <a href="https://entrapass.aboutcloud.io">
+    <img src="docs/entrapass_logo.png" alt="EntraPass — Passkey Migration Assistant" width="800"/>
+  </a>
+</p>
 
 > **Assess your Microsoft Entra ID tenant's readiness for passkey (FIDO2) authentication.**
 > Open source (MIT) · Browser-only · No data leaves your machine
