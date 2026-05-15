@@ -75,14 +75,25 @@ function Invoke-EntraPassDeploy {
         }
     } else {
         Write-Host "Creating app registration '$appName'..." -ForegroundColor Cyan
-        $app = New-MgApplication `
-            -DisplayName $appName `
-            -SignInAudience "AzureADMyOrg" `
-            -Spa @{ RedirectUris = @($redirectUri) } `
-            -RequiredResourceAccess @(@{ ResourceAppId = $graphAppId; ResourceAccess = $resourceAccess }) `
-            -ErrorAction Stop
+        try {
+            $app = New-MgApplication `
+                -DisplayName $appName `
+                -SignInAudience "AzureADMyOrg" `
+                -Spa @{ RedirectUris = @($redirectUri) } `
+                -RequiredResourceAccess @(@{ ResourceAppId = $graphAppId; ResourceAccess = $resourceAccess }) `
+                -ErrorAction Stop
+        } catch {
+            Write-Host ""
+            Write-Host "ERROR: Failed to create app registration." -ForegroundColor Red
+            Write-Host "  Redirect URI used: $redirectUri" -ForegroundColor Red
+            Write-Host "  Graph error: $($_.Exception.Message)" -ForegroundColor Red
+            Write-Host "  Ensure the redirect URI starts with https:// and your account has" -ForegroundColor Red
+            Write-Host "  the Application Developer role (or higher) in this tenant." -ForegroundColor Red
+            return
+        }
         if (-not $app -or -not $app.AppId) {
-            throw "New-MgApplication did not return an app object. Check the redirect URI and your permissions."
+            Write-Host "ERROR: New-MgApplication returned no object. Aborting." -ForegroundColor Red
+            return
         }
         Write-Host "App registration created: $($app.AppId)" -ForegroundColor Green
     }
@@ -90,9 +101,15 @@ function Invoke-EntraPassDeploy {
     # --- Service principal (needed before consent can be granted) ----------
     $sp = Get-MgServicePrincipal -Filter "appId eq '$($app.AppId)'" -ErrorAction SilentlyContinue | Select-Object -First 1
     if (-not $sp) {
-        $sp = New-MgServicePrincipal -AppId $app.AppId -ErrorAction Stop
+        try {
+            $sp = New-MgServicePrincipal -AppId $app.AppId -ErrorAction Stop
+        } catch {
+            Write-Host "ERROR: Failed to create service principal: $($_.Exception.Message)" -ForegroundColor Red
+            return
+        }
         if (-not $sp -or -not $sp.Id) {
-            throw "New-MgServicePrincipal did not return a service principal object."
+            Write-Host "ERROR: New-MgServicePrincipal returned no object. Aborting." -ForegroundColor Red
+            return
         }
         Write-Host "Service principal created." -ForegroundColor Green
     }
