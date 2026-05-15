@@ -10,131 +10,195 @@
   <div id="app">
     <!-- Auth / Setup Screen -->
     <div id="auth-screen" class="screen">
-      <div class="logo">
-        <h1>🔑 EntraPass</h1>
-        <p class="tagline">Passkey Migration Assistant for Microsoft Entra ID</p>
-        <p class="version-badge">v0.1.0 &bull; MIT License</p>
-      </div>
 
-      <!-- Terms & Conditions -->
-      <div id="setup-tc" class="card">
-        <h2>Before You Start</h2>
-        <div class="tc-box">
-          <p>EntraPass is an <strong>open-source (MIT) tool</strong> for assessing passkey readiness in your Microsoft Entra ID tenant.</p>
-          <h3>What this tool does</h3>
-          <ul>
-            <li>Reads user profiles, devices, auth methods, and CA policies from your tenant via Microsoft Graph</li>
-            <li>Analyzes everything <strong>in your browser</strong> &mdash; no data leaves your machine</li>
-            <li>Requires an <strong>App Registration</strong> in your tenant for authentication</li>
-          </ul>
-          <h3>Security &amp; Privacy</h3>
-          <ul>
-            <li>All data stays in your browser's memory &mdash; <strong>nothing is stored on servers</strong></li>
-            <li>The scanner uses a <strong>SPA (PKCE) app registration</strong> with no client secrets</li>
-            <li>You can <strong>delete the app registration</strong> after scanning using the cleanup script</li>
-            <li>No external API calls beyond Microsoft Graph (unless you opt into the AI Assistant)</li>
-          </ul>
-          <h3>Prerequisites</h3>
-          <ul>
-            <li>A Microsoft Entra ID tenant (the one you want to scan)</li>
-            <li>Permissions to create App Registrations (Application Developer role or higher)</li>
-            <li>Admin consent for Graph delegated permissions (or consent interactively)</li>
-          </ul>
-        </div>
-        <label class="checkbox-label">
-          <input type="checkbox" id="tc-checkbox" />
-          <span>I understand and acknowledge the above terms. I am authorized to scan this tenant.</span>
-        </label>
-        <button id="setup-deploy-btn" class="btn-primary" disabled>
-          Continue to Setup
-        </button>
-      </div>
+      <!-- Left: Branding Hero -->
+      <aside class="auth-hero">
+        <div class="auth-hero-inner">
+          <div class="auth-brand-bar">
+            <img src="/aboutcloud_logo.png" alt="Aboutcloud" class="auth-brand-logo" />
+            <span class="auth-brand-name">Aboutcloud</span>
+          </div>
 
-      <!-- Deploy / App Registration Step -->
-      <div id="setup-deploy" class="card hidden">
-        <h2>Create the Scanner App Registration</h2>
-        <p>EntraPass needs an App Registration in <strong>your</strong> tenant to run the scan. Choose one option:</p>
+          <div class="auth-product-header">
+            <span class="auth-key-icon">🔑</span>
+            <div>
+              <h1 class="auth-title">EntraPass</h1>
+              <p class="auth-subtitle">Passkey Migration Assistant<br/>for Microsoft Entra ID</p>
+            </div>
+          </div>
 
-        <div class="option-card">
-          <h3>Option 1: Create in Azure Portal (Recommended)</h3>
-          <p>Click below to open the Azure Portal App Registration creation blade:</p>
-          <a id="deploy-to-azure-link" href="#" target="_blank" rel="noopener" class="btn-primary" style="display:inline-block;text-decoration:none;">
-            Create App Registration
-          </a>
-          <p class="note" style="margin-top:0.5rem;font-size:0.85rem;">
-            In Azure Portal, configure:
-            <br/>1. <strong>Name</strong>: <code>entrapass-scanner</code>
-            <br/>2. <strong>Accounts</strong>: "Only this organizational directory"
-            <br/>3. <strong>Redirect URI</strong>: SPA &rarr; <code id="current-url-display">your-portal-url</code>
-            <br/>4. Click <strong>Register</strong>
-            <br/>5. Go to <strong>API Permissions</strong> &gt; Add permissions
-            <br/>6. Add Microsoft Graph delegated permissions (7 scopes)
-            <br/>7. <strong>Grant admin consent</strong>
+          <img src="/entra_pixel.png" alt="Entra passkey illustration" class="auth-pixel-art" />
+
+          <p class="auth-desc">
+            Scan your tenant and discover who is ready for FIDO2 passkeys today, what is blocking adoption, and exactly what to fix — <strong>entirely in your browser</strong>.
           </p>
+
+          <div class="auth-features">
+            <div class="auth-feature-item">
+              <span class="afeat-dot afeat-green"></span>
+              <span><strong>Read-only</strong> — never modifies your tenant</span>
+            </div>
+            <div class="auth-feature-item">
+              <span class="afeat-dot afeat-blue"></span>
+              <span><strong>Browser-only</strong> — data never reaches any server</span>
+            </div>
+            <div class="auth-feature-item">
+              <span class="afeat-dot afeat-orange"></span>
+              <span><strong>PKCE auth</strong> — your own app registration, no shared secrets</span>
+            </div>
+            <div class="auth-feature-item">
+              <span class="afeat-dot afeat-purple"></span>
+              <span><strong>Open source</strong> (MIT) — fully auditable on GitHub</span>
+            </div>
+          </div>
+
+          <div class="auth-nav">
+            <div class="auth-nav-label">More from Aboutcloud</div>
+            <div class="auth-nav-links">
+              <a href="https://blog.aboutcloud.io" target="_blank" rel="noopener">Blog</a>
+              <a href="https://entraerrors.aboutcloud.io/" target="_blank" rel="noopener">EntraErrors</a>
+              <a href="https://entratracker.aboutcloud.io/" target="_blank" rel="noopener">EntraTracker</a>
+              <a href="https://entrarolelens.aboutcloud.io/" target="_blank" rel="noopener">EntraRoleLens</a>
+              <a href="https://github.com/arusso-aboutcloud/EntraPass" target="_blank" rel="noopener" class="auth-nav-github">GitHub ↗</a>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Right: Setup Wizard -->
+      <div class="auth-wizard">
+
+        <!-- Terms & Conditions -->
+        <div id="setup-tc" class="card">
+          <h2>Before You Start</h2>
+          <p class="wizard-intro">Three quick steps to connect your tenant. No data leaves your browser at any point.</p>
+          <div class="tc-box">
+            <div class="tc-section">
+              <span class="tc-section-icon">🔍</span>
+              <div>
+                <h3>What EntraPass does</h3>
+                <ul>
+                  <li>Reads user profiles, devices, auth methods, and CA policies via Microsoft Graph</li>
+                  <li>Analyses passkey readiness <strong>entirely in your browser</strong> — no backend involved</li>
+                  <li>Flags toxic combinations, blocking policies, and incompatible apps</li>
+                </ul>
+              </div>
+            </div>
+            <div class="tc-section">
+              <span class="tc-section-icon">🔒</span>
+              <div>
+                <h3>Security &amp; Privacy</h3>
+                <ul>
+                  <li><strong>Nothing stored on servers</strong> — all data lives in browser memory only</li>
+                  <li>Uses a <strong>PKCE SPA app registration</strong> in your own tenant — no client secrets</li>
+                  <li>Run the cleanup script after scanning to remove the app registration</li>
+                  <li>No external calls beyond Microsoft Graph (AI feature is opt-in)</li>
+                </ul>
+              </div>
+            </div>
+            <div class="tc-section">
+              <span class="tc-section-icon">✅</span>
+              <div>
+                <h3>Prerequisites</h3>
+                <ul>
+                  <li>A Microsoft Entra ID tenant you are authorised to scan</li>
+                  <li>Application Developer role or higher to create an App Registration</li>
+                  <li>Admin consent for 7 delegated Graph permissions (all read-only)</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+          <label class="checkbox-label">
+            <input type="checkbox" id="tc-checkbox" />
+            <span>I understand the above. I am authorised to scan this tenant.</span>
+          </label>
+          <button id="setup-deploy-btn" class="btn-primary" disabled>
+            Continue to Setup →
+          </button>
         </div>
 
-        <div class="option-card" style="margin-top:1rem;">
-          <h3>Option 2: Deploy via Azure Cloud Shell</h3>
-          <p>Fastest option &mdash; one script creates everything:</p>
-          <ol style="font-size:0.9rem;line-height:1.8;margin-left:1rem;">
-            <li>Open <a href="https://shell.azure.com" target="_blank" rel="noopener">Azure Cloud Shell</a> (PowerShell)</li>
-            <li>Run this one-liner:</li>
-          </ol>
-          <pre class="code-block" style="font-size:0.75rem;">irm https://raw.githubusercontent.com/arusso-aboutcloud/EntraPass/main/infra/deploy-entrapass.ps1 | iex</pre>
-          <p class="note" style="font-size:0.85rem;color:var(--text-secondary);">
-            When prompted, <strong>press Enter</strong> to accept the default URL (<code>https://entrapass.aboutcloud.io</code>).
-            The script creates the app reg, adds all 7 permissions, grants admin consent, and prints your Client ID and Tenant ID.
-          </p>
-        </div>
+        <!-- Deploy / App Registration Step -->
+        <div id="setup-deploy" class="card hidden">
+          <h2>Create the Scanner App Registration</h2>
+          <p>EntraPass needs a PKCE SPA app registration in <strong>your</strong> tenant. Choose one option:</p>
 
-        <div class="option-card" style="margin-top:1rem;">
-          <h3>Option 3: Manual (PowerShell Module)</h3>
-          <p>For advanced users who want full control:</p>
-          <pre class="code-block">Connect-MgGraph -Scopes Application.ReadWrite.All
+          <div class="option-card">
+            <h3>Option 1: Azure Portal <span class="option-badge">Recommended</span></h3>
+            <p>Click below to open the App Registration creation blade:</p>
+            <a id="deploy-to-azure-link" href="#" target="_blank" rel="noopener" class="btn-primary" style="display:inline-block;text-decoration:none;">
+              Open Azure Portal →
+            </a>
+            <p class="note" style="margin-top:0.75rem;font-size:0.85rem;">
+              In the blade configure:
+              <br/>1. <strong>Name</strong>: <code>entrapass-scanner</code>
+              <br/>2. <strong>Accounts</strong>: "Only this organizational directory"
+              <br/>3. <strong>Redirect URI</strong>: SPA &rarr; <code id="current-url-display">your-portal-url</code>
+              <br/>4. Click <strong>Register</strong>, then add Microsoft Graph delegated permissions (7 scopes) and <strong>grant admin consent</strong>
+            </p>
+          </div>
+
+          <div class="option-card" style="margin-top:1rem;">
+            <h3>Option 2: Azure Cloud Shell <span class="option-badge option-badge-fast">Fastest</span></h3>
+            <ol style="font-size:0.9rem;line-height:1.8;margin-left:1rem;margin-bottom:0.5rem;">
+              <li>Open <a href="https://shell.azure.com" target="_blank" rel="noopener">Azure Cloud Shell</a> (PowerShell)</li>
+              <li>Run this one-liner:</li>
+            </ol>
+            <pre class="code-block" style="font-size:0.75rem;">irm https://raw.githubusercontent.com/arusso-aboutcloud/EntraPass/main/infra/deploy-entrapass.ps1 | iex</pre>
+            <p class="note" style="font-size:0.85rem;color:var(--text-secondary);">
+              Press <strong>Enter</strong> to accept the default URL (<code>https://entrapass.aboutcloud.io</code>).
+              The script creates the app reg, adds all 7 permissions, grants admin consent, and prints your Client ID and Tenant ID.
+            </p>
+          </div>
+
+          <div class="option-card" style="margin-top:1rem;">
+            <h3>Option 3: Manual PowerShell</h3>
+            <pre class="code-block">Connect-MgGraph -Scopes Application.ReadWrite.All
 $app = New-MgApplication -DisplayName "entrapass-scanner" -SignInAudience AzureADMyOrg -Spa @{RedirectUris=@("https://entrapass.aboutcloud.io")}</pre>
-          <p class="note" style="font-size:0.85rem;">
-            See the <a href="https://github.com/arusso-aboutcloud/EntraPass/blob/main/docs/installation.md" target="_blank" rel="noopener">installation guide</a> for the full script with all 7 permissions.
+            <p class="note" style="font-size:0.85rem;">
+              See the <a href="https://github.com/arusso-aboutcloud/EntraPass/blob/main/docs/installation.md" target="_blank" rel="noopener">installation guide</a> for the full script with all 7 permissions.
+            </p>
+          </div>
+
+          <p style="margin-top:1.25rem;font-size:0.9rem;color:var(--text-secondary);">
+            Deployed? Come back here and click below.
           </p>
+          <button id="btn-deployed" class="btn-primary">
+            I Deployed It — Let's Configure →
+          </button>
+          <button id="btn-back-to-tc" class="btn-ghost" style="margin-top:0.5rem;">
+            ← Back
+          </button>
         </div>
 
-        <p style="margin-top:1rem;font-size:0.9rem;color:var(--text-secondary);">
-          After deployment, come back here and click below.
-        </p>
-        <button id="btn-deployed" class="btn-primary">
-          I Deployed It &mdash; Let's Configure
-        </button>
-        <button id="btn-back-to-tc" class="btn-ghost" style="margin-top:0.5rem;">
-          Back to Terms
-        </button>
-      </div>
-
-      <!-- Configuration Step -->
-      <div id="setup-config" class="card hidden">
-        <h2>Configure Your App Registration</h2>
-        <p>Enter the values from your deployed App Registration.</p>
-        <div class="config-form">
-          <label>Client ID (Application ID)</label>
-          <input type="text" id="config-client-id" placeholder="11111111-2222-3333-4444-555555555555" />
-          <label>Tenant ID (your directory ID)</label>
-          <input type="text" id="config-tenant-id" placeholder="00000000-1111-2222-3333-444444444444" />
-          <label>Portal URL (redirect URI)</label>
-          <input type="text" id="config-redirect-uri" placeholder="https://entrapass.aboutcloud.io" />
+        <!-- Configuration Step -->
+        <div id="setup-config" class="card hidden">
+          <h2>Configure Your App Registration</h2>
+          <p>Enter the values from the deployment output.</p>
+          <div class="config-form">
+            <label>Client ID (Application ID)</label>
+            <input type="text" id="config-client-id" placeholder="11111111-2222-3333-4444-555555555555" />
+            <label>Tenant ID (Directory ID)</label>
+            <input type="text" id="config-tenant-id" placeholder="00000000-1111-2222-3333-444444444444" />
+            <label>Portal URL (redirect URI)</label>
+            <input type="text" id="config-redirect-uri" placeholder="https://entrapass.aboutcloud.io" />
+          </div>
+          <button id="btn-save-config" class="btn-primary">
+            Save &amp; Start Scanning →
+          </button>
+          <button id="btn-back-to-deploy" class="btn-ghost" style="margin-top:0.5rem;">
+            ← Back
+          </button>
+          <p id="config-error" class="error-message hidden"></p>
         </div>
-        <button id="btn-save-config" class="btn-primary">
-          Save &amp; Start Scanning
-        </button>
-        <button id="btn-back-to-deploy" class="btn-ghost" style="margin-top:0.5rem;">
-          Back to Deploy
-        </button>
-        <p id="config-error" class="error-message hidden"></p>
-      </div>
 
-      <!-- Loading step -->
-      <div id="setup-loading" class="card hidden">
-        <div class="spinner"></div>
-        <h2>Configuring...</h2>
-        <p id="setup-loading-text">Saving configuration...</p>
-      </div>
+        <!-- Loading step -->
+        <div id="setup-loading" class="card hidden">
+          <div class="spinner"></div>
+          <h2>Configuring...</h2>
+          <p id="setup-loading-text">Saving configuration...</p>
+        </div>
+
+      </div><!-- /.auth-wizard -->
     </div>
 
     <!-- Dashboard -->

@@ -65,29 +65,243 @@ a:hover { text-decoration: underline; }
 .hidden { display: none !important; }
 
 /* ============================================
-   Auth Screen
+   Auth Screen — Two-column landing layout
    ============================================ */
 #auth-screen {
   display: flex;
-  align-items: center;
-  justify-content: center;
   min-height: 100vh;
-  padding: 2rem;
-  background: linear-gradient(135deg, #f0f4ff 0%, #fdf6f0 100%);
 }
 
-.logo { text-align: center; margin-bottom: 2rem; }
-.logo h1 { font-size: 2.2rem; font-weight: 700; color: var(--primary); letter-spacing: -0.5px; }
-.tagline { color: var(--text-secondary); font-size: 1rem; margin-top: 0.4rem; }
+/* ---- Left: Branding Hero ---- */
+.auth-hero {
+  flex: 0 0 46%;
+  min-height: 100vh;
+  background:
+    radial-gradient(ellipse at 20% 10%, rgba(99,179,237,0.12) 0%, transparent 55%),
+    radial-gradient(ellipse at 80% 80%, rgba(232,130,94,0.10) 0%, transparent 50%),
+    linear-gradient(160deg, #071120 0%, #0c1f3a 45%, #112d50 100%);
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.auth-hero-inner {
+  padding: 3rem 2.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  height: 100%;
+  justify-content: center;
+}
+
+.auth-brand-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+}
+.auth-brand-logo {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+  opacity: 0.9;
+}
+.auth-brand-name {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: rgba(255,255,255,0.55);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.auth-product-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.875rem;
+}
+.auth-key-icon { font-size: 2rem; flex-shrink: 0; margin-top: 0.1rem; }
+.auth-title {
+  font-size: 2.6rem;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: -1.5px;
+  line-height: 1;
+}
+.auth-subtitle {
+  font-size: 0.9rem;
+  color: rgba(255,255,255,0.55);
+  margin-top: 0.4rem;
+  line-height: 1.4;
+}
+
+.auth-pixel-art {
+  width: 100%;
+  max-width: 280px;
+  height: auto;
+  object-fit: contain;
+  border-radius: var(--r-md);
+  opacity: 0.92;
+  align-self: flex-start;
+  image-rendering: pixelated;
+}
+
+.auth-desc {
+  font-size: 0.9rem;
+  color: rgba(255,255,255,0.72);
+  line-height: 1.65;
+  max-width: 360px;
+}
+.auth-desc strong { color: #fff; }
+
+.auth-features {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.auth-feature-item {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  font-size: 0.84rem;
+  color: rgba(255,255,255,0.72);
+}
+.auth-feature-item strong { color: rgba(255,255,255,0.9); }
+
+.afeat-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.afeat-green  { background: #34d399; }
+.afeat-blue   { background: #60a5fa; }
+.afeat-orange { background: #fb923c; }
+.afeat-purple { background: #a78bfa; }
+
+.auth-nav {
+  padding-top: 1.25rem;
+  border-top: 1px solid rgba(255,255,255,0.08);
+}
+.auth-nav-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgba(255,255,255,0.35);
+  margin-bottom: 0.625rem;
+}
+.auth-nav-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem 0.5rem;
+}
+.auth-nav-links a {
+  font-size: 0.78rem;
+  color: rgba(255,255,255,0.55);
+  text-decoration: none;
+  padding: 0.2rem 0.5rem;
+  border-radius: var(--r-sm);
+  border: 1px solid rgba(255,255,255,0.1);
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+.auth-nav-links a:hover {
+  color: #fff;
+  border-color: rgba(255,255,255,0.3);
+  background: rgba(255,255,255,0.06);
+  text-decoration: none;
+}
+.auth-nav-github {
+  color: rgba(255,255,255,0.7) !important;
+  border-color: rgba(255,255,255,0.2) !important;
+}
+
+/* ---- Right: Wizard Panel ---- */
+.auth-wizard {
+  flex: 1;
+  min-height: 100vh;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 2rem;
+  overflow-y: auto;
+}
 
 .card {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--r-lg);
   padding: 2rem;
-  max-width: 620px;
+  max-width: 560px;
   width: 100%;
   box-shadow: var(--shadow-md);
+}
+.card h2 { font-size: 1.25rem; font-weight: 700; color: var(--text); margin-bottom: 0.5rem; }
+
+.wizard-intro {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin-bottom: 1.25rem;
+  line-height: 1.5;
+}
+
+/* T&C box — modernised with icon sections */
+.tc-box {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  padding: 0.25rem 0;
+  margin-bottom: 1.25rem;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  overflow: hidden;
+}
+
+.tc-section {
+  display: flex;
+  gap: 0.875rem;
+  align-items: flex-start;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.tc-section:last-child { border-bottom: none; }
+.tc-section-icon { font-size: 1.1rem; flex-shrink: 0; margin-top: 0.1rem; }
+.tc-section h3 { font-size: 0.85rem; font-weight: 700; color: var(--text); margin-bottom: 0.3rem; }
+.tc-section ul { margin-left: 1.1rem; margin-bottom: 0; }
+.tc-section li { margin-bottom: 0.2rem; color: var(--text-secondary); }
+
+/* Option badges */
+.option-badge {
+  display: inline-block;
+  font-size: 0.68rem;
+  font-weight: 700;
+  background: var(--primary-light);
+  color: var(--primary);
+  border-radius: var(--r-full);
+  padding: 0.1rem 0.5rem;
+  margin-left: 0.4rem;
+  vertical-align: middle;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.option-badge-fast { background: #ecfdf5; color: var(--good); }
+
+/* Responsive */
+@media (max-width: 860px) {
+  #auth-screen { flex-direction: column; }
+  .auth-hero {
+    flex: none;
+    min-height: auto;
+    height: auto;
+    position: relative;
+  }
+  .auth-hero-inner { padding: 2rem 1.5rem; gap: 1.25rem; }
+  .auth-pixel-art { max-width: 180px; }
+  .auth-wizard { padding: 2rem 1rem; justify-content: flex-start; }
 }
 
 #auth-card { text-align: center; margin: 0 auto; }
@@ -760,22 +974,6 @@ footer {
 /* ============================================
    Setup Wizard
    ============================================ */
-.version-badge { font-size: 0.78rem; color: var(--text-tertiary); margin-top: 0.25rem; }
-
-.tc-box {
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: var(--r-sm);
-  padding: 1.25rem;
-  margin-bottom: 1.25rem;
-  max-height: 380px;
-  overflow-y: auto;
-  font-size: 0.875rem;
-  line-height: 1.6;
-}
-.tc-box h3 { margin: 0.875rem 0 0.4rem; font-size: 0.9rem; }
-.tc-box ul  { margin-left: 1.25rem; margin-bottom: 0.5rem; }
-.tc-box li  { margin-bottom: 0.25rem; color: var(--text-secondary); }
 
 .checkbox-label {
   display: flex;
