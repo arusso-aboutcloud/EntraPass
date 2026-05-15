@@ -22,6 +22,8 @@ function Invoke-EntraPassDeploy {
     $redirectUri = Read-Host "EntraPass portal URL [press Enter for $defaultUri]"
     if ([string]::IsNullOrWhiteSpace($redirectUri)) { $redirectUri = $defaultUri }
     $redirectUri = $redirectUri.TrimEnd("/")
+    # Auto-add https:// if the user omitted the scheme (Graph rejects bare hostnames).
+    if ($redirectUri -notmatch '^https?://') { $redirectUri = 'https://' + $redirectUri }
 
     # --- Microsoft Graph modules -------------------------------------------
     # Microsoft.Graph.Applications pulls in a version-matched
@@ -61,13 +63,14 @@ function Invoke-EntraPassDeploy {
     )
 
     # --- Find existing or create new app registration ----------------------
-    $app = Get-MgApplication -Filter "displayName eq '$appName'" -All | Select-Object -First 1
+    $app = Get-MgApplication -Filter "displayName eq '$appName'" -All -ErrorAction Stop | Select-Object -First 1
     if ($app) {
         Write-Host "Found existing app registration '$appName'." -ForegroundColor Yellow
         $uris = @($app.Spa.RedirectUris)
         if ($uris -notcontains $redirectUri) {
             Update-MgApplication -ApplicationId $app.Id `
-                -Spa @{ RedirectUris = @($uris + $redirectUri | Where-Object { $_ } | Select-Object -Unique) }
+                -Spa @{ RedirectUris = @($uris + $redirectUri | Where-Object { $_ } | Select-Object -Unique) } `
+                -ErrorAction Stop
             Write-Host "Added redirect URI: $redirectUri" -ForegroundColor Green
         }
     } else {
@@ -76,14 +79,21 @@ function Invoke-EntraPassDeploy {
             -DisplayName $appName `
             -SignInAudience "AzureADMyOrg" `
             -Spa @{ RedirectUris = @($redirectUri) } `
-            -RequiredResourceAccess @(@{ ResourceAppId = $graphAppId; ResourceAccess = $resourceAccess })
-        Write-Host "App registration created." -ForegroundColor Green
+            -RequiredResourceAccess @(@{ ResourceAppId = $graphAppId; ResourceAccess = $resourceAccess }) `
+            -ErrorAction Stop
+        if (-not $app -or -not $app.AppId) {
+            throw "New-MgApplication did not return an app object. Check the redirect URI and your permissions."
+        }
+        Write-Host "App registration created: $($app.AppId)" -ForegroundColor Green
     }
 
     # --- Service principal (needed before consent can be granted) ----------
-    $sp = Get-MgServicePrincipal -Filter "appId eq '$($app.AppId)'" -ErrorAction SilentlyContinue
+    $sp = Get-MgServicePrincipal -Filter "appId eq '$($app.AppId)'" -ErrorAction SilentlyContinue | Select-Object -First 1
     if (-not $sp) {
-        $sp = New-MgServicePrincipal -AppId $app.AppId
+        $sp = New-MgServicePrincipal -AppId $app.AppId -ErrorAction Stop
+        if (-not $sp -or -not $sp.Id) {
+            throw "New-MgServicePrincipal did not return a service principal object."
+        }
         Write-Host "Service principal created." -ForegroundColor Green
     }
 
