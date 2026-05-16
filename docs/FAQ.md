@@ -72,9 +72,11 @@ when you close the browser tab.
 
 ### Does EntraPass send data to Aboutcloud?
 
-No. There is no EntraPass backend, no analytics, and no telemetry of any kind. See
-the [Data Architecture](data-architecture.md) document for a step-by-step breakdown
-of exactly what data is held and where.
+Scan content does not. Self-hosted **Umami** at `analytics.aboutcloud.io` receives
+anonymous page-visit signals only — URL visited, browser, OS, and IP-derived country.
+It never receives scan content, UPNs, tenant IDs, Microsoft Graph responses, or AI
+chat text. There is no EntraPass backend that stores tenant data. See the
+[Data Architecture](data-architecture.md) document for a precise inventory.
 
 ### Is EntraPass safe to use in a production tenant?
 

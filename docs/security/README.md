@@ -72,9 +72,9 @@ Cloudflare Edge (aboutcloud.io zone)
    │    - Origin rule: www.aboutcloud.io → port 443
    │    - Configuration rules: Ghost admin, MTA-STS bypass
    │
-   ├─ Response Header Transform Rules (1/10)
+   ├─ Response Header Transform Rules (2/10)
    │    1. Blog security headers (aboutcloud.io/ghost/)
-   │    [PLANNED] EntraPass security headers (entrapass.aboutcloud.io)
+   │    2. EntraPass security headers (entrapass.aboutcloud.io) ← inert _headers
    │
    └─ Cloudflare Pages / Workers
         ├─ entrapass.aboutcloud.io  → EntraPass (Pages)
@@ -92,9 +92,30 @@ Cloudflare Edge (aboutcloud.io zone)
 | Scanner user-agents | Blocked globally on all properties |
 | Non-admin IPs | Admin/sensitive paths (`.env`, `.git`, `/admin`, `/wp-*`) blocked |
 
+## CSP source of truth
+
+The runtime CSP for `entrapass.aboutcloud.io` is currently emitted by the
+Cloudflare Response Header Transform named **"EntraPass: Security Headers"**
+(see `cloudflare-rules.md`). `public/_headers` is kept in sync with that
+Transform so the policy is reviewable in git, but it is **inert** — Cloudflare
+Pages `_headers` is overridden by the Transform at the edge.
+
+**Planned for v0.1.2:** port the Transform's policy into `public/_headers`,
+delete the Transform, and make `_headers` authoritative. At that point also:
+
+- Add `frame-src https://login.microsoftonline.com` (currently absent from
+  the Transform, silently breaking MSAL's hidden-iframe silent-token path).
+- Drop `'unsafe-inline'` from `script-src` (the codebase no longer requires
+  it — `main.js` uses `addEventListener` exclusively).
+
+Until v0.1.2, treat the Transform as the single source of runtime truth.
+
+---
+
 ## Open items
 
 - [x] Consolidate WAF Rules 2 + 3 to free one slot — merged into single rule
 - [x] Add EntraPass-specific WAF rule — GET/HEAD only, non-admin IPs
 - [x] Add EntraPass Response Header Transform Rule — CSP, HSTS, X-Frame, etc.
 - [ ] Review rate limiting for EntraPass AI Worker endpoint once deployed
+- [ ] v0.1.2: migrate CSP from CF Transform to `public/_headers`; add `frame-src`; drop `'unsafe-inline'`

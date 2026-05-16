@@ -1,9 +1,19 @@
-# Cloudflare Pages security headers. Applied to every response.
+# NOTE: The runtime CSP for entrapass.aboutcloud.io is set by a Cloudflare
+# Response Header Transform ("EntraPass: Security Headers"), not by this file.
+# This file is kept in sync with the Transform so the policy is reviewable in
+# git, but editing it does NOT change production. See docs/security/README.md
+# for the migration plan to make this file authoritative.
+#
+# WARNING: frame-src is absent from the production Transform. This causes
+# frame-src to fall back to default-src 'self', which blocks iframes from
+# login.microsoftonline.com. MSAL's hidden-iframe silent token refresh path
+# is silently broken. Tracked as v0.1.2 work (add frame-src to the Transform).
+#
 # https://developers.cloudflare.com/pages/configuration/headers/
 
 /*
   X-Content-Type-Options: nosniff
   X-Frame-Options: DENY
-  Referrer-Policy: no-referrer
-  Permissions-Policy: geolocation=(), microphone=(), camera=()
-  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' https:; frame-src https://login.microsoftonline.com; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: geolocation=(), camera=(), microphone=(), payment=()
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://analytics.aboutcloud.io; connect-src 'self' https://login.microsoftonline.com https://graph.microsoft.com https://analytics.aboutcloud.io; img-src 'self' data:; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'

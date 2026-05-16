@@ -95,6 +95,24 @@ _No rules configured._
 http.host eq "entrapass.aboutcloud.io"
 ```
 
+**Headers injected by this Transform (captured from production 2026-05-16):**
+
+```
+Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://analytics.aboutcloud.io; connect-src 'self' https://login.microsoftonline.com https://graph.microsoft.com https://analytics.aboutcloud.io; img-src 'self' data:; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'
+Permissions-Policy: geolocation=(), camera=(), microphone=(), payment=()
+Referrer-Policy: strict-origin-when-cross-origin
+X-Content-Type-Options: nosniff
+X-Frame-Options: DENY
+```
+
+> **Known gap:** `frame-src` is absent. Per CSP fallback rules this means
+> `frame-src` inherits `default-src 'self'`, blocking iframes from
+> `login.microsoftonline.com`. MSAL's hidden-iframe silent-token path is
+> silently broken. Planned fix for v0.1.2: add
+> `frame-src https://login.microsoftonline.com` to the Transform and drop
+> `'unsafe-inline'` from `script-src` (no inline handlers remain in the
+> codebase). See `public/_headers` for the target policy.
+
 ## Request Header Transform
 
 _No rules configured._

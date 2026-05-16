@@ -52,7 +52,7 @@ Microsoft Graph API — there is no EntraPass backend, no database, and no telem
 
 - **No write access** — read-only Microsoft Graph scopes only
 - **No data storage** — everything stays in your browser's `sessionStorage`
-- **No telemetry** — no analytics, no cookies, no tracking
+- **No scan-data egress** — tenant data, scan results, UPNs, group names, and Conditional Access policy contents never leave the browser (the only exception is the optional AI Assistant). The site uses self-hosted Umami for anonymous page-visit counts only; Umami never sees any Microsoft Graph response
 - **No server** — zero backend, just static files on a CDN
 
 ---
@@ -239,7 +239,7 @@ straight to sign-in.
 - **Your own tenant** — the App Registration lives in *your* tenant, not a shared one
 - **Delegated permissions** — the app acts on behalf of the signed-in user
 - **Read-only scopes** — no write operations against Graph
-- **Browser-only data** — no servers, no databases, no analytics
+- **Browser-only data** — no servers, no databases, no scan-data analytics
 - **No cookies** — `sessionStorage` only, cleared when the tab closes
 - **Open source** — full transparency, build verifiable from source
 

@@ -52,7 +52,7 @@ Useful scripts:
   new code dependency-free unless there is a strong reason to add a package.
 - Match the existing style in `src/` (2-space indentation, ES modules).
 - Keep EntraPass **read-only and browser-only**: no write operations against
-  Microsoft Graph, no backend, no telemetry, no persistent storage beyond
+  Microsoft Graph, no backend, no telemetry of tenant data, no persistent storage beyond
   `sessionStorage`. PRs that change this contract will not be merged.
 - Save files as **UTF-8** with no BOM.
 - Update the relevant document under `docs/` when behavior changes.

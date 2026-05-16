@@ -183,7 +183,20 @@ Step 7: Cleanup
 - Authentication method secrets (TOTP seeds, FIDO2 private keys)
 - Emails, messages, or file/SharePoint content
 - Any data outside the read-only Microsoft Graph scopes listed in the architecture doc
-- Browser fingerprints, IP addresses, or analytics
+
+### Anonymous page analytics
+
+EntraPass uses **self-hosted Umami** at `analytics.aboutcloud.io`. Umami records:
+
+- The URL of the page visited and the referrer
+- Browser and OS strings
+- IP-derived country (the IP itself is hashed and not stored by Umami)
+- An anonymous session identifier
+
+Umami does **not** record: Microsoft Graph responses, scan results, user
+identifiers, tenant identifiers, app registration details, or anything typed into
+the AI Assistant chat. Umami is hosted in Aboutcloud's private cloud — no
+third-party analytics SaaS receives any data.
 
 ---
 

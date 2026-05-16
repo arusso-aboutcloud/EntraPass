@@ -24,7 +24,7 @@
 
 EntraPass is a **client-side browser application** that assesses passkey (FIDO2)
 readiness in Microsoft Entra ID tenants. It operates entirely within the user's
-browser — no backend servers, no data storage, no telemetry.
+browser — no backend servers, no data storage, no telemetry of tenant data.
 
 ```
                 ┌───────────────────────────────────────────────┐
@@ -383,6 +383,7 @@ All three methods create a **PKCE-only SPA** with no client secret
 | **Credential leak** | No service principal secret, no client secret, no API keys stored or transmitted |
 | **AI prompt injection** | `functions/ai/ask.js` applies regex filters for injection, destructive, and off-topic inputs |
 | **AI data exposure** | The AI endpoint receives only a non-identifying summary (counts + recommendation titles), never raw user data |
+| **Analytics exposure** | Self-hosted Umami at `analytics.aboutcloud.io` counts anonymous page visits only; no scan results, UPNs, or Graph response data are passed to the script |
 
 ### 6.2 Required permissions (Microsoft Graph, delegated)
 
