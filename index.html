@@ -257,7 +257,7 @@ $app = New-MgApplication -DisplayName "entrapass-scanner" -SignInAudience AzureA
           Passkey Readiness
         </button>
         <button class="tab" data-tab="apps">
-          Entra Tip: Apps
+          App Identities
         </button>
         <button class="tab" data-tab="policies">
           CA Policies
@@ -304,15 +304,10 @@ $app = New-MgApplication -DisplayName "entrapass-scanner" -SignInAudience AzureA
         <div id="tab-apps" class="tab-content hidden">
           <div class="section-card">
             <div class="section-card-header" style="display:flex;justify-content:space-between;align-items:center;">
-              <h2>App Compatibility</h2>
+              <h2>App Identities</h2>
               <button id="btn-export-apps" class="btn-ghost btn-export hidden" style="font-size:0.82rem;">⬇ Export CSV</button>
             </div>
             <div class="section-card-body">
-              <div class="section-intro">
-                <strong>Why this matters:</strong> Apps using password credentials or legacy auth can silently <strong>bypass passkey authentication</strong> — even when a user has a passkey registered.
-                Focus on <strong>custom enterprise apps</strong> first; Microsoft-managed apps are updated by Microsoft.
-                Each flagged app below includes a description and fix guidance.
-              </div>
               <div id="apps-table"></div>
             </div>
           </div>

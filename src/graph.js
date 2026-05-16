@@ -92,8 +92,19 @@ export class GraphAPI {
 
   async getApplications() {
     return this.fetchAll(
-      '/applications?$select=id,appId,displayName,signInAudience,publisherDomain,requiredResourceAccess,passwordCredentials,keyCredentials&$top=999'
+      '/applications?$select=id,appId,displayName,signInAudience,publisherDomain,requiredResourceAccess,passwordCredentials,keyCredentials,publicClient,web,spa,createdDateTime&$top=999'
     );
+  }
+
+  async getApplicationOwners(appObjectId) {
+    try {
+      const data = await this.fetch(
+        '/applications/' + encodeURIComponent(appObjectId) + '/owners?$select=id,displayName'
+      );
+      return data.value || [];
+    } catch {
+      return [];
+    }
   }
 
   async getAuthenticationMethodsForUser(userId) {
@@ -143,7 +154,7 @@ export class GraphAPI {
   async getServicePrincipals() {
     try {
       return await this.fetchAll(
-        '/servicePrincipals?$select=id,appId,displayName,appOwnerOrganizationId,passwordCredentials,keyCredentials&$top=999'
+        '/servicePrincipals?$select=id,appId,displayName,appOwnerOrganizationId,passwordCredentials,keyCredentials,servicePrincipalType,publisherName,signInAudience,createdDateTime&$top=999'
       );
     } catch {
       return [];

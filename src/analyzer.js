@@ -1,21 +1,22 @@
 export class Analyzer {
   analyzeAll(data) {
-    const policyResult    = this.analyzePolicies(data);
+    const policyResult     = this.analyzePolicies(data);
     const passkeyReadiness = this.analyzePasskeyReadiness(data, policyResult.policies);
-    const appCompatibility = this.analyzeAppCompatibility(data);
-    const toxicCombos     = this.findToxicCombinations(passkeyReadiness, data);
-    const recommendations = this.generateRecommendations(passkeyReadiness, appCompatibility, policyResult, toxicCombos);
-    const narrative       = this.generateNarrative(passkeyReadiness, appCompatibility, policyResult.policies, toxicCombos);
-    const readinessScore  = this.computeReadinessScore(passkeyReadiness, toxicCombos, policyResult);
+    const appResult        = this.analyzeAppCompatibility(data);
+    const toxicCombos      = this.findToxicCombinations(passkeyReadiness, data);
+    const recommendations  = this.generateRecommendations(passkeyReadiness, appResult.apps, policyResult, toxicCombos);
+    const narrative        = this.generateNarrative(passkeyReadiness, appResult.apps, policyResult.policies, toxicCombos);
+    const readinessScore   = this.computeReadinessScore(passkeyReadiness, toxicCombos, policyResult);
     return {
       readinessScore,
       passkeyReadiness,
-      apps: appCompatibility,
-      policies:      policyResult.policies,
-      policyGaps:    policyResult.gaps,
-      policySummary: policyResult.summary,
-      fido2Config:   policyResult.fido2Config,
-      tapConfig:     policyResult.tapConfig,
+      apps:              appResult.apps,
+      appsExcludedCount: appResult.excludedCount,
+      policies:          policyResult.policies,
+      policyGaps:        policyResult.gaps,
+      policySummary:     policyResult.summary,
+      fido2Config:       policyResult.fido2Config,
+      tapConfig:         policyResult.tapConfig,
       toxicCombos,
       recommendations,
       narrative,
@@ -126,56 +127,215 @@ export class Analyzer {
     return result;
   }
 
-  analyzeAppCompatibility({ apps, servicePrincipals }) {
-    const all = [...(apps || []), ...(servicePrincipals || [])];
-    return all.map(app => {
-      const issues = [];
-      const severity = [];
-      let description = "";
-      if (app.signInAudience === "AzureADMyOrg" && !app.requiredResourceAccess?.length) {
-        issues.push("No delegated permissions - may use legacy auth");
-        severity.push("medium");
-        description = "This app has no delegated permissions configured. Users signing in with a passkey may be prompted for a password instead, because the app does not request modern token flows.";
-      }
-      if (app.passwordCredentials?.length > 0) {
-        issues.push("Has password credentials");
-        severity.push("high");
-        description = (description ? description + " " : "") + "Password credentials allow the app to authenticate with a client secret, which bypasses passkey altogether.";
-      }
-      if (app.keyCredentials?.length > 0) {
-        issues.push("Uses certificate-based auth");
-        severity.push("low");
-        description = (description ? description + " " : "") + "Certificate-based authentication can coexist with passkeys, but verify that the app supports FIDO2 token binding.";
-      }
-      const msDomains = ["microsoft.com", "microsoftonline.com", "windows.net", "sharepoint.com", "skype.com", "office.com", "live.com", "azure.com", "graph.microsoft.com"];
-      const msTenantIds = ["f8cdef31-a31e-4b4a-93e4-5f571e91255a", "72f988bf-86f1-41af-91ab-2d7cd011db47"];
-      const domain = (app.publisherDomain || "").toLowerCase();
-      const isSubstrate = msDomains.some(d => domain.includes(d))
-        || app.signInAudience === "AzureADMultipleOrgs"
-        || msTenantIds.includes((app.appOwnerOrganizationId || "").toLowerCase());
-      const appSeverity = isSubstrate ? 'info' : (severity.includes('high') ? 'high' : severity.includes('medium') ? 'medium' : severity.includes('low') ? 'low' : 'good');
-      return {
-        id: app.id,
-        displayName: app.displayName || app.appId || 'Unnamed',
-        passkeyCompatible: issues.length === 0,
-        issues,
-        severity: appSeverity,
-        description: description || 'No issues detected. This app should work with passkey authentication.',
-        isSubstrate,
-        fixGuide: !isSubstrate && issues.length > 0 ? this.getAppFixGuide(issues) : (isSubstrate && issues.length > 0 ? 'Microsoft-managed app — not directly configurable.' : null),
-      };
-    }).filter(a => a.displayName !== 'Unnamed');
+  analyzeAppCompatibility({ apps, servicePrincipals, org }) {
+    const tenantId = (org?.id || '').toLowerCase();
+    const MS_TENANT_IDS = new Set([
+      'f8cdef31-a31e-4b4a-93e4-5f571e91255a',
+      '72f988bf-86f1-41af-91ab-2d7cd011db47',
+    ]);
+    const MS_DOMAINS = [
+      'microsoft.com', 'microsoftonline.com', 'windows.net', 'sharepoint.com',
+      'skype.com', 'office.com', 'live.com', 'azure.com', 'graph.microsoft.com',
+    ];
+
+    const isMicrosoftOwned = (item) => {
+      const orgId = (item.appOwnerOrganizationId || '').toLowerCase();
+      const domain = (item.publisherDomain || item.publisherName || '').toLowerCase();
+      return MS_TENANT_IDS.has(orgId) || MS_DOMAINS.some(d => domain.includes(d));
+    };
+
+    // Merge: app registrations (always tenant-owned) first, then non-Microsoft SPs.
+    // Deduplication by appId ensures the same logical app doesn't appear twice.
+    const seen = new Set();
+    const merged = [];
+    let excludedCount = 0;
+
+    (apps || []).forEach(app => {
+      if (!app.appId || seen.has(app.appId)) return;
+      seen.add(app.appId);
+      merged.push({ ...app, _source: 'registration' });
+    });
+
+    (servicePrincipals || []).forEach(sp => {
+      if (isMicrosoftOwned(sp)) { excludedCount++; return; }
+      if (!sp.appId || seen.has(sp.appId)) return;
+      seen.add(sp.appId);
+      merged.push({ ...sp, _source: 'servicePrincipal' });
+    });
+
+    const now = new Date();
+    const analyzedApps = merged
+      .map(app => this.analyzeApp(app, now, tenantId))
+      .filter(a => a.displayName !== 'Unnamed');
+
+    return { apps: analyzedApps, excludedCount };
   }
 
-  getAppFixGuide(issues) {
-    const guides = [];
-    if (issues.some(i => i.includes('password')))
-      guides.push('Remove password credentials. Migrate to OAuth 2.0 OIDC with PKCE.');
-    if (issues.some(i => i.includes('legacy auth')))
-      guides.push('Configure delegated permissions in Azure Portal.');
-    if (issues.some(i => i.includes('certificate')))
-      guides.push('Verify FIDO2 token binding support in the certificate auth configuration.');
-    return guides.join(' ');
+  classifyAppType(app) {
+    if (app._source === 'servicePrincipal') {
+      return (app.passwordCredentials || []).length > 0 || (app.keyCredentials || []).length > 0
+        ? 'daemon' : 'api';
+    }
+    const hasSpa = (app.spa?.redirectUris || []).length > 0;
+    const hasWeb = (app.web?.redirectUris || []).length > 0;
+    const hasPub = (app.publicClient?.redirectUris || []).length > 0;
+    const hasRes = (app.requiredResourceAccess || []).length > 0;
+    if (hasSpa) return 'spa';
+    if (hasWeb) return 'web';
+    if (hasPub) return 'native';
+    if (hasRes) return 'daemon';
+    return 'api';
+  }
+
+  analyzeApp(app, now, tenantId) {
+    const issues = [];
+    const severities = [];
+    const credentialAlerts = [];
+    const descParts = [];
+    const fixes = [];
+
+    // ── Client secrets ───────────────────────────────────────────────────────
+    if ((app.passwordCredentials || []).length > 0) {
+      issues.push('Has client secret(s)');
+      severities.push('high');
+      descParts.push(
+        'This app uses client secrets for authentication. ' +
+        'It can obtain access tokens without user interaction, completely bypassing ' +
+        'Conditional Access, MFA, and passkey enforcement — those controls only apply ' +
+        'to interactive user sign-ins.'
+      );
+      fixes.push('Migrate to certificate credentials or managed identity. Remove all client secrets once migrated.');
+
+      app.passwordCredentials.forEach(c => {
+        const end    = c.endDateTime ? new Date(c.endDateTime) : null;
+        const start  = c.startDateTime ? new Date(c.startDateTime) : null;
+        const label  = c.displayName || 'Secret';
+        if (end) {
+          const daysLeft = Math.ceil((end - now) / 86400000);
+          const ageDays  = start ? Math.ceil((now - start) / 86400000) : null;
+          if (end < now) {
+            credentialAlerts.push({ type: 'expired', label, daysLeft: 0, severity: 'critical', expiryDate: c.endDateTime });
+            issues.push(`Secret expired — ${label}`);
+            severities.push('critical');
+          } else if (daysLeft <= 30) {
+            credentialAlerts.push({ type: 'expiring-soon', label, daysLeft, severity: 'critical', expiryDate: c.endDateTime });
+            issues.push(`Secret expires in ${daysLeft}d — ${label}`);
+            severities.push('critical');
+          } else if (daysLeft <= 90) {
+            credentialAlerts.push({ type: 'expiring', label, daysLeft, severity: 'high', expiryDate: c.endDateTime });
+            issues.push(`Secret expires in ${daysLeft}d — ${label}`);
+            severities.push('high');
+          } else if (ageDays && ageDays > 365) {
+            credentialAlerts.push({ type: 'stale', label, ageDays, severity: 'medium', expiryDate: c.endDateTime });
+            issues.push(`Secret ${Math.floor(ageDays / 365)}yr old — rotation recommended`);
+            severities.push('medium');
+          }
+        }
+      });
+      if (credentialAlerts.some(c => c.type === 'expired' || c.type === 'expiring-soon')) {
+        fixes.unshift('Rotate expiring/expired credentials immediately to prevent service disruption.');
+      }
+    }
+
+    // ── Certificate credentials ──────────────────────────────────────────────
+    if ((app.keyCredentials || []).length > 0) {
+      issues.push('Uses certificate credential(s)');
+      severities.push('low');
+      descParts.push(
+        'Certificate credentials are more secure than client secrets but still allow ' +
+        'machine-to-machine authentication outside CA policy scope. Ensure the certificate ' +
+        'is stored in a key vault and rotated before expiry.'
+      );
+
+      app.keyCredentials.forEach(c => {
+        const end   = c.endDateTime ? new Date(c.endDateTime) : null;
+        const label = c.displayName || 'Certificate';
+        if (end) {
+          const daysLeft = Math.ceil((end - now) / 86400000);
+          if (end < now) {
+            credentialAlerts.push({ type: 'expired', label, daysLeft: 0, severity: 'critical', expiryDate: c.endDateTime });
+            issues.push(`Certificate expired — ${label}`);
+            severities.push('critical');
+          } else if (daysLeft <= 30) {
+            credentialAlerts.push({ type: 'expiring-soon', label, daysLeft, severity: 'critical', expiryDate: c.endDateTime });
+            issues.push(`Certificate expires in ${daysLeft}d`);
+            severities.push('critical');
+          } else if (daysLeft <= 90) {
+            credentialAlerts.push({ type: 'expiring', label, daysLeft, severity: 'high', expiryDate: c.endDateTime });
+            issues.push(`Certificate expires in ${daysLeft}d`);
+            severities.push('high');
+          }
+        }
+      });
+    }
+
+    // ── App type + delegated permissions gap ─────────────────────────────────
+    const appType = this.classifyAppType(app);
+    const isUserFacing = appType === 'spa' || appType === 'web' || appType === 'native';
+    if (isUserFacing && !(app.requiredResourceAccess || []).length) {
+      issues.push('No delegated permissions — may prompt for password');
+      severities.push('medium');
+      descParts.push(
+        'No delegated permissions are configured. Users signing in may be prompted for a ' +
+        'password rather than their passkey, because the app does not request modern ' +
+        'token flows (OAuth 2.0 / OIDC).'
+      );
+      fixes.push('Configure delegated permissions in Azure portal → App registrations → API permissions.');
+    }
+
+    // ── Multi-tenant sign-in audience ────────────────────────────────────────
+    const multiTenant = app.signInAudience === 'AzureADMultipleOrgs'
+      || app.signInAudience === 'AzureADandPersonalMicrosoftAccount';
+    if (multiTenant) {
+      issues.push('Multi-tenant: any Azure AD org can sign in');
+      severities.push('medium');
+      descParts.push(
+        'This app accepts sign-ins from users in any Azure AD organisation. ' +
+        'Your tenant\'s Conditional Access policies may not apply to external users ' +
+        'authenticating through this app, leaving them outside your passkey enforcement scope.'
+      );
+      fixes.push('If multi-tenant access is unintentional, set Sign-in audience to "This organisation only" in App registrations → Authentication.');
+    }
+
+    // ── No owners (orphaned) ─────────────────────────────────────────────────
+    const ownerCount = (app.owners || []).length;
+    const isOrphaned = ownerCount === 0 && app._source === 'registration';
+    if (isOrphaned) {
+      issues.push('No owner — orphaned app');
+      severities.push('medium');
+      descParts.push(
+        'No owner is assigned to this app registration. Orphaned apps have no accountable ' +
+        'admin to rotate credentials, review permissions, or decommission the app when it\'s no longer needed.'
+      );
+      fixes.push('Assign at least one owner: App registrations → select app → Owners → Add.');
+    }
+
+    const severity = severities.includes('critical') ? 'critical'
+      : severities.includes('high')   ? 'high'
+      : severities.includes('medium') ? 'medium'
+      : severities.includes('low')    ? 'low'
+      : 'good';
+
+    return {
+      id:              app.id,
+      appId:           app.appId,
+      displayName:     app.displayName || app.appId || 'Unnamed',
+      source:          app._source,
+      appType,
+      signInAudience:  app.signInAudience || 'AzureADMyOrg',
+      passkeyCompatible: issues.length === 0,
+      issues,
+      severity,
+      credentialAlerts,
+      ownerCount,
+      isOrphaned,
+      multiTenant,
+      description: descParts.join(' ') || 'No credential or configuration issues detected. This app follows modern authentication patterns compatible with passkey deployment.',
+      fixGuide: fixes.length > 0 ? fixes.join(' ') : null,
+      createdDateTime: app.createdDateTime || null,
+      secretCount:     (app.passwordCredentials || []).length,
+      certCount:       (app.keyCredentials || []).length,
+    };
   }
 
   // ============================================================================
@@ -506,7 +666,7 @@ export class Analyzer {
 
     const badApps = appCompatibility.filter(a => !a.passkeyCompatible);
     if (badApps.length > 0)
-      recs.push({ severity: "low", icon: "💡", category: "Apps", title: badApps.length + " app(s) flagged — see Entra Tip tab", text: badApps.map(a => a.displayName + (a.isSubstrate ? " (Microsoft-managed)" : "")).join(", "), fix: "Review the App Compatibility tab." });
+      recs.push({ severity: "low", icon: "💡", category: "Apps", title: badApps.length + " app(s) flagged — see App Identities tab", text: badApps.map(a => a.displayName).join(", "), fix: "Review the App Identities tab for credential risk and fix guidance." });
 
     if (passkeyReadiness.ready > 0)
       recs.push({ severity: "low", icon: "\u{1F7E2}", category: "Ready", title: passkeyReadiness.ready + " user(s) ready!", text: "Start a pilot program.", fix: "Enable passkey for pilot group." });

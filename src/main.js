@@ -363,6 +363,17 @@ async function startScan() {
       track('Authentication methods policy', graphApi.getAuthenticationMethodsPolicy(), []),
     ]);
 
+    showLoading('Enriching app registration data...');
+
+    // Phase 1b: app registration owner enrichment (capped at 50 for performance)
+    const appSample50 = apps.slice(0, 50);
+    const appsEnriched = await Promise.all(
+      appSample50.map(async (app) => {
+        const owners = await graphApi.getApplicationOwners(app.id).catch(() => []);
+        return { ...app, owners };
+      })
+    );
+
     showLoading('Analyzing authentication methods and device ownership...');
 
     // Phase 2: per-user detail (sampled for performance)
@@ -393,7 +404,7 @@ async function startScan() {
       users: userDetails,
       devices: deviceDetails,
       policies,
-      apps,
+      apps: appsEnriched,
       org,
       servicePrincipals: sps,
       authorizationPolicy: authPolicy,
@@ -605,14 +616,46 @@ function exportReadinessCsv() {
 function exportAppsCsv() {
   if (!scanResults?.apps) return;
   const ts = new Date().toISOString().slice(0, 10);
+  const rows = scanResults.apps.map(a => {
+    const earliestExpiry = (a.credentialAlerts || [])
+      .filter(c => c.expiryDate)
+      .map(c => c.expiryDate)
+      .sort()[0] || '';
+    return [
+      a.displayName,
+      a.source === 'registration' ? 'App Registration' : 'Service Principal',
+      a.appType || '',
+      a.signInAudience || '',
+      a.passkeyCompatible ? 'Yes' : 'No',
+      a.severity || '',
+      a.issues.join('; '),
+      a.secretCount || 0,
+      a.certCount || 0,
+      earliestExpiry,
+      a.ownerCount ?? '',
+      a.isOrphaned ? 'Yes' : 'No',
+      a.multiTenant ? 'Yes' : 'No',
+      a.createdDateTime ? a.createdDateTime.slice(0, 10) : '',
+      a.fixGuide || '',
+    ];
+  });
+  // Append expiry-sorted credential alerts as a separate block
+  const credRows = [];
+  scanResults.apps.forEach(a => {
+    (a.credentialAlerts || []).forEach(c => {
+      credRows.push([a.displayName, c.label, c.type, c.severity, c.expiryDate || '', c.daysLeft ?? '', c.ageDays ?? '']);
+    });
+  });
+  if (credRows.length > 0) {
+    rows.push([]);
+    rows.push(['--- CREDENTIAL EXPIRY DETAIL ---']);
+    rows.push(['App', 'Credential', 'Type', 'Severity', 'Expiry Date', 'Days Left', 'Age (days)']);
+    rows.push(...credRows.sort((a, b) => String(a[4]).localeCompare(String(b[4]))));
+  }
   downloadCsv(
     `entrapass-apps-${ts}.csv`,
-    ['App Name', 'Microsoft-Managed', 'Compatible', 'Severity', 'Issues', 'Fix Guide'],
-    scanResults.apps.map(a => [
-      a.displayName, a.isSubstrate ? 'Yes' : 'No',
-      a.passkeyCompatible ? 'Yes' : 'No', a.severity || '',
-      a.issues.join('; '), a.fixGuide || '',
-    ]),
+    ['App Name', 'Source', 'App Type', 'Sign-in Audience', 'Compatible', 'Severity', 'Issues', 'Secrets', 'Certs', 'Earliest Expiry', 'Owner Count', 'Orphaned', 'Multi-tenant', 'Created', 'Fix Guide'],
+    rows,
   );
 }
 
@@ -879,49 +922,166 @@ function renderReadiness(r) {
   if (btn) { btn.classList.remove('hidden'); btn.onclick = exportReadinessCsv; }
 }
 
+function renderAppTypeBadge(type) {
+  const labels = { spa: 'SPA', web: 'Web App', daemon: 'Daemon / Service', api: 'API', native: 'Native / Mobile' };
+  return `<span class="app-type-badge ${escapeHtml(type || 'api')}">${escapeHtml(labels[type] || type || 'Unknown')}</span>`;
+}
+
+function renderAppCard(app) {
+  const issueChips = app.issues.map(issue => {
+    const isCred = /secret|certif|expir|expired/i.test(issue);
+    return `<span class="app-issue-chip ${isCred ? 'cred' : 'config'}">${escapeHtml(issue)}</span>`;
+  }).join('');
+
+  let credHtml = '';
+  if (app.credentialAlerts && app.credentialAlerts.length > 0) {
+    credHtml = `<div class="app-cred-alerts">`;
+    app.credentialAlerts.forEach(c => {
+      const icon = c.type === 'expired' ? '⛔' : c.type === 'expiring-soon' ? '🔴' : c.type === 'expiring' ? '🟡' : '⚪';
+      const msg = c.type === 'expired'
+        ? `${c.label}: expired`
+        : c.type === 'stale'
+          ? `${c.label}: ${Math.floor(c.ageDays / 365)}yr old — rotate recommended`
+          : `${c.label}: expires in ${c.daysLeft} day${c.daysLeft !== 1 ? 's' : ''}`;
+      credHtml += `<span class="app-cred-alert ${escapeHtml(c.severity)}">${icon} ${escapeHtml(msg)}</span>`;
+    });
+    credHtml += `</div>`;
+  }
+
+  const metaParts = [];
+  metaParts.push(app.source === 'registration' ? 'App registration' : 'Service principal');
+  if (app.source === 'registration') {
+    metaParts.push(app.isOrphaned ? '⚠ No owners' : `${app.ownerCount} owner${app.ownerCount !== 1 ? 's' : ''}`);
+  }
+  if (app.createdDateTime) {
+    const d = new Date(app.createdDateTime);
+    metaParts.push(`Created ${d.toLocaleDateString('en-GB', { year: 'numeric', month: 'short' })}`);
+  }
+
+  const multiTag = app.multiTenant
+    ? `<span class="app-audience-badge multi">Multi-tenant</span>` : '';
+
+  return `<div class="app-card ${escapeHtml(app.severity)}">
+    <div class="app-card-header">
+      <div class="app-card-title">
+        <span class="app-card-name">${escapeHtml(app.displayName)}</span>
+        ${renderAppTypeBadge(app.appType)}${multiTag}
+      </div>
+      <span class="app-sev-badge ${escapeHtml(app.severity)}">${escapeHtml(app.severity.toUpperCase())}</span>
+    </div>
+    ${issueChips ? `<div class="app-card-issues">${issueChips}</div>` : ''}
+    ${credHtml}
+    <p class="app-card-desc">${escapeHtml(app.description)}</p>
+    ${app.fixGuide ? `<div class="app-card-fix"><strong>Fix:</strong> ${escapeHtml(app.fixGuide)}</div>` : ''}
+    <div class="app-card-meta">${metaParts.map(p => `<span>${escapeHtml(p)}</span>`).join('<span class="app-meta-dot">·</span>')}</div>
+  </div>`;
+}
+
 function renderApps(r) {
-  const compatible = r.apps.filter((a) => a.passkeyCompatible).length;
-  const total  = r.apps.length;
-  const flagged = total - compatible;
-  const container = document.getElementById('apps-table');
+  const apps     = r.apps || [];
+  const excluded = r.appsExcludedCount || 0;
 
-  let h = '<div style="margin-bottom:0.75rem;font-size:0.9rem;color:var(--text-secondary);">';
-  h += '<span style="color:var(--good);">\u{1F7E2} ' + escapeHtml(String(compatible)) + ' compatible</span>';
-  if (flagged > 0) h += ' <span style="color:var(--danger);margin-left:0.5rem;">\u{1F534} ' + escapeHtml(String(flagged)) + ' need review</span>';
-  h += ' <span style="margin-left:0.5rem;">of ' + escapeHtml(String(total)) + ' apps</span>';
-  h += '</div>';
+  const sevOrder = { critical: 0, high: 1, medium: 2, low: 3, good: 4 };
+  const flagged  = [...apps].filter(a => !a.passkeyCompatible)
+    .sort((a, b) => (sevOrder[a.severity] ?? 5) - (sevOrder[b.severity] ?? 5));
+  const clean    = apps.filter(a => a.passkeyCompatible);
 
-  h += '<div style="overflow-x:auto;">';
-  h += '<table><thead><tr><th>App</th><th>Status</th><th>Issues</th><th>Description &amp; Fix</th></tr></thead><tbody>';
+  const critCount   = flagged.filter(a => a.severity === 'critical').length;
+  const credExpiry  = apps.filter(a => (a.credentialAlerts || []).some(c => c.severity === 'critical')).length;
+  const defaultFilter = flagged.length > 0 ? 'flagged' : 'all';
 
-  const order = { high: 0, medium: 1, low: 2, good: 3, info: 4 };
-  const sorted = [...r.apps].sort((a, b) => (order[a.severity] ?? 5) - (order[b.severity] ?? 5));
+  // ── Narrative ────────────────────────────────────────────────────────────
+  let h = `<div class="app-identity-narrative">
+    <div class="app-narrative-icon">🔐</div>
+    <div class="app-narrative-body">
+      <strong>Every app registration is a non-human identity.</strong>
+      Apps can authenticate autonomously — holding their own permissions and accessing tenant data independently of any user.
+      When an app uses a <strong>client secret or certificate credential</strong>, it authenticates via the OAuth 2.0 client credentials flow,
+      which <strong>bypasses Conditional Access, MFA, and passkey enforcement entirely</strong> — those controls only apply to interactive user sign-ins.
+      A leaked app secret is a separate, persistent attack vector that passkeys alone cannot close.
+      <span class="app-narrative-tip">This scan covers only custom and third-party apps. Microsoft platform service principals are excluded — they are managed by Microsoft.</span>
+    </div>
+  </div>`;
 
-  sorted.forEach((a) => {
-    let badge, statusText;
-    if (a.isSubstrate && !a.passkeyCompatible) {
-      badge = '\u{1F4C4}'; statusText = 'Info';
-    } else if (a.passkeyCompatible) {
-      badge = '\u{1F7E2}'; statusText = 'OK';
-    } else {
-      badge = '\u{1F534}'; statusText = 'Flagged';
-    }
-    const issueText = a.issues.length > 0 ? a.issues.join('; ') : 'None';
-    const descBg     = a.severity === 'high' ? '#fff0f0' : a.severity === 'medium' ? '#fff8f0' : '#f8f8f8';
-    const descBorder = a.severity === 'high' ? 'var(--danger)' : a.severity === 'medium' ? 'var(--warn)' : 'var(--border)';
-    h += '<tr>';
-    h += '<td><strong>' + escapeHtml(a.displayName) + '</strong>'
-      + (a.isSubstrate ? '<br><span style="font-size:0.75rem;color:#888;">Microsoft-managed</span>' : '') + '</td>';
-    h += '<td>' + badge + ' ' + statusText + '</td>';
-    h += '<td>' + escapeHtml(issueText) + '</td>';
-    h += '<td style="font-size:0.85rem;background:' + descBg + ';border-left:3px solid ' + descBorder + ';padding:0.5rem 0.75rem;">';
-    h += '<p style="margin-bottom:0.3rem;">' + escapeHtml(a.description) + '</p>';
-    if (a.fixGuide) h += '<p style="margin-top:0.3rem;color:var(--primary);"><strong>Fix:</strong> ' + escapeHtml(a.fixGuide) + '</p>';
-    h += '</td></tr>';
+  // ── Summary strip ─────────────────────────────────────────────────────────
+  h += `<div class="policy-summary app-summary">
+    <div class="policy-stat-item">
+      <span class="psi-value">${apps.length}</span>
+      <span class="psi-label">Custom apps scanned</span>
+    </div>
+    <div class="policy-stat-item ${flagged.length > 0 ? (critCount > 0 ? 'danger' : 'warn') : 'good'}">
+      <span class="psi-value">${flagged.length}</span>
+      <span class="psi-label">Need attention</span>
+    </div>
+    ${credExpiry > 0 ? `<div class="policy-stat-item danger">
+      <span class="psi-value">${credExpiry}</span>
+      <span class="psi-label">Expiring credentials</span>
+    </div>` : ''}
+    <div class="policy-stat-item good">
+      <span class="psi-value">${clean.length}</span>
+      <span class="psi-label">Clean</span>
+    </div>
+  </div>`;
+
+  // ── Filter pills ───────────────────────────────────────────────────────────
+  h += `<div class="app-filter-bar">
+    <button class="app-filter-pill${defaultFilter === 'all' ? ' active' : ''}" data-filter="all">All (${apps.length})</button>
+    <button class="app-filter-pill${defaultFilter === 'flagged' ? ' active' : ''}" data-filter="flagged">Needs Attention (${flagged.length})</button>
+    <button class="app-filter-pill" data-filter="clean">Clean (${clean.length})</button>
+  </div>`;
+
+  // ── Flagged section ────────────────────────────────────────────────────────
+  h += `<div id="apps-flagged"${defaultFilter === 'clean' ? ' class="hidden"' : ''}>`;
+  if (flagged.length === 0) {
+    h += `<div class="app-empty-state">✅ No issues found across custom app registrations. App credential risk is not blocking your passkey rollout.</div>`;
+  } else {
+    flagged.forEach(app => { h += renderAppCard(app); });
+  }
+  h += `</div>`;
+
+  // ── Clean section ─────────────────────────────────────────────────────────
+  h += `<div id="apps-clean"${defaultFilter === 'flagged' ? ' class="hidden"' : ''}>`;
+  if (clean.length > 0) {
+    h += `<div class="apps-section-header">
+      <span>✅ Clean apps (${clean.length})</span>
+      <span class="apps-section-sub">No credential or compatibility issues detected</span>
+    </div>
+    <div class="app-clean-list">`;
+    clean.forEach(app => {
+      h += `<div class="app-clean-row">
+        <span class="app-clean-name">${escapeHtml(app.displayName)}</span>
+        ${renderAppTypeBadge(app.appType)}
+        ${app.multiTenant ? `<span class="app-audience-badge multi">Multi-tenant</span>` : ''}
+        <span class="app-clean-source">${app.source === 'registration' ? 'App reg' : 'Service principal'}</span>
+      </div>`;
+    });
+    h += `</div>`;
+  } else {
+    h += `<div class="app-empty-state">No clean apps to display.</div>`;
+  }
+  h += `</div>`;
+
+  // ── Excluded footnote ──────────────────────────────────────────────────────
+  if (excluded > 0) {
+    h += `<div class="app-excluded-note">
+      📌 ${excluded} Microsoft platform service principal${excluded !== 1 ? 's' : ''} excluded — managed by Microsoft, not configurable by tenant admins.
+    </div>`;
+  }
+
+  document.getElementById('apps-table').innerHTML = h;
+
+  // Wire filter pills (post-render)
+  document.querySelectorAll('.app-filter-pill').forEach(pill => {
+    pill.addEventListener('click', () => {
+      document.querySelectorAll('.app-filter-pill').forEach(p => p.classList.remove('active'));
+      pill.classList.add('active');
+      const f = pill.dataset.filter;
+      const flaggedEl = document.getElementById('apps-flagged');
+      const cleanEl   = document.getElementById('apps-clean');
+      if (flaggedEl) flaggedEl.classList.toggle('hidden', f === 'clean');
+      if (cleanEl)   cleanEl.classList.toggle('hidden', f === 'flagged');
+    });
   });
-
-  h += '</tbody></table></div>';
-  container.innerHTML = h;
 
   const btn = document.getElementById('btn-export-apps');
   if (btn) { btn.classList.remove('hidden'); btn.onclick = exportAppsCsv; }
