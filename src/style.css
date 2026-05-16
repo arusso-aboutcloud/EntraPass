@@ -610,10 +610,45 @@ main { padding: 2rem; max-width: 1200px; margin: 0 auto; }
 
 .ring-progress { transition: stroke-dashoffset 1.1s cubic-bezier(0.4, 0, 0.2, 1); }
 
+/* Infrastructure health chips — inside ring card */
+.score-infra-chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.35rem;
+  width: 100%;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border-subtle);
+  margin-top: 0.15rem;
+}
+.infra-chip {
+  font-size: 0.67rem;
+  font-weight: 700;
+  padding: 0.2em 0.55em;
+  border-radius: var(--r-full);
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+.chip-good   { background: var(--good-bg);   color: var(--good);   border-color: var(--good-border);   }
+.chip-warn   { background: var(--warn-bg);   color: var(--warn);   border-color: var(--warn-border);   }
+.chip-danger { background: var(--danger-bg); color: var(--danger); border-color: var(--danger-border); }
+
+/* Hero right column */
+.hero-right {
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+}
+
+/* 5-tile grid */
 .stat-tiles {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 1rem;
+}
+.stat-tiles-5 {
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
 }
 
 .stat-tile {
@@ -621,16 +656,20 @@ main { padding: 2rem; max-width: 1200px; margin: 0 auto; }
   border: 1px solid var(--border);
   border-top-width: 3px;
   border-radius: var(--r-md);
-  padding: 1.25rem;
+  padding: 1.1rem 1rem;
   box-shadow: var(--shadow-xs);
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0.2rem;
+  transition: box-shadow 0.15s, background 0.15s;
 }
-.stat-tile.total  { border-top-color: var(--primary); }
-.stat-tile.good   { border-top-color: var(--good);    }
-.stat-tile.warn   { border-top-color: var(--accent);  }
-.stat-tile.danger { border-top-color: var(--danger);  }
+.stat-tile:hover { background: var(--surface-2); box-shadow: var(--shadow-sm); }
+.stat-tile.total   { border-top-color: var(--primary);      }
+.stat-tile.good    { border-top-color: var(--good);         }
+.stat-tile.capable { border-top-color: #60a5fa;             }
+.stat-tile.warn    { border-top-color: var(--accent);       }
+.stat-tile.danger  { border-top-color: var(--danger);       }
+.stat-tile.exempt  { border-top-color: var(--text-tertiary); opacity: 0.75; }
 
 .stat-tile-value {
   font-size: 2rem;
@@ -638,13 +677,56 @@ main { padding: 2rem; max-width: 1200px; margin: 0 auto; }
   line-height: 1;
   letter-spacing: -0.5px;
 }
-.stat-tile.total  .stat-tile-value { color: var(--primary); }
-.stat-tile.good   .stat-tile-value { color: var(--good);    }
-.stat-tile.warn   .stat-tile-value { color: var(--accent);  }
-.stat-tile.danger .stat-tile-value { color: var(--danger);  }
+.stat-tile.total   .stat-tile-value { color: var(--primary);        }
+.stat-tile.good    .stat-tile-value { color: var(--good);           }
+.stat-tile.capable .stat-tile-value { color: #60a5fa;               }
+.stat-tile.warn    .stat-tile-value { color: var(--accent);         }
+.stat-tile.danger  .stat-tile-value { color: var(--danger);         }
+.stat-tile.exempt  .stat-tile-value { color: var(--text-secondary); }
 
-.stat-tile-label { font-size: 0.82rem; font-weight: 600; color: var(--text); }
-.stat-tile-sub   { font-size: 0.75rem; color: var(--text-tertiary); }
+.stat-tile-label { font-size: 0.79rem; font-weight: 600; color: var(--text); }
+.stat-tile-sub   { font-size: 0.71rem; color: var(--text-tertiary); }
+
+/* Readiness breakdown bar (Overview hero) */
+.readiness-bar-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.readiness-breakdown-bar {
+  display: flex;
+  height: 7px;
+  border-radius: var(--r-full);
+  overflow: hidden;
+  gap: 2px;
+  background: var(--border-subtle);
+}
+.rbar-seg {
+  min-width: 3px;
+  border-radius: var(--r-full);
+  transition: flex 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.rbar-ready    { background: var(--good);          }
+.rbar-capable  { background: #60a5fa;              }
+.rbar-needsprep { background: var(--accent);       }
+.rbar-blocked  { background: var(--danger);        }
+.rbar-exempt   { background: var(--text-tertiary); }
+
+.rbar-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem 0.625rem;
+}
+.rbl {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+.rbl.ready    { color: var(--good);    }
+.rbl.capable  { color: #60a5fa;       }
+.rbl.needsprep { color: var(--accent); }
+.rbl.blocked  { color: var(--danger); }
+.rbl.exempt   { color: var(--text-tertiary); }
 
 /* ============================================
    Alert Cards

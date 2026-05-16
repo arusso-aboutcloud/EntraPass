@@ -25,17 +25,47 @@ export class Analyzer {
   }
 
   computeReadinessScore(passkeyReadiness, toxicCombos, policyResult) {
-    const { total, blocked, needsAttention } = passkeyReadiness;
-    const policies = policyResult.policies || [];
-    const gaps     = policyResult.gaps     || [];
+    const users = passkeyReadiness.users || [];
+    const total  = users.length;
     if (total === 0) return 50;
+
+    // Derive tier counts from the actual user list — robust against stale cached summaries.
+    const cnt       = s => users.filter(u => u.status === s).length;
+    const exempt    = cnt('exempt');
+    const blocked   = cnt('blocked');
+    const needsPrep = cnt('needsPrep');
+    const capable   = cnt('capable');
+    const effective = total - exempt; // exempt accounts (break-glass/guest/MSA) don't move the needle
+    if (effective === 0) return 85;
+
     let score = 100;
-    score -= (blocked / total) * 45;
-    score -= (needsAttention / total) * 20;
-    score -= Math.min(toxicCombos.filter(t => t.severity === 'critical').length * 15, 20);
-    score -= Math.min(policies.filter(p => p.blocksPasskeyRegistration).length * 5, 15);
-    score -= Math.min(gaps.filter(g => g.severity === 'critical').length * 8, 20);
-    score -= Math.min(gaps.filter(g => g.severity === 'high').length * 3, 8);
+
+    // ── User readiness (35 pts max penalty) ──────────────────────────────────
+    // Blocked = no path to passkey without admin action → heaviest signal
+    // Needs prep = one gap solvable in a short admin session → moderate
+    // Capable = can self-register today → very light (just needs a nudge)
+    score -= (blocked   / effective) * 35;
+    score -= (needsPrep / effective) * 12;
+    score -= (capable   / effective) *  3;
+
+    // ── Infrastructure readiness (28 pts max penalty) ─────────────────────────
+    // FIDO2 disabled → passkeys literally cannot be registered at all (-20)
+    // TAP not enabled → new hires and lost-credential recovery are blocked (-8)
+    const fido2 = policyResult.fido2Config;
+    const tap   = policyResult.tapConfig;
+    if (!fido2 || fido2.state !== 'enabled') score -= 20;
+    if (!tap   || tap.state   !== 'enabled') score -=  8;
+
+    // ── Toxic combinations (-15 pts max) ─────────────────────────────────────
+    score -= Math.min((toxicCombos || []).filter(t => t.severity === 'critical').length * 10, 15);
+
+    // ── Policy gaps & blocking policies (-14 pts max) ─────────────────────────
+    const gaps     = policyResult.gaps     || [];
+    const policies = policyResult.policies || [];
+    score -= Math.min(gaps.filter(g => g.severity === 'critical').length * 8, 10);
+    score -= Math.min(policies.filter(p => p.blocksPasskeyRegistration).length * 4,  5);
+    score -= Math.min(gaps.filter(g => g.severity === 'high').length * 2,             4);
+
     return Math.max(0, Math.min(100, Math.round(score)));
   }
 

@@ -749,66 +749,139 @@ function renderOverviewReferences() {
 }
 
 function renderOverviewHero(r) {
-  const hero = document.getElementById('overview-hero');
+  const hero    = document.getElementById('overview-hero');
   const prescan = document.getElementById('overview-prescan');
   if (!hero) return;
 
-  const { total, ready, needsAttention, blocked } = r.passkeyReadiness;
-  const score = r.readinessScore ?? 0;
-  const scoreClass = score >= 70 ? 'score-good' : score >= 40 ? 'score-warn' : 'score-danger';
-  const verdictClass = score >= 70 ? 'good' : score >= 40 ? 'warn' : 'danger';
-  const verdictText = score >= 70 ? 'Ready to roll out' : score >= 40 ? 'Needs preparation' : 'Action required';
-  const ringColor = score >= 70 ? 'var(--good)' : score >= 40 ? 'var(--accent)' : 'var(--danger)';
-  const circ = 2 * Math.PI * 50;
-  const targetOffset = circ * (1 - score / 100);
-  const sampled = r.meta && r.meta.usersFound > total;
+  // Derive all counts from actual user list — resilient to stale sessionStorage.
+  const pr    = r.passkeyReadiness;
+  const users = pr.users || [];
+  const cnt   = s => users.filter(u => u.status === s).length;
+  const total    = users.length;
+  const ready    = typeof pr.ready     === 'number' ? pr.ready     : cnt('ready');
+  const capable  = typeof pr.capable   === 'number' ? pr.capable   : cnt('capable');
+  const needsPrep = typeof pr.needsPrep === 'number' ? pr.needsPrep : cnt('needsPrep');
+  const blocked  = typeof pr.blocked   === 'number' ? pr.blocked   : cnt('blocked');
+  const exempt   = typeof pr.exempt    === 'number' ? pr.exempt    : cnt('exempt');
+
+  const score       = r.readinessScore ?? 0;
+  const scoreClass  = score >= 70 ? 'score-good'  : score >= 40 ? 'score-warn'  : 'score-danger';
+  const verdictCls  = score >= 70 ? 'good'         : score >= 40 ? 'warn'         : 'danger';
+  const verdictText = score >= 70
+    ? (ready > 0 ? 'Passkeys in use · rolling out' : 'Infrastructure ready · start rollout')
+    : score >= 40 ? 'Preparation underway' : 'Action required';
+  const ringColor   = score >= 70 ? 'var(--good)' : score >= 40 ? 'var(--accent)' : 'var(--danger)';
+  const circ        = 2 * Math.PI * 50;
+  const targetOff   = circ * (1 - score / 100);
+  const sampled     = r.meta && r.meta.usersFound > total;
+
+  // Infrastructure status signals for ring card
+  const fido2Ok  = r.fido2Config?.state === 'enabled';
+  const tapOk    = r.tapConfig?.state   === 'enabled';
+  const appRisks = (r.apps || []).filter(a => !a.passkeyCompatible).length;
+  const critGaps = (r.policyGaps || []).filter(g => g.severity === 'critical' || g.severity === 'high').length;
+
+  // Breakdown bar proportions — avoid division by zero
+  const B = total > 0 ? total : 1;
+  const barSegs = [
+    { cls: 'rbar-ready',     val: ready,     tip: `Ready: ${ready}`          },
+    { cls: 'rbar-capable',   val: capable,   tip: `Capable: ${capable}`      },
+    { cls: 'rbar-needsprep', val: needsPrep, tip: `Needs Prep: ${needsPrep}` },
+    { cls: 'rbar-blocked',   val: blocked,   tip: `Blocked: ${blocked}`      },
+    { cls: 'rbar-exempt',    val: exempt,    tip: `Exempt: ${exempt}`        },
+  ].filter(s => s.val > 0);
+  const barHtml = barSegs.map(s =>
+    `<div class="rbar-seg ${s.cls}" style="flex:${Math.round(s.val / B * 100)}" title="${s.tip}"></div>`
+  ).join('');
 
   hero.innerHTML = `
     <div class="score-ring-card">
       <div class="ring-label">Readiness Score</div>
       <div class="ring-svg-wrapper">
         <svg width="128" height="128" viewBox="0 0 120 120">
-          <circle cx="60" cy="60" r="50" fill="none" stroke="var(--border-subtle)" stroke-width="10" stroke-linecap="round"/>
-          <circle cx="60" cy="60" r="50" fill="none" stroke="${ringColor}" stroke-width="10"
+          <circle cx="60" cy="60" r="50" fill="none" stroke="var(--border-subtle)" stroke-width="9" stroke-linecap="round"/>
+          <circle cx="60" cy="60" r="50" fill="none" stroke="${ringColor}" stroke-width="9"
             stroke-dasharray="${circ.toFixed(1)}" stroke-dashoffset="${circ.toFixed(1)}"
-            stroke-linecap="round" class="ring-progress" id="ring-arc"/>
+            stroke-linecap="round" class="ring-progress" id="ring-arc"
+            style="filter:drop-shadow(0 0 7px ${ringColor})"/>
         </svg>
         <div class="ring-center-text">
-          <span class="ring-score-number ${scoreClass}">${score}</span>
+          <span class="ring-score-number ${scoreClass}" id="ring-score-num">0</span>
           <span class="ring-score-sub">/ 100</span>
         </div>
       </div>
-      <span class="score-verdict ${verdictClass}">${verdictText}</span>
+      <span class="score-verdict ${verdictCls}">${verdictText}</span>
+      <div class="score-infra-chips">
+        <span class="infra-chip ${fido2Ok ? 'chip-good' : 'chip-danger'}">${fido2Ok ? '✓' : '✗'} FIDO2</span>
+        <span class="infra-chip ${tapOk   ? 'chip-good' : 'chip-warn'}">${tapOk   ? '✓' : '⚠'} TAP</span>
+        ${appRisks > 0 ? `<span class="infra-chip chip-warn">⚠ ${appRisks} app risk${appRisks !== 1 ? 's' : ''}</span>` : ''}
+        ${critGaps > 0 ? `<span class="infra-chip chip-danger">✗ ${critGaps} gap${critGaps !== 1 ? 's' : ''}</span>` : ''}
+      </div>
     </div>
-    <div class="stat-tiles">
-      <div class="stat-tile total">
-        <div class="stat-tile-value">${escapeHtml(String(total))}</div>
-        <div class="stat-tile-label">Users scanned</div>
-        <div class="stat-tile-sub">${sampled ? `of ${escapeHtml(String(r.meta.usersFound))} total (sampled)` : 'full coverage'}</div>
+
+    <div class="hero-right">
+      <div class="stat-tiles stat-tiles-5">
+        <div class="stat-tile total">
+          <div class="stat-tile-value">${escapeHtml(String(total))}</div>
+          <div class="stat-tile-label">Users scanned</div>
+          <div class="stat-tile-sub">${sampled ? `of ${escapeHtml(String(r.meta.usersFound))} (sampled)` : 'full coverage'}</div>
+        </div>
+        <div class="stat-tile good">
+          <div class="stat-tile-value">${escapeHtml(String(ready))}</div>
+          <div class="stat-tile-label">Passkey registered</div>
+          <div class="stat-tile-sub">${total > 0 ? Math.round(ready / total * 100) : 0}% of users</div>
+        </div>
+        <div class="stat-tile capable">
+          <div class="stat-tile-value">${escapeHtml(String(capable))}</div>
+          <div class="stat-tile-label">Capable</div>
+          <div class="stat-tile-sub">Can self-register today</div>
+        </div>
+        <div class="stat-tile warn">
+          <div class="stat-tile-value">${escapeHtml(String(needsPrep))}</div>
+          <div class="stat-tile-label">Needs prep</div>
+          <div class="stat-tile-sub">One gap to resolve</div>
+        </div>
+        <div class="stat-tile danger">
+          <div class="stat-tile-value">${escapeHtml(String(blocked))}</div>
+          <div class="stat-tile-label">Blocked</div>
+          <div class="stat-tile-sub">Admin action required</div>
+        </div>
+        ${exempt > 0 ? `<div class="stat-tile exempt">
+          <div class="stat-tile-value">${escapeHtml(String(exempt))}</div>
+          <div class="stat-tile-label">Exempt</div>
+          <div class="stat-tile-sub">Break-glass / guest / MSA</div>
+        </div>` : ''}
       </div>
-      <div class="stat-tile good">
-        <div class="stat-tile-value">${escapeHtml(String(ready))}</div>
-        <div class="stat-tile-label">Ready for passkeys</div>
-        <div class="stat-tile-sub">${total > 0 ? Math.round(ready / total * 100) : 0}% of scanned users</div>
-      </div>
-      <div class="stat-tile warn">
-        <div class="stat-tile-value">${escapeHtml(String(needsAttention))}</div>
-        <div class="stat-tile-label">Need preparation</div>
-        <div class="stat-tile-sub">Device or MFA update required</div>
-      </div>
-      <div class="stat-tile danger">
-        <div class="stat-tile-value">${escapeHtml(String(blocked))}</div>
-        <div class="stat-tile-label">Blocked</div>
-        <div class="stat-tile-sub">CA policy or device blockers</div>
-      </div>
+      ${total > 0 ? `<div class="readiness-bar-block">
+        <div class="readiness-breakdown-bar">${barHtml}</div>
+        <div class="rbar-legend">
+          ${ready    > 0 ? `<span class="rbl ready">✅ Ready (${ready})</span>`          : ''}
+          ${capable  > 0 ? `<span class="rbl capable">🟢 Capable (${capable})</span>`   : ''}
+          ${needsPrep > 0 ? `<span class="rbl needsprep">🟡 Prep (${needsPrep})</span>` : ''}
+          ${blocked  > 0 ? `<span class="rbl blocked">🔴 Blocked (${blocked})</span>`   : ''}
+          ${exempt   > 0 ? `<span class="rbl exempt">⚪ Exempt (${exempt})</span>`       : ''}
+        </div>
+      </div>` : ''}
     </div>`;
 
   hero.classList.remove('hidden');
   if (prescan) prescan.classList.add('hidden');
 
+  // Animate arc fill + counter together
   requestAnimationFrame(() => requestAnimationFrame(() => {
-    const arc = document.getElementById('ring-arc');
-    if (arc) arc.style.strokeDashoffset = targetOffset.toFixed(1);
+    const arc     = document.getElementById('ring-arc');
+    const scoreEl = document.getElementById('ring-score-num');
+    if (arc) arc.style.strokeDashoffset = targetOff.toFixed(1);
+    if (scoreEl) {
+      const start    = performance.now();
+      const duration = 1100;
+      (function tick(now) {
+        const t     = Math.min((now - start) / duration, 1);
+        const eased = 1 - Math.pow(1 - t, 3);
+        scoreEl.textContent = Math.round(score * eased);
+        if (t < 1) requestAnimationFrame(tick);
+      })(performance.now());
+    }
   }));
 }
 
