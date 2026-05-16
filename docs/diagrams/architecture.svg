@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="980" viewBox="0 0 1200 980"
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="900" viewBox="0 0 1200 900"
      font-family="Segoe UI, system-ui, Arial, sans-serif">
 
   <defs>
-    <marker id="arr"      markerWidth="9" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0,9 3.5,0 7" fill="#555"/></marker>
-    <marker id="arr-blue" markerWidth="9" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0,9 3.5,0 7" fill="#0078d4"/></marker>
-    <marker id="arr-green" markerWidth="9" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0,9 3.5,0 7" fill="#107c10"/></marker>
+    <marker id="arr"        markerWidth="9" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0,9 3.5,0 7" fill="#555"/></marker>
+    <marker id="arr-blue"   markerWidth="9" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0,9 3.5,0 7" fill="#0078d4"/></marker>
+    <marker id="arr-green"  markerWidth="9" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0,9 3.5,0 7" fill="#107c10"/></marker>
     <marker id="arr-orange" markerWidth="9" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0,9 3.5,0 7" fill="#d97706"/></marker>
     <linearGradient id="hdr" x1="0" y1="0" x2="1" y2="0">
       <stop offset="0%" stop-color="#0078d4"/><stop offset="100%" stop-color="#106ebe"/>
@@ -16,7 +16,7 @@
   </defs>
 
   <!-- Background -->
-  <rect width="1200" height="980" fill="url(#bg)" rx="6"/>
+  <rect width="1200" height="900" fill="url(#bg)" rx="6"/>
 
   <!-- ══════════════════════════════════════════════════════════════
        HEADER
@@ -31,33 +31,33 @@
        ══════════════════════════════════════════════════════════════ -->
   <text x="33" y="74" fill="#444" font-size="11" font-weight="700" letter-spacing="0.8">DEPLOYMENT INFRASTRUCTURE</text>
 
-  <!-- Box: GitHub -->
+  <!-- GitHub -->
   <rect x="33" y="82" width="185" height="78" rx="7" fill="white" stroke="#24292e" stroke-width="1.8"/>
   <text x="126" y="106" fill="#24292e" font-size="12" font-weight="700" text-anchor="middle">GitHub Repository</text>
   <text x="126" y="122" fill="#666" font-size="10" text-anchor="middle">Source code + CI/CD</text>
   <text x="126" y="137" fill="#666" font-size="10" text-anchor="middle">Trivy + Dependabot</text>
 
-  <!-- Arrow: GitHub → Cloudflare -->
+  <!-- GitHub → Cloudflare -->
   <line x1="218" y1="121" x2="272" y2="121" stroke="#d97706" stroke-width="2" stroke-dasharray="7 4" marker-end="url(#arr-orange)"/>
   <text x="245" y="114" fill="#b45309" font-size="9" text-anchor="middle">auto-deploy</text>
 
-  <!-- Box: Cloudflare Pages -->
+  <!-- Cloudflare Pages -->
   <rect x="274" y="82" width="205" height="78" rx="7" fill="white" stroke="#d97706" stroke-width="1.8"/>
   <text x="377" y="106" fill="#b45309" font-size="12" font-weight="700" text-anchor="middle">Cloudflare Pages (CDN)</text>
   <text x="377" y="122" fill="#666" font-size="10" text-anchor="middle">Static SPA hosting</text>
   <text x="377" y="137" fill="#666" font-size="10" text-anchor="middle">Pages Function: /ai/ask</text>
 
-  <!-- Arrow: Cloudflare → Browser -->
+  <!-- Cloudflare → Browser -->
   <line x1="479" y1="121" x2="531" y2="121" stroke="#d97706" stroke-width="2" stroke-dasharray="7 4" marker-end="url(#arr-orange)"/>
   <text x="505" y="114" fill="#b45309" font-size="9" text-anchor="middle">serve SPA</text>
 
-  <!-- Box: User's Browser (deploy row) -->
+  <!-- User's Browser (deploy row) -->
   <rect x="533" y="82" width="195" height="78" rx="7" fill="white" stroke="#0078d4" stroke-width="1.8"/>
   <text x="631" y="106" fill="#0078d4" font-size="12" font-weight="700" text-anchor="middle">User's Browser</text>
   <text x="631" y="122" fill="#666" font-size="10" text-anchor="middle">Receives + executes SPA</text>
   <text x="631" y="137" fill="#666" font-size="10" text-anchor="middle">All analysis runs here</text>
 
-  <!-- Box: Entra Tenant (dashed, deploy-time) -->
+  <!-- Entra Tenant (dashed, deploy-time) -->
   <rect x="750" y="82" width="195" height="78" rx="7" fill="white" stroke="#0078d4" stroke-width="1.8" stroke-dasharray="5 3"/>
   <text x="848" y="106" fill="#0078d4" font-size="11" font-weight="700" text-anchor="middle">User's Entra ID Tenant</text>
   <text x="848" y="121" fill="#666" font-size="10" text-anchor="middle">App Registration (PKCE SPA)</text>
@@ -72,7 +72,7 @@
   <!-- Browser boundary box -->
   <rect x="33" y="191" width="835" height="375" rx="11" fill="none" stroke="#0078d4" stroke-width="2" stroke-dasharray="9 5" opacity="0.45"/>
 
-  <!-- ── Setup Wizard ── -->
+  <!-- Setup Wizard -->
   <rect x="53" y="211" width="215" height="118" rx="8" fill="#e8f4fd" stroke="#0078d4" stroke-width="1.5"/>
   <text x="161" y="232" fill="#0056a3" font-size="12" font-weight="700" text-anchor="middle">Setup Wizard</text>
   <line x1="65" y1="238" x2="255" y2="238" stroke="#0078d4" stroke-width="0.5" opacity="0.4"/>
@@ -81,7 +81,7 @@
   <text x="161" y="286" fill="#333" font-size="10" text-anchor="middle">3. Client ID + Tenant ID</text>
   <text x="161" y="304" fill="#555" font-size="9" font-style="italic" text-anchor="middle">PKCE-only — no client secret</text>
 
-  <!-- ── MSAL.js ── -->
+  <!-- MSAL.js -->
   <rect x="313" y="211" width="220" height="118" rx="8" fill="#fff7ed" stroke="#d97706" stroke-width="1.5"/>
   <text x="423" y="232" fill="#92400e" font-size="12" font-weight="700" text-anchor="middle">MSAL.js (PKCE Auth)</text>
   <line x1="325" y1="238" x2="521" y2="238" stroke="#d97706" stroke-width="0.5" opacity="0.4"/>
@@ -90,11 +90,17 @@
   <text x="423" y="286" fill="#333" font-size="10" text-anchor="middle">Token cache: sessionStorage</text>
   <text x="423" y="304" fill="#555" font-size="9" font-style="italic" text-anchor="middle">Token lifetime ~60 min</text>
 
-  <!-- Arrow: Setup → MSAL -->
+  <!-- Setup → MSAL -->
   <line x1="268" y1="268" x2="309" y2="268" stroke="#555" stroke-width="1.8" marker-end="url(#arr)"/>
   <text x="289" y="262" fill="#555" font-size="9" text-anchor="middle">config</text>
 
-  <!-- ── Graph API Client ── -->
+  <!-- MSAL → Graph (token passed, via clear channel between rows) -->
+  <line x1="423" y1="329" x2="423" y2="343" stroke="#555" stroke-width="1.5"/>
+  <line x1="423" y1="343" x2="270" y2="343" stroke="#555" stroke-width="1.5"/>
+  <line x1="270" y1="343" x2="270" y2="352" stroke="#555" stroke-width="1.5" marker-end="url(#arr)"/>
+  <text x="346" y="338" fill="#555" font-size="9" text-anchor="middle">bearer token</text>
+
+  <!-- Graph API Client -->
   <rect x="53" y="355" width="215" height="125" rx="8" fill="#ecfdf5" stroke="#107c10" stroke-width="1.5"/>
   <text x="161" y="376" fill="#065f46" font-size="12" font-weight="700" text-anchor="middle">Graph API Client</text>
   <line x1="65" y1="382" x2="255" y2="382" stroke="#107c10" stroke-width="0.5" opacity="0.4"/>
@@ -104,7 +110,7 @@
   <text x="161" y="447" fill="#555" font-size="9" font-style="italic" text-anchor="middle">Bearer token · read-only</text>
   <text x="161" y="461" fill="#555" font-size="9" font-style="italic" text-anchor="middle">Up to 50 users · 100 devices</text>
 
-  <!-- ── Analysis Engine ── -->
+  <!-- Analysis Engine -->
   <rect x="313" y="355" width="220" height="125" rx="8" fill="#faf5ff" stroke="#7c3aed" stroke-width="1.5"/>
   <text x="423" y="376" fill="#5b21b6" font-size="12" font-weight="700" text-anchor="middle">Analysis Engine</text>
   <line x1="325" y1="382" x2="521" y2="382" stroke="#7c3aed" stroke-width="0.5" opacity="0.4"/>
@@ -114,16 +120,11 @@
   <text x="423" y="447" fill="#555" font-size="9" font-style="italic" text-anchor="middle">App · CA · toxic combo analysis</text>
   <text x="423" y="461" fill="#555" font-size="9" font-style="italic" text-anchor="middle">Recommendations + narrative</text>
 
-  <!-- Arrow: Graph → Analysis -->
+  <!-- Graph → Analysis -->
   <line x1="268" y1="415" x2="309" y2="415" stroke="#555" stroke-width="1.8" marker-end="url(#arr)"/>
   <text x="289" y="408" fill="#555" font-size="9" text-anchor="middle">raw data</text>
 
-  <!-- Arrow: MSAL token → Graph API (vertical, token passed down) -->
-  <line x1="423" y1="329" x2="423" y2="350" stroke="#555" stroke-width="1.5" marker-end="url(#arr)"/>
-  <text x="435" y="342" fill="#555" font-size="9">token</text>
-  <line x1="423" y1="350" x2="270" y2="385" stroke="#555" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#arr)"/>
-
-  <!-- ── Dashboard UI ── -->
+  <!-- Dashboard UI -->
   <rect x="578" y="211" width="270" height="195" rx="8" fill="white" stroke="#374151" stroke-width="1.5"/>
   <text x="713" y="232" fill="#111827" font-size="12" font-weight="700" text-anchor="middle">Dashboard — 5 Tabs</text>
   <line x1="590" y1="238" x2="836" y2="238" stroke="#374151" stroke-width="0.5" opacity="0.3"/>
@@ -138,7 +139,7 @@
   <text x="713" y="381" fill="#6b7280" font-size="9" text-anchor="middle">Readiness score: 0–100 composite</text>
   <text x="713" y="397" fill="#9ca3af" font-size="9" font-style="italic" text-anchor="middle">All rendered from sessionStorage</text>
 
-  <!-- ── sessionStorage ── -->
+  <!-- sessionStorage -->
   <rect x="578" y="422" width="270" height="120" rx="8" fill="#fffbeb" stroke="#d97706" stroke-width="1.5"/>
   <text x="713" y="444" fill="#92400e" font-size="12" font-weight="700" text-anchor="middle">sessionStorage</text>
   <line x1="590" y1="450" x2="836" y2="450" stroke="#d97706" stroke-width="0.5" opacity="0.4"/>
@@ -148,35 +149,106 @@
   <text x="713" y="513" fill="#555" font-size="9" font-style="italic" text-anchor="middle">No disk persistence · No server copy</text>
   <text x="713" y="529" fill="#9ca3af" font-size="9" font-style="italic" text-anchor="middle">MSAL token cache also stored here</text>
 
-  <!-- Arrow: Analyzer → Dashboard -->
-  <line x1="533" y1="390" x2="573" y2="330" stroke="#374151" stroke-width="1.8" marker-end="url(#arr)"/>
-  <text x="558" y="358" fill="#374151" font-size="9" text-anchor="middle">results</text>
+  <!-- Analysis → Dashboard (diagonal up to top-left of Dashboard text area, clear of other boxes) -->
+  <line x1="533" y1="395" x2="575" y2="295" stroke="#374151" stroke-width="1.8" marker-end="url(#arr)"/>
+  <text x="555" y="335" fill="#374151" font-size="9" text-anchor="middle">results</text>
 
-  <!-- Arrow: Analyzer → sessionStorage -->
-  <line x1="533" y1="430" x2="573" y2="462" stroke="#d97706" stroke-width="1.8" marker-end="url(#arr-orange)"/>
-  <text x="558" y="447" fill="#b45309" font-size="9" text-anchor="middle">cache</text>
+  <!-- Analysis → sessionStorage (diagonal down to top-left of sessionStorage) -->
+  <line x1="533" y1="445" x2="573" y2="465" stroke="#d97706" stroke-width="1.8" marker-end="url(#arr-orange)"/>
+  <text x="555" y="458" fill="#b45309" font-size="9" text-anchor="middle">cache</text>
 
   <!-- ══════════════════════════════════════════════════════════════
-       4-TIER LEGEND STRIP (between browser box and external)
+       RIGHT COLUMN — Legend (top) + 4-Tier Readiness (bottom)
        ══════════════════════════════════════════════════════════════ -->
-  <rect x="33" y="578" width="835" height="58" rx="8" fill="white" stroke="#e5e7eb" stroke-width="1.2"/>
-  <text x="120" y="595" fill="#374151" font-size="10" font-weight="700">4-Tier Passkey Readiness:</text>
 
-  <rect x="42"  y="604" width="12" height="12" rx="2" fill="#107c10"/>
-  <text x="58"  y="614" fill="#333" font-size="9">Ready — FIDO2 passkey registered</text>
+  <!-- Legend Panel -->
+  <rect x="888" y="191" width="279" height="200" rx="8" fill="white" stroke="#e5e7eb" stroke-width="1.2"/>
+  <text x="1027" y="212" fill="#374151" font-size="11" font-weight="700" text-anchor="middle">Legend</text>
+  <line x1="900" y1="218" x2="1155" y2="218" stroke="#e5e7eb" stroke-width="1"/>
 
-  <rect x="220" y="604" width="12" height="12" rx="2" fill="#0078d4"/>
-  <text x="236" y="614" fill="#333" font-size="9">Capable — MFA + modern device, can self-register</text>
+  <rect x="900" y="226" width="16" height="11" rx="2" fill="#e8f4fd" stroke="#0078d4" stroke-width="1"/>
+  <text x="922" y="236" fill="#444" font-size="10">Setup / Onboarding</text>
 
-  <rect x="480" y="604" width="12" height="12" rx="2" fill="#d97706"/>
-  <text x="496" y="614" fill="#333" font-size="9">Needs Prep — one gap to fix</text>
+  <rect x="900" y="244" width="16" height="11" rx="2" fill="#fff7ed" stroke="#d97706" stroke-width="1"/>
+  <text x="922" y="254" fill="#444" font-size="10">Authentication</text>
 
-  <rect x="620" y="604" width="12" height="12" rx="2" fill="#d83b01"/>
-  <text x="636" y="614" fill="#333" font-size="9">Blocked — CA policy or multiple gaps</text>
+  <rect x="900" y="262" width="16" height="11" rx="2" fill="#ecfdf5" stroke="#107c10" stroke-width="1"/>
+  <text x="922" y="272" fill="#444" font-size="10">Data Fetching</text>
 
-  <rect x="42"  y="622" width="12" height="12" rx="2" fill="#8a8886"/>
-  <text x="58"  y="632" fill="#333" font-size="9">Exempt — break-glass / guest / personal MSA (excluded from passkey targets)</text>
-  <text x="480" y="629" fill="#888" font-size="9" font-style="italic">Modern device: Win 10+ · iOS 16+ · Android 14+ · macOS 13+</text>
+  <rect x="900" y="280" width="16" height="11" rx="2" fill="#faf5ff" stroke="#7c3aed" stroke-width="1"/>
+  <text x="922" y="290" fill="#444" font-size="10">Analysis Engine</text>
+
+  <rect x="900" y="298" width="16" height="11" rx="2" fill="white" stroke="#374151" stroke-width="1.2"/>
+  <text x="922" y="308" fill="#444" font-size="10">Dashboard UI</text>
+
+  <rect x="900" y="316" width="16" height="11" rx="2" fill="#fffbeb" stroke="#d97706" stroke-width="1"/>
+  <text x="922" y="326" fill="#444" font-size="10">sessionStorage</text>
+
+  <rect x="900" y="334" width="16" height="11" rx="2" fill="white" stroke="#0078d4" stroke-width="2"/>
+  <text x="922" y="344" fill="#444" font-size="10">Microsoft Service</text>
+
+  <rect x="900" y="352" width="16" height="11" rx="2" fill="none" stroke="#d97706" stroke-width="1.5" stroke-dasharray="4 2"/>
+  <text x="922" y="362" fill="#444" font-size="10">Optional / Opt-in</text>
+
+  <line x1="900" y1="378" x2="916" y2="378" stroke="#0078d4" stroke-width="2.5" stroke-dasharray="6 3" marker-end="url(#arr-blue)"/>
+  <text x="922" y="382" fill="#444" font-size="10">Graph API call / response</text>
+
+  <!-- 4-Tier Readiness Panel -->
+  <rect x="888" y="406" width="279" height="160" rx="8" fill="white" stroke="#e5e7eb" stroke-width="1.2"/>
+  <text x="1027" y="427" fill="#374151" font-size="11" font-weight="700" text-anchor="middle">4-Tier Passkey Readiness</text>
+  <line x1="900" y1="433" x2="1155" y2="433" stroke="#e5e7eb" stroke-width="1"/>
+
+  <rect x="900" y="442" width="11" height="11" rx="2" fill="#107c10"/>
+  <text x="918" y="451" fill="#222" font-size="9.5" font-weight="600">Ready</text>
+  <text x="958" y="451" fill="#666" font-size="9">FIDO2 passkey registered</text>
+
+  <rect x="900" y="462" width="11" height="11" rx="2" fill="#0078d4"/>
+  <text x="918" y="471" fill="#222" font-size="9.5" font-weight="600">Capable</text>
+  <text x="958" y="471" fill="#666" font-size="9">MFA + modern device</text>
+
+  <rect x="900" y="482" width="11" height="11" rx="2" fill="#d97706"/>
+  <text x="918" y="491" fill="#222" font-size="9.5" font-weight="600">Needs Prep</text>
+  <text x="978" y="491" fill="#666" font-size="9">one gap to fix</text>
+
+  <rect x="900" y="502" width="11" height="11" rx="2" fill="#d83b01"/>
+  <text x="918" y="511" fill="#222" font-size="9.5" font-weight="600">Blocked</text>
+  <text x="958" y="511" fill="#666" font-size="9">CA policy or multiple gaps</text>
+
+  <rect x="900" y="522" width="11" height="11" rx="2" fill="#8a8886"/>
+  <text x="918" y="531" fill="#222" font-size="9.5" font-weight="600">Exempt</text>
+  <text x="958" y="531" fill="#666" font-size="9">break-glass / guest / MSA</text>
+
+  <line x1="900" y1="543" x2="1155" y2="543" stroke="#e5e7eb" stroke-width="1"/>
+  <text x="1027" y="557" fill="#888" font-size="8.5" font-style="italic" text-anchor="middle">Modern device: Win 10+ · iOS 16+ · Android 14+ · macOS 13+</text>
+
+  <!-- Right-column footer notes (below the two panels) -->
+  <text x="1027" y="588" fill="#888" font-size="9" text-anchor="middle">No secrets stored in repo</text>
+  <text x="1027" y="602" fill="#888" font-size="9" text-anchor="middle">No client secret (PKCE SPA)</text>
+  <text x="1027" y="616" fill="#888" font-size="9" text-anchor="middle">sessionStorage cleared on tab close</text>
+
+  <!-- ══════════════════════════════════════════════════════════════
+       DATA FLOW ARROWS — clean 100px lane between browser (y=566) and external (y=666)
+       ══════════════════════════════════════════════════════════════ -->
+
+  <!-- Graph API call (down, blue dashed) -->
+  <line x1="130" y1="566" x2="130" y2="662" stroke="#0078d4" stroke-width="2.5" stroke-dasharray="8 4" marker-end="url(#arr-blue)"/>
+  <text x="65" y="595" fill="#0078d4" font-size="9">GET /users</text>
+  <text x="65" y="610" fill="#0078d4" font-size="9">GET /devices</text>
+  <text x="65" y="625" fill="#0078d4" font-size="9">GET /policies</text>
+
+  <!-- JSON response (up, green dashed) -->
+  <line x1="200" y1="662" x2="200" y2="568" stroke="#107c10" stroke-width="2" stroke-dasharray="8 4" marker-end="url(#arr-green)"/>
+  <text x="217" y="617" fill="#107c10" font-size="9">JSON response</text>
+
+  <!-- PKCE auth + token (down, orange dashed) -->
+  <line x1="620" y1="566" x2="620" y2="662" stroke="#d97706" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#arr-orange)"/>
+  <text x="635" y="602" fill="#b45309" font-size="9">PKCE auth</text>
+  <text x="635" y="616" fill="#b45309" font-size="9">+ token</text>
+
+  <!-- AI optional (diagonal, orange dashed) — from browser bottom-right toward Workers AI top -->
+  <line x1="820" y1="566" x2="940" y2="662" stroke="#d97706" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#arr-orange)"/>
+  <text x="815" y="608" fill="#b45309" font-size="9" text-anchor="end">opt-in only</text>
+  <text x="815" y="622" fill="#b45309" font-size="9" text-anchor="end">count summary</text>
 
   <!-- ══════════════════════════════════════════════════════════════
        LAYER 2 — EXTERNAL SERVICES
@@ -204,102 +276,19 @@
   <text x="640" y="778" fill="#888" font-size="9" text-anchor="middle">No shared credentials — PKCE only</text>
 
   <!-- Cloudflare Workers AI (optional) -->
-  <rect x="895" y="666" width="272" height="125" rx="8" fill="white" stroke="#d97706" stroke-width="1.8" stroke-dasharray="6 3"/>
-  <text x="1031" y="687" fill="#b45309" font-size="12" font-weight="700" text-anchor="middle">Cloudflare Workers AI</text>
-  <text x="1031" y="703" fill="#9ca3af" font-size="10" font-style="italic" text-anchor="middle">(optional — AI Assistant only)</text>
-  <line x1="907" y1="709" x2="1155" y2="709" stroke="#d97706" stroke-width="0.5" opacity="0.3"/>
-  <text x="1031" y="726" fill="#555" font-size="10" text-anchor="middle">Receives count-only summary</text>
-  <text x="1031" y="742" fill="#555" font-size="10" text-anchor="middle">No user names or UPNs</text>
-  <text x="1031" y="758" fill="#888" font-size="9" text-anchor="middle">Off by default</text>
-  <text x="1031" y="774" fill="#888" font-size="9" text-anchor="middle">Rate-limited · CORS-protected</text>
-
-  <!-- ══════════════════════════════════════════════════════════════
-       DATA FLOW ARROWS (browser ↔ external services)
-       ══════════════════════════════════════════════════════════════ -->
-
-  <!-- Graph API calls (browser → Graph, dashed blue, left side) -->
-  <line x1="145" y1="566" x2="145" y2="661" stroke="#0078d4" stroke-width="2.5" stroke-dasharray="8 4" marker-end="url(#arr-blue)"/>
-  <text x="100" y="600" fill="#0078d4" font-size="9" text-anchor="middle">GET /users</text>
-  <text x="100" y="613" fill="#0078d4" font-size="9" text-anchor="middle">GET /devices</text>
-  <text x="100" y="626" fill="#0078d4" font-size="9" text-anchor="middle">GET /policies</text>
-
-  <!-- JSON response (Graph → browser, dashed green) -->
-  <line x1="195" y1="661" x2="195" y2="567" stroke="#107c10" stroke-width="2" stroke-dasharray="8 4" marker-end="url(#arr-green)"/>
-  <text x="240" y="615" fill="#107c10" font-size="9">JSON response</text>
-
-  <!-- PKCE auth (MSAL → Entra ID, labeled straight vertical path on right) -->
-  <line x1="640" y1="566" x2="640" y2="661" stroke="#d97706" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#arr-orange)"/>
-  <text x="680" y="595" fill="#b45309" font-size="9">PKCE auth</text>
-  <text x="680" y="608" fill="#b45309" font-size="9">+ token</text>
-
-  <!-- MSAL connects down to Entra ID arrow -->
-  <line x1="530" y1="268" x2="640" y2="268" stroke="#d97706" stroke-width="1.5" stroke-dasharray="4 3"/>
-  <line x1="640" y1="268" x2="640" y2="566" stroke="#d97706" stroke-width="1.5" stroke-dasharray="4 3"/>
-
-  <!-- AI optional (dashed orange, from browser right to Workers AI) -->
-  <line x1="848" y1="540" x2="1030" y2="661" stroke="#d97706" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#arr-orange)"/>
-  <text x="970" y="610" fill="#b45309" font-size="9" text-anchor="middle">opt-in only</text>
-  <text x="970" y="623" fill="#b45309" font-size="9" text-anchor="middle">count summary</text>
-
-  <!-- ══════════════════════════════════════════════════════════════
-       LEGEND PANEL (right side, beside browser + 4-tier strip)
-       ══════════════════════════════════════════════════════════════ -->
-  <rect x="888" y="191" width="279" height="385" rx="8" fill="white" stroke="#e5e7eb" stroke-width="1.2"/>
-  <text x="1027" y="212" fill="#374151" font-size="11" font-weight="700" text-anchor="middle">Legend</text>
-  <line x1="900" y1="218" x2="1155" y2="218" stroke="#e5e7eb" stroke-width="1"/>
-
-  <!-- Color swatches -->
-  <rect x="900" y="228" width="18" height="13" rx="3" fill="#e8f4fd" stroke="#0078d4" stroke-width="1"/>
-  <text x="924" y="239" fill="#444" font-size="10">Setup / Onboarding</text>
-
-  <rect x="900" y="248" width="18" height="13" rx="3" fill="#fff7ed" stroke="#d97706" stroke-width="1"/>
-  <text x="924" y="259" fill="#444" font-size="10">Authentication</text>
-
-  <rect x="900" y="268" width="18" height="13" rx="3" fill="#ecfdf5" stroke="#107c10" stroke-width="1"/>
-  <text x="924" y="279" fill="#444" font-size="10">Data Fetching</text>
-
-  <rect x="900" y="288" width="18" height="13" rx="3" fill="#faf5ff" stroke="#7c3aed" stroke-width="1"/>
-  <text x="924" y="299" fill="#444" font-size="10">Analysis Engine</text>
-
-  <rect x="900" y="308" width="18" height="13" rx="3" fill="white" stroke="#374151" stroke-width="1.2"/>
-  <text x="924" y="319" fill="#444" font-size="10">Dashboard UI</text>
-
-  <rect x="900" y="328" width="18" height="13" rx="3" fill="#fffbeb" stroke="#d97706" stroke-width="1"/>
-  <text x="924" y="339" fill="#444" font-size="10">sessionStorage</text>
-
-  <rect x="900" y="348" width="18" height="13" rx="3" fill="white" stroke="#0078d4" stroke-width="2"/>
-  <text x="924" y="359" fill="#444" font-size="10">Microsoft Service</text>
-
-  <rect x="900" y="368" width="18" height="13" rx="3" fill="none" stroke="#d97706" stroke-width="1.5" stroke-dasharray="4 2"/>
-  <text x="924" y="379" fill="#444" font-size="10">Optional / Opt-in</text>
-
-  <rect x="900" y="388" width="18" height="13" rx="3" fill="none" stroke="#555" stroke-width="1.5" stroke-dasharray="5 3"/>
-  <text x="924" y="399" fill="#444" font-size="10">Deploy-time action</text>
-
-  <line x1="900" y1="415" x2="918" y2="415" stroke="#0078d4" stroke-width="2.5" stroke-dasharray="6 3" marker-end="url(#arr-blue)"/>
-  <text x="924" y="419" fill="#444" font-size="10">Graph API call</text>
-
-  <line x1="900" y1="437" x2="918" y2="437" stroke="#107c10" stroke-width="2" stroke-dasharray="6 3" marker-end="url(#arr-green)"/>
-  <text x="924" y="441" fill="#444" font-size="10">Graph API response</text>
-
-  <line x1="900" y1="459" x2="918" y2="459" stroke="#d97706" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#arr-orange)"/>
-  <text x="924" y="463" fill="#444" font-size="10">Auth / Optional flow</text>
-
-  <line x1="900" y1="481" x2="918" y2="481" stroke="#555" stroke-width="1.8" marker-end="url(#arr)"/>
-  <text x="924" y="485" fill="#444" font-size="10">Internal data flow</text>
-
-  <line x1="900" y1="502" x2="918" y2="502" stroke="#555" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#arr)"/>
-  <text x="924" y="506" fill="#444" font-size="10">Token passed</text>
-
-  <line x1="900" y1="522" x2="1155" y2="522" stroke="#e5e7eb" stroke-width="1"/>
-  <text x="1027" y="537" fill="#888" font-size="9" text-anchor="middle">No secrets stored in repo</text>
-  <text x="1027" y="550" fill="#888" font-size="9" text-anchor="middle">No client secret (PKCE SPA)</text>
-  <text x="1027" y="563" fill="#888" font-size="9" text-anchor="middle">sessionStorage cleared on tab close</text>
+  <rect x="857" y="666" width="310" height="125" rx="8" fill="white" stroke="#d97706" stroke-width="1.8" stroke-dasharray="6 3"/>
+  <text x="1012" y="687" fill="#b45309" font-size="12" font-weight="700" text-anchor="middle">Cloudflare Workers AI</text>
+  <text x="1012" y="703" fill="#9ca3af" font-size="10" font-style="italic" text-anchor="middle">(optional — AI Assistant only)</text>
+  <line x1="869" y1="709" x2="1155" y2="709" stroke="#d97706" stroke-width="0.5" opacity="0.3"/>
+  <text x="1012" y="726" fill="#555" font-size="10" text-anchor="middle">Receives count-only summary</text>
+  <text x="1012" y="742" fill="#555" font-size="10" text-anchor="middle">No user names or UPNs</text>
+  <text x="1012" y="758" fill="#888" font-size="9" text-anchor="middle">Off by default</text>
+  <text x="1012" y="774" fill="#888" font-size="9" text-anchor="middle">Rate-limited · CORS-protected</text>
 
   <!-- ══════════════════════════════════════════════════════════════
        FOOTER
        ══════════════════════════════════════════════════════════════ -->
-  <text x="600" y="820" fill="#999" font-size="9" text-anchor="middle">EntraPass · github.com/arusso-aboutcloud/EntraPass · Built by Aboutcloud (aboutcloud.io) · MIT License</text>
-  <text x="600" y="834" fill="#bbb" font-size="9" text-anchor="middle">All tenant data stays in the user's browser. The only external calls are to Microsoft Graph API (read-only, delegated).</text>
+  <text x="600" y="830" fill="#999" font-size="9" text-anchor="middle">EntraPass · github.com/arusso-aboutcloud/EntraPass · Built by Aboutcloud (aboutcloud.io) · MIT License</text>
+  <text x="600" y="846" fill="#bbb" font-size="9" text-anchor="middle">All tenant data stays in the user's browser. The only external calls are to Microsoft Graph API (read-only, delegated).</text>
 
 </svg>
