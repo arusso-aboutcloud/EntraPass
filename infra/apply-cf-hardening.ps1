@@ -112,8 +112,10 @@ $ruleApiAbuse = @{
 $umami.description = 'Umami: Protect Analytics Dashboard'
 
 # -- Rule 5: EntraApps: Static SPA Enforcement (rename + expand hosts) --------
+# /ai/ask is a Pages Function that handles its own CORS + auth; POST must be
+# allowed from non-admin IPs so the AI chat works for real users.
 $spaExpr = @'
-http.host in {"entrapass.aboutcloud.io" "entrarolelens.aboutcloud.io" "entratracker.aboutcloud.io" "entraerrors.aboutcloud.io"} and not http.request.method in {"GET" "HEAD"} and not ip.src eq __ADMIN_IP__
+http.host in {"entrapass.aboutcloud.io" "entrarolelens.aboutcloud.io" "entratracker.aboutcloud.io" "entraerrors.aboutcloud.io"} and not http.request.method in {"GET" "HEAD"} and not ip.src eq __ADMIN_IP__ and not (http.host eq "entrapass.aboutcloud.io" and http.request.uri.path eq "/ai/ask")
 '@
 $spaExpr = $spaExpr.Trim() -replace '__ADMIN_IP__', $AdminIp
 
@@ -185,5 +187,100 @@ Write-Host "    [RENAME] $($epHeadersRule.description)" -ForegroundColor Green
 
 $r2 = Invoke-CfPut "$Base/zones/$ZoneId/rulesets/$rhtId" @{ rules = $newRhtRules }
 Write-Host ("  OK -- {0} rules active." -f $r2.rules.Count) -ForegroundColor Green
+
+# =============================================================================
+# 3.  Rate Limiting Rules  (Advanced Rate Limiting — Pro plan or higher)
+# =============================================================================
+# Adds a 30 req/min per-IP rate limit on the EntraPass AI endpoint.
+# The Pages Function has in-memory rate limiting too; this is the CF edge layer.
+# If this section fails the rest of the script is unaffected.
+# =============================================================================
+Write-Host "`n[Rate Limit] Fetching ruleset..." -ForegroundColor Cyan
+try {
+    $rl      = Invoke-CfGet "$Base/zones/$ZoneId/rulesets/phases/http_ratelimit/entrypoint"
+    $rlId    = $rl.id
+    $rlRules = if ($rl.rules) { @($rl.rules) } else { @() }
+
+    # Preserve all existing rules except any prior AI endpoint rule
+    $otherRl = @($rlRules | Where-Object { $_.description -notmatch 'EntraPass.*AI|AI.*endpoint|/ai/ask' })
+
+    $aiRlRule = @{
+        action      = 'block'
+        description = 'EntraPass: AI endpoint — 30 req/min per IP'
+        enabled     = $true
+        expression  = 'http.host eq "entrapass.aboutcloud.io" and http.request.uri.path eq "/ai/ask"'
+        ratelimit   = @{
+            characteristics     = @('ip.src')
+            period              = 60
+            requests_per_period = 30
+            mitigation_timeout  = 60
+        }
+    }
+
+    # Preserve rule ID if we are updating an existing rule
+    $existingAiRl = $rlRules | Where-Object { $_.description -match 'EntraPass.*AI|AI.*endpoint|/ai/ask' } | Select-Object -First 1
+    if ($existingAiRl) { $aiRlRule.id = $existingAiRl.id }
+
+    $newRlRules = $otherRl + @($aiRlRule)
+    Write-Host "    [UPSERT] EntraPass: AI endpoint — 30 req/min per IP" -ForegroundColor Yellow
+    $r3 = Invoke-CfPut "$Base/zones/$ZoneId/rulesets/$rlId" @{ rules = $newRlRules }
+    Write-Host ("  OK -- {0} rate limit rules active." -f $r3.rules.Count) -ForegroundColor Green
+} catch {
+    Write-Host ("  SKIP -- Rate limit phase inaccessible ({0})." -f $_.Exception.Message) -ForegroundColor DarkYellow
+    Write-Host "  To add manually: Security -> Rate Limiting -> 30 req/60s on /ai/ask" -ForegroundColor DarkYellow
+}
+
+# =============================================================================
+# 4.  Cache Rules
+# =============================================================================
+# - Hashed Vite assets (/assets/*): 1-year immutable cache
+# - index.html (/):                 bypass cache so deploys are instant
+# =============================================================================
+Write-Host "`n[Cache] Fetching ruleset..." -ForegroundColor Cyan
+try {
+    $cr      = Invoke-CfGet "$Base/zones/$ZoneId/rulesets/phases/http_cache_settings/entrypoint"
+    $crId    = $cr.id
+    $crRules = if ($cr.rules) { @($cr.rules) } else { @() }
+
+    # Preserve non-EntraPass cache rules
+    $otherCr = @($crRules | Where-Object { $_.description -notmatch 'EntraPass.*Cache|EntraPass.*Asset|EntraPass.*index' })
+
+    $crAssets = @{
+        action      = 'set_cache_settings'
+        description = 'EntraPass: Cache hashed assets (1 year)'
+        enabled     = $true
+        expression  = 'http.host eq "entrapass.aboutcloud.io" and http.request.uri.path contains "/assets/"'
+        action_parameters = @{
+            cache       = $true
+            edge_ttl    = @{ mode = 'override'; default = 31536000 }
+            browser_ttl = @{ mode = 'override'; default = 31536000 }
+        }
+    }
+    $crIndex = @{
+        action      = 'set_cache_settings'
+        description = 'EntraPass: No-cache index.html'
+        enabled     = $true
+        expression  = 'http.host eq "entrapass.aboutcloud.io" and http.request.uri.path eq "/"'
+        action_parameters = @{
+            cache       = $false
+            browser_ttl = @{ mode = 'bypass_by_default' }
+        }
+    }
+
+    # Preserve IDs if updating existing rules
+    $existingAssets = $crRules | Where-Object { $_.description -match 'EntraPass.*Cache|EntraPass.*Asset' } | Select-Object -First 1
+    $existingIndex  = $crRules | Where-Object { $_.description -match 'EntraPass.*index'                   } | Select-Object -First 1
+    if ($existingAssets) { $crAssets.id = $existingAssets.id }
+    if ($existingIndex)  { $crIndex.id  = $existingIndex.id  }
+
+    $newCrRules = $otherCr + @($crAssets, $crIndex)
+    Write-Host "    [UPSERT] EntraPass: Cache hashed assets (1 year)" -ForegroundColor Yellow
+    Write-Host "    [UPSERT] EntraPass: No-cache index.html"          -ForegroundColor Yellow
+    $r4 = Invoke-CfPut "$Base/zones/$ZoneId/rulesets/$crId" @{ rules = $newCrRules }
+    Write-Host ("  OK -- {0} cache rules active." -f $r4.rules.Count) -ForegroundColor Green
+} catch {
+    Write-Host ("  SKIP -- Cache ruleset inaccessible ({0})." -f $_.Exception.Message) -ForegroundColor DarkYellow
+    Write-Host "  To add manually: Caching -> Cache Rules in the Cloudflare dashboard" -ForegroundColor DarkYellow
+}
 
 Write-Host "`nHardening complete." -ForegroundColor Green

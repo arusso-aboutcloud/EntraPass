@@ -61,6 +61,7 @@ const loginRequest = {
 let graphApi = null;
 let analyzer = null;
 let scanResults = null;
+let chatHistory = [];   // [{role, content}] — last N exchanges sent to the model
 
 // ============================================
 // Microsoft documentation references
@@ -393,71 +394,192 @@ function toggleAiMode() {
   const mode = document.getElementById('ai-mode').value;
   document.getElementById('byok-config').classList.toggle('hidden', mode !== 'byok');
   document.getElementById('ai-chat').classList.toggle('hidden', mode === 'off');
+  // Clear history when switching modes so context doesn't bleed across providers
+  chatHistory = [];
+  document.getElementById('chat-messages').innerHTML = '';
+}
+
+// Parses a Workers AI SSE stream, calling onChunk(accumulatedText) per token.
+// Returns the fully assembled response string.
+async function readSseStream(body, onChunk) {
+  const reader  = body.getReader();
+  const decoder = new TextDecoder();
+  let buffer   = '';
+  let fullText = '';
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() ?? '';
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        const data = line.slice(6).trim();
+        if (data === '[DONE]') return fullText;
+        try {
+          const token = JSON.parse(data).response ?? '';
+          if (token) { fullText += token; onChunk(fullText); }
+        } catch { /* ignore malformed SSE */ }
+      }
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  return fullText;
 }
 
 async function sendChat() {
   const input = document.getElementById('chat-input');
   const q = input.value.trim();
-  if (!q || !scanResults) return;
+  if (!q) return;
 
   const m = document.getElementById('chat-messages');
   m.innerHTML += `<div class='message user'>${escapeHtml(q)}</div>`;
   input.value = '';
-  m.innerHTML += `<div class='message bot'>Thinking...</div>`;
+
+  const botEl = document.createElement('div');
+  botEl.className = 'message bot';
+  botEl.textContent = 'Thinking…';
+  m.appendChild(botEl);
+
   try {
-    const a = await getAiAnswer(q, scanResults);
-    m.removeChild(m.lastChild);
-    m.innerHTML += `<div class='message bot'>${formatAiAnswer(a)}</div>`;
+    const a = await getAiAnswer(q, scanResults, chatHistory, (partial) => {
+      botEl.innerHTML = formatAiAnswer(partial);
+      m.scrollTop = m.scrollHeight;
+    });
     m.scrollTop = m.scrollHeight;
+    chatHistory.push({ role: 'user', content: q }, { role: 'assistant', content: a });
+    if (chatHistory.length > 10) chatHistory = chatHistory.slice(-10);
   } catch (err) {
-    m.removeChild(m.lastChild);
-    m.innerHTML += `<div class='message bot error'>Error: ${escapeHtml(err.message)}</div>`;
+    if (err.quota) {
+      // Quota / rate-limit — render as a soft notice, not a red error
+      botEl.innerHTML = formatAiAnswer(err.message);
+    } else {
+      botEl.innerHTML = `<span class="error">Error: ${escapeHtml(err.message)}</span>`;
+    }
   }
 }
 
-async function getAiAnswer(question, results) {
+async function getAiAnswer(question, results, history = [], onChunk = () => {}) {
   const mode = document.getElementById('ai-mode').value;
+
   if (mode === 'cloudflare') {
     const r = await fetch('/ai/ask', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ question, results }),
+      body: JSON.stringify({ question, results: results || {}, history }),
     });
-    if (!r.ok) throw new Error('AI error');
-    return (await r.json()).answer;
+    if (!r.ok) {
+      let msg = 'AI request failed';
+      let quota = r.status === 429;
+      try { const b = await r.json(); msg = b.error || msg; quota = quota || !!b.quota; } catch { /* ignore */ }
+      throw Object.assign(new Error(msg), { quota });
+    }
+    return readSseStream(r.body, onChunk);
   }
+
   if (mode === 'byok') {
-    const ep = document.getElementById('ai-endpoint').value.trim().replace(/\/+$/, '');
-    const k = document.getElementById('ai-key').value;
+    const ep    = document.getElementById('ai-endpoint').value.trim().replace(/\/+$/, '');
+    const k     = document.getElementById('ai-key').value;
     const model = document.getElementById('ai-model').value;
-    if (!ep || !k) throw new Error('Configure BYOK');
+    if (!ep || !k) throw new Error('Configure the endpoint and API key in BYOK settings');
+    const systemMsg = 'You are the EntraPass AI assistant — an expert in Microsoft Entra ID '
+      + 'passkey migration and the EntraPass open-source scanning tool. '
+      + 'Answer concisely and factually, under 200 words. '
+      + 'When relevant, end your response with a "📖 Learn more:" line citing one '
+      + 'official Microsoft documentation URL (learn.microsoft.com). '
+      + 'Do not answer questions unrelated to Microsoft identity or EntraPass.';
+    const userMsg = results
+      ? `Scan results: ${JSON.stringify(results)}\n\nQuestion: ${question}`
+      : `Question: ${question}`;
     const r = await fetch(ep + '/chat/completions', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + k,
-      },
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + k },
       body: JSON.stringify({
         model: model || 'gpt-4o-mini',
         messages: [
-          { role: 'system', content: 'You are an Entra ID passkey expert.' },
-          { role: 'user', content: `Results: ${JSON.stringify(results)} Q: ${question}` },
+          { role: 'system', content: systemMsg },
+          ...history,
+          { role: 'user', content: userMsg },
         ],
       }),
     });
-    if (!r.ok) throw new Error('BYOK error');
-    return (await r.json()).choices?.[0]?.message?.content || 'No response';
+    if (!r.ok) throw new Error('BYOK API returned ' + r.status);
+    const answer = (await r.json()).choices?.[0]?.message?.content || 'No response';
+    onChunk(answer);
+    return answer;
   }
-  return 'AI is off.';
+
+  const offMsg = 'AI is off.';
+  onChunk(offMsg);
+  return offMsg;
 }
 
-// Escapes the model output first, then applies a minimal subset of markdown
-// (newlines and bold). Escaping must happen before formatting so an AI
-// response cannot inject markup.
+// Escapes the model output first, then applies a safe markdown subset.
+// Escaping MUST happen before formatting so model output cannot inject markup.
+// Links are only rendered for known-safe domains (learn.microsoft.com, github.com).
 function formatAiAnswer(text) {
   return escapeHtml(text)
     .replace(/\n/g, '<br>')
-    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(
+      /\[([^\]]{1,120})\]\((https?:\/\/(?:learn\.microsoft\.com|github\.com|docs\.microsoft\.com)[^\s)]{0,400})\)/g,
+      (_, label, url) => `<a href="${url}" target="_blank" rel="noopener noreferrer">${label}</a>`,
+    );
+}
+
+// ============================================
+// CSV Export
+// ============================================
+function downloadCsv(filename, headers, rows) {
+  const esc = v => '"' + String(v ?? '').replace(/"/g, '""') + '"';
+  const csv = [headers, ...rows].map(r => r.map(esc).join(',')).join('\n');
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+
+function exportReadinessCsv() {
+  if (!scanResults?.passkeyReadiness?.users) return;
+  const ts = new Date().toISOString().slice(0, 10);
+  downloadCsv(
+    `entrapass-readiness-${ts}.csv`,
+    ['Display Name', 'UPN', 'Status', 'Issues', 'Last Sign-In', 'Devices', 'Auth Methods'],
+    scanResults.passkeyReadiness.users.map(u => [
+      u.displayName, u.userPrincipalName, u.status,
+      u.issues.join('; '), u.lastSignIn || '', u.deviceCount, u.authMethodCount,
+    ]),
+  );
+}
+
+function exportAppsCsv() {
+  if (!scanResults?.apps) return;
+  const ts = new Date().toISOString().slice(0, 10);
+  downloadCsv(
+    `entrapass-apps-${ts}.csv`,
+    ['App Name', 'Microsoft-Managed', 'Compatible', 'Severity', 'Issues', 'Fix Guide'],
+    scanResults.apps.map(a => [
+      a.displayName, a.isSubstrate ? 'Yes' : 'No',
+      a.passkeyCompatible ? 'Yes' : 'No', a.severity || '',
+      a.issues.join('; '), a.fixGuide || '',
+    ]),
+  );
+}
+
+function exportPoliciesCsv() {
+  if (!scanResults?.policies) return;
+  const ts = new Date().toISOString().slice(0, 10);
+  downloadCsv(
+    `entrapass-policies-${ts}.csv`,
+    ['Policy Name', 'State', 'Blocks Passkeys', 'Fix Guide'],
+    scanResults.policies.map(p => [
+      p.displayName, p.state || '',
+      p.blocksPasskeyRegistration ? 'Yes' : 'No', p.fixGuide || '',
+    ]),
+  );
 }
 
 // ============================================
@@ -677,7 +799,12 @@ function renderScanNotices(r) {
 
 function renderReadiness(r) {
   const { users } = r.passkeyReadiness;
-  let h = '<table><thead><tr><th>User</th><th>Status</th><th>Issues</th></tr></thead><tbody>';
+  const container = document.getElementById('readiness-table');
+  let h = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.6rem;">'
+    + `<span style="font-size:0.85rem;color:var(--text-secondary);">${escapeHtml(String(users.length))} users analysed</span>`
+    + '<button id="btn-export-readiness" class="btn-ghost" style="font-size:0.8rem;padding:0.25rem 0.65rem;">⬇ Export CSV</button>'
+    + '</div>';
+  h += '<table><thead><tr><th>User</th><th>Status</th><th>Issues</th></tr></thead><tbody>';
   users.forEach((u) => {
     const ic = u.status === 'ready' ? '\u{1F7E2}'
       : u.status === 'attention' ? '\u{1F7E1}' : '\u{1F534}';
@@ -688,19 +815,22 @@ function renderReadiness(r) {
     </tr>`;
   });
   h += '</tbody></table>';
-  document.getElementById('readiness-table').innerHTML = h;
+  container.innerHTML = h;
+  container.querySelector('#btn-export-readiness')?.addEventListener('click', exportReadinessCsv);
 }
 
 function renderApps(r) {
   const compatible = r.apps.filter((a) => a.passkeyCompatible).length;
-  const total = r.apps.length;
+  const total  = r.apps.length;
   const flagged = total - compatible;
+  const container = document.getElementById('apps-table');
 
-  let h = '';
-  h += '<div style="margin-bottom:1rem;font-size:0.95rem;color:var(--text-secondary);">';
+  let h = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">';
+  h += '<div style="font-size:0.9rem;color:var(--text-secondary);">';
   h += '<span style="color:var(--good);">\u{1F7E2} ' + escapeHtml(String(compatible)) + ' compatible</span>';
   if (flagged > 0) h += ' <span style="color:var(--danger);margin-left:0.5rem;">\u{1F534} ' + escapeHtml(String(flagged)) + ' need review</span>';
-  h += ' <span style="margin-left:0.5rem;">out of ' + escapeHtml(String(total)) + ' apps scanned</span>';
+  h += ' <span style="margin-left:0.5rem;">of ' + escapeHtml(String(total)) + ' apps</span></div>';
+  h += '<button id="btn-export-apps" class="btn-ghost" style="font-size:0.8rem;padding:0.25rem 0.65rem;">⬇ Export CSV</button>';
   h += '</div>';
 
   h += '<div style="overflow-x:auto;">';
@@ -712,20 +842,15 @@ function renderApps(r) {
   sorted.forEach((a) => {
     let badge, statusText;
     if (a.isSubstrate && !a.passkeyCompatible) {
-      badge = '\u{1F4C4}';
-      statusText = 'Info';
+      badge = '\u{1F4C4}'; statusText = 'Info';
     } else if (a.passkeyCompatible) {
-      badge = '\u{1F7E2}';
-      statusText = 'OK';
+      badge = '\u{1F7E2}'; statusText = 'OK';
     } else {
-      badge = '\u{1F534}';
-      statusText = 'Flagged';
+      badge = '\u{1F534}'; statusText = 'Flagged';
     }
-
     const issueText = a.issues.length > 0 ? a.issues.join('; ') : 'None';
-    const descBg = a.severity === 'high' ? '#fff0f0' : a.severity === 'medium' ? '#fff8f0' : '#f8f8f8';
+    const descBg     = a.severity === 'high' ? '#fff0f0' : a.severity === 'medium' ? '#fff8f0' : '#f8f8f8';
     const descBorder = a.severity === 'high' ? 'var(--danger)' : a.severity === 'medium' ? 'var(--warn)' : 'var(--border)';
-
     h += '<tr>';
     h += '<td><strong>' + escapeHtml(a.displayName) + '</strong>'
       + (a.isSubstrate ? '<br><span style="font-size:0.75rem;color:#888;">Microsoft-managed</span>' : '') + '</td>';
@@ -738,11 +863,16 @@ function renderApps(r) {
   });
 
   h += '</tbody></table></div>';
-  document.getElementById('apps-table').innerHTML = h;
+  container.innerHTML = h;
+  container.querySelector('#btn-export-apps')?.addEventListener('click', exportAppsCsv);
 }
 
 function renderPolicies(r) {
-  let h = '<table><thead><tr><th>Policy</th><th>Blocks Passkeys?</th><th>Action</th></tr></thead><tbody>';
+  const container = document.getElementById('policies-table');
+  let h = '<div style="display:flex;justify-content:flex-end;margin-bottom:0.6rem;">'
+    + '<button id="btn-export-policies" class="btn-ghost" style="font-size:0.8rem;padding:0.25rem 0.65rem;">⬇ Export CSV</button>'
+    + '</div>';
+  h += '<table><thead><tr><th>Policy</th><th>Blocks Passkeys?</th><th>Action</th></tr></thead><tbody>';
   r.policies.forEach((p) => {
     const blk = p.blocksPasskeyRegistration ? '\u{1F534} Yes' : '\u{1F7E2} No';
     h += `<tr>
@@ -752,5 +882,6 @@ function renderPolicies(r) {
     </tr>`;
   });
   h += '</tbody></table>';
-  document.getElementById('policies-table').innerHTML = h;
+  container.innerHTML = h;
+  container.querySelector('#btn-export-policies')?.addEventListener('click', exportPoliciesCsv);
 }

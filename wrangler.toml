@@ -6,13 +6,14 @@ compatibility_date = "2025-01-01"
 
 pages_build_output_dir = "dist"
 
-# AI Worker
-[[services]]
+# Workers AI binding — available to Pages Functions as env.AI
+# Must also be added in the Cloudflare Pages dashboard:
+#   Settings → Functions → AI Bindings → Add binding → Variable: AI
+[ai]
 binding = "AI"
-service = "ai-worker"
 
 [vars]
 ENVIRONMENT = "production"
-# Origin allowed to call the optional AI worker (workers/ai.js).
-# Set this to your deployed EntraPass URL. The worker rejects all other origins.
+# Origin allowed to call the AI Pages Function (/ai/ask).
+# Set this to your deployed EntraPass URL. Requests from other origins are rejected.
 ALLOWED_ORIGIN = "https://entrapass.aboutcloud.io"
