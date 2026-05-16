@@ -52,15 +52,6 @@ function Invoke-EntraPassDeploy {
     Connect-MgGraph -Scopes "Application.ReadWrite.All", "DelegatedPermissionGrant.ReadWrite.All" -NoWelcome
 
     $graphAppId = "00000003-0000-0000-c000-000000000000"
-    $resourceAccess = @(
-        @{ Id = "e1fe6dd8-ba31-4d61-89e7-88639da4923c"; Type = "Scope" }  # User.Read
-        @{ Id = "df021288-bdef-4463-88db-98f22de89214"; Type = "Scope" }  # User.Read.All
-        @{ Id = "951183d1-1a61-466f-a6d1-1f55c005e95d"; Type = "Scope" }  # Device.Read.All
-        @{ Id = "246dd0d5-5bd0-4def-940b-0421030a5b7b"; Type = "Scope" }  # Policy.Read.All
-        @{ Id = "9a5d68dd-52b0-4cc2-bd40-abcf44ac3a30"; Type = "Scope" }  # Application.Read.All
-        @{ Id = "26456419-2c0a-41c4-9ff7-4b10e1e682df"; Type = "Scope" }  # AuditLog.Read.All
-        @{ Id = "130f2d35-2658-4bcb-a614-ee92b9697645"; Type = "Scope" }  # Organization.Read.All
-    )
 
     # --- Find existing or create new app registration ----------------------
     $app = Get-MgApplication -Filter "displayName eq '$appName'" -All -ErrorAction Stop | Select-Object -First 1
@@ -80,7 +71,6 @@ function Invoke-EntraPassDeploy {
                 -DisplayName $appName `
                 -SignInAudience "AzureADMyOrg" `
                 -Spa @{ RedirectUris = @($redirectUri) } `
-                -RequiredResourceAccess @(@{ ResourceAppId = $graphAppId; ResourceAccess = $resourceAccess }) `
                 -ErrorAction Stop
         } catch {
             Write-Host ""
