@@ -40,7 +40,7 @@ a redacted `cloudflare-rules.md` as the new source of truth.
 ```powershell
 # From repo root — set your token and admin IP first (never commit these)
 $env:CF_API_TOKEN = "your-token-here"
-$env:CF_ADMIN_IP  = "your-home-ip"
+$env:CF_ADMIN_IP  = "your-ip"
 
 .\infra\export-cf-rules.ps1 -RedactIp $env:CF_ADMIN_IP
 ```
