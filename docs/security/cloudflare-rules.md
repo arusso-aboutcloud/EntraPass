@@ -8,40 +8,40 @@
 
 | # | Name | Action | Enabled |
 |---|------|--------|---------|
-| 1 | Allow My IP (Bypass) | skip | Yes |
-| 2 | WAF: Block Scanners and Admin Paths | block | Yes |
-| 3 | Entra RoleLens — Block API abuse and path probing | block | Yes |
-| 4 | Umami — Block dashboard, allow trackers for Ghost Blog | block | Yes |
-| 5 | EntraPass - Block non-GET methods | block | Yes |
+| 1 | Admin Bypass | skip | Yes |
+| 2 | Global: Block Scanners + Admin Paths | block | Yes |
+| 3 | EntraApps: Block API Abuse | block | Yes |
+| 4 | Umami: Protect Analytics Dashboard | block | Yes |
+| 5 | EntraApps: Static SPA Enforcement | block | Yes |
 
-### 1. Allow My IP (Bypass)
+### 1. Admin Bypass
 
 ```
 (ip.src in {[ADMIN-IP]})
 ```
 
-### 2. WAF: Block Scanners and Admin Paths
+### 2. Global: Block Scanners + Admin Paths
 
 ```
 ((http.user_agent eq "" or lower(http.user_agent) contains "scrapy" or lower(http.user_agent) contains "nikto" or lower(http.user_agent) contains "sqlmap" or lower(http.user_agent) contains "masscan" or lower(http.user_agent) contains "zgrab" or lower(http.user_agent) contains "zap" or lower(http.user_agent) contains "nuclei" or lower(http.user_agent) contains "dirbuster" or lower(http.user_agent) contains "gobuster" or lower(http.user_agent) contains "wfuzz" or lower(http.user_agent) contains "nmap" or lower(http.user_agent) contains "semrush" or lower(http.user_agent) contains "ahrefsbot" or lower(http.user_agent) contains "dotbot" or lower(http.user_agent) contains "mj12bot" or lower(http.user_agent) contains "blexbot" or lower(http.user_agent) contains "petalbot") or (http.host eq "images.aboutcloud.io" and http.request.method ne "GET") or (ip.src ne [ADMIN-IP] and (http.request.uri.path contains "/ghost" or http.request.uri.path contains "/admin" or http.request.uri.path contains "/domainadmin" or http.request.uri.path contains "/rspamd" or http.request.uri.path contains "/wp-admin" or http.request.uri.path contains "/wp-login" or http.request.uri.path contains "/.env" or http.request.uri.path contains "/phpinfo" or http.request.uri.path contains "/.git"))) and not (http.host eq "nextcloud.aboutcloud.io") and not (http.host eq "entrarolelens.aboutcloud.io") and not (lower(http.user_agent) contains "nextcloud")
 ```
 
-### 3. Entra RoleLens — Block API abuse and path probing
+### 3. EntraApps: Block API Abuse
 
 ```
-(((http.host eq "entrarolelens.aboutcloud.io" or http.host eq "rolelens-worker.russo-antonio76.workers.dev" or http.host wildcard "*.pages.dev") and http.request.uri.path contains "/api/" and ((lower(http.user_agent) contains "sqlmap") or (lower(http.user_agent) contains "nikto") or (lower(http.user_agent) contains "nuclei") or (lower(http.user_agent) contains "dirbuster") or (lower(http.user_agent) contains "gobuster") or (lower(http.user_agent) contains "wfuzz") or (http.request.method eq "DELETE") or (http.request.method eq "PUT") or (http.request.method eq "PATCH") or (http.request.uri.path contains "/.env") or (http.request.uri.path contains "/.git") or (http.request.uri.path contains "/wp-") or (http.request.uri.path contains "/phpinfo")) and not (ip.src eq [ADMIN-IP])))
+((http.host in {"entrarolelens.aboutcloud.io" "rolelens-worker.russo-antonio76.workers.dev" "entrapass.aboutcloud.io" "entratracker.aboutcloud.io" "entraerrors.aboutcloud.io"} or http.host wildcard "*.pages.dev") and http.request.uri.path contains "/api/" and ((lower(http.user_agent) contains "sqlmap") or (lower(http.user_agent) contains "nikto") or (lower(http.user_agent) contains "nuclei") or (lower(http.user_agent) contains "dirbuster") or (lower(http.user_agent) contains "gobuster") or (lower(http.user_agent) contains "wfuzz") or (http.request.method eq "DELETE") or (http.request.method eq "PUT") or (http.request.method eq "PATCH") or (http.request.uri.path contains "/.env") or (http.request.uri.path contains "/.git") or (http.request.uri.path contains "/wp-") or (http.request.uri.path contains "/phpinfo")) and not (ip.src eq [ADMIN-IP]))
 ```
 
-### 4. Umami — Block dashboard, allow trackers for Ghost Blog
+### 4. Umami: Protect Analytics Dashboard
 
 ```
 ((http.host eq "analytics.aboutcloud.io") and not (http.request.uri.path eq "/script.js") and not (http.request.uri.path eq "/api/script.js") and not (http.request.uri.path contains "/api/send") and not (http.request.uri.path contains "/api/collect")) or ((http.host eq "api.aboutcloud.io") and not (http.request.uri.path contains "/entra-tracker") and not (http.request.uri.path contains "/entra-errors"))
 ```
 
-### 5. EntraPass - Block non-GET methods
+### 5. EntraApps: Static SPA Enforcement
 
 ```
-http.host eq "entrapass.aboutcloud.io" and not http.request.method in {"GET" "HEAD"} and not ip.src eq [ADMIN-IP]
+http.host in {"entrapass.aboutcloud.io" "entrarolelens.aboutcloud.io" "entratracker.aboutcloud.io" "entraerrors.aboutcloud.io"} and not http.request.method in {"GET" "HEAD"} and not ip.src eq [ADMIN-IP]
 ```
 
 ## Rate Limiting
@@ -80,16 +80,16 @@ _No rules configured._
 
 | # | Name | Action | Enabled |
 |---|------|--------|---------|
-| 1 | Blog security headers | rewrite | Yes |
-| 2 | EntraPass - Security Headers | rewrite | Yes |
+| 1 | Blog: Security Headers | rewrite | Yes |
+| 2 | EntraPass: Security Headers | rewrite | Yes |
 
-### 1. Blog security headers
+### 1. Blog: Security Headers
 
 ```
 (http.host eq "aboutcloud.io") and not (http.request.uri.path contains "/ghost/")
 ```
 
-### 2. EntraPass - Security Headers
+### 2. EntraPass: Security Headers
 
 ```
 http.host eq "entrapass.aboutcloud.io"
