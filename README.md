@@ -59,7 +59,7 @@ Microsoft Graph API — there is no EntraPass backend, no database, and no telem
 
 ## 🏗️ Architecture
 
-![Architecture Diagram](docs/diagrams/architecture.svg)
+<img src="docs/diagrams/architecture.svg" alt="Architecture Diagram" width="100%"/>
 
 ### High-level flow
 
