@@ -259,11 +259,28 @@ straight to sign-in.
 
 ## 🤝 Contributing
 
-Contributions are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md), then:
+Contributions are welcome — bug reports, documentation fixes, new analysis rules, and UI improvements are all appreciated.
 
-1. Fork the repository
-2. Create a feature branch
-3. Open a Pull Request
+**Quick start:**
+
+```bash
+git clone https://github.com/arusso-aboutcloud/EntraPass.git
+cd EntraPass
+npm install
+npm run dev          # http://localhost:5173
+```
+
+**PR workflow:**
+
+1. Fork the repo and create a feature branch from `main` (e.g. `fix/policy-parsing`)
+2. Make your change — keep PRs focused, one logical change per PR
+3. Verify it builds: `npm run build` must succeed
+4. Test in the browser — confirm the affected flow works end-to-end
+5. Open a PR against `main`; CI runs Trivy and the Cloudflare Pages build automatically
+
+**Core contract (non-negotiable):** EntraPass is read-only and browser-only. No write operations against Microsoft Graph, no backend, no persistent storage beyond `sessionStorage`. PRs that change this will not be merged.
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the full coding guidelines and how to report security vulnerabilities privately.
 
 ---
 
