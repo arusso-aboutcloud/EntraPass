@@ -19,19 +19,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
-      - name: Export Cloudflare rules
+      - name: Export Cloudflare rules (IP auto-redacted)
         shell: pwsh
         env:
           CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CF_ADMIN_IP:  ${{ secrets.CF_ADMIN_IP }}
         run: |
-          $zone    = "${{ github.event.inputs.zone }}"
-          $adminIp = $env:CF_ADMIN_IP
-          if ($adminIp) {
-            .\infra\export-cf-rules.ps1 -Zone $zone -RedactIp $adminIp
-          } else {
-            .\infra\export-cf-rules.ps1 -Zone $zone
-          }
+          .\infra\export-cf-rules.ps1 -Zone "${{ github.event.inputs.zone }}"
 
       - name: Commit updated rules (if changed)
         run: |

@@ -3,7 +3,7 @@ name: Apply Cloudflare Hardening
 # Manual trigger only — makes live changes to Cloudflare WAF and header rules.
 # Required secrets:
 #   CLOUDFLARE_API_TOKEN  — Zone WAF + Transform Edit permissions
-#   CF_ADMIN_IP           — Admin home IP used in WAF bypass/path-block expressions
+#   (Admin IP is auto-detected from the existing WAF bypass rule — no extra secret needed)
 on:
   workflow_dispatch:
     inputs:
@@ -27,17 +27,15 @@ jobs:
         shell: pwsh
         env:
           CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CF_ADMIN_IP:  ${{ secrets.CF_ADMIN_IP }}
         run: |
           .\infra\apply-cf-hardening.ps1 -Zone "${{ github.event.inputs.zone }}"
 
-      - name: Export updated rules (with IP redacted)
+      - name: Export updated rules (IP auto-redacted)
         shell: pwsh
         env:
           CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CF_ADMIN_IP:  ${{ secrets.CF_ADMIN_IP }}
         run: |
-          .\infra\export-cf-rules.ps1 -Zone "${{ github.event.inputs.zone }}" -RedactIp "$env:CF_ADMIN_IP"
+          .\infra\export-cf-rules.ps1 -Zone "${{ github.event.inputs.zone }}"
 
       - name: Commit updated cloudflare-rules.md
         run: |

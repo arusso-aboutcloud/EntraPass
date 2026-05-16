@@ -18,7 +18,9 @@ This directory documents the Cloudflare security configuration protecting
 | Secret | Purpose |
 |---|---|
 | `CLOUDFLARE_API_TOKEN` | Zone WAF + Transform Edit permissions |
-| `CF_ADMIN_IP` | Admin home IP — redacted as `[ADMIN-IP]` in committed docs |
+
+> The admin IP is **auto-detected** from the existing WAF bypass rule at runtime.
+> It is always redacted as `[ADMIN-IP]` in committed docs. No extra secret needed.
 
 ## Workflows
 
