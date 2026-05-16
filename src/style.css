@@ -276,6 +276,19 @@ a:hover { text-decoration: underline; }
   color: rgba(255,255,255,0.7) !important;
   border-color: rgba(255,255,255,0.2) !important;
 }
+.auth-nav-linkedin {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  background: #0077b5 !important;
+  color: #fff !important;
+  border-color: #0077b5 !important;
+}
+.auth-nav-linkedin:hover {
+  background: #005e96 !important;
+  border-color: #005e96 !important;
+  color: #fff !important;
+}
 
 /* ---- Right: Wizard Panel ---- */
 .auth-wizard {
