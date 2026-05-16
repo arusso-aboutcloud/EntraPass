@@ -572,13 +572,29 @@ function exportAppsCsv() {
 function exportPoliciesCsv() {
   if (!scanResults?.policies) return;
   const ts = new Date().toISOString().slice(0, 10);
+  const rows = [
+    ...scanResults.policies.map(p => [
+      p.displayName, p.state || '', p.type || '',
+      p.enforcesPasskey ? 'Yes' : 'No',
+      p.blocksPasskeyRegistration ? 'Yes' : 'No',
+      p.protectsRegistration ? 'Yes' : 'No',
+      p.strengthName || '',
+      p.allUsers ? 'All Users' : (p.includeRoles ? 'Roles' : p.includeGroups ? 'Groups' : 'Specific'),
+      p.fixGuide || '',
+    ]),
+  ];
+  if ((scanResults.policyGaps || []).length > 0) {
+    rows.push([]);
+    rows.push(['--- GAPS & RECOMMENDATIONS ---']);
+    rows.push(['Severity', 'Title', 'Recommendation', 'Doc URL']);
+    (scanResults.policyGaps || []).forEach(g =>
+      rows.push([g.severity, g.title, g.recommendation, g.docUrl || ''])
+    );
+  }
   downloadCsv(
     `entrapass-policies-${ts}.csv`,
-    ['Policy Name', 'State', 'Blocks Passkeys', 'Fix Guide'],
-    scanResults.policies.map(p => [
-      p.displayName, p.state || '',
-      p.blocksPasskeyRegistration ? 'Yes' : 'No', p.fixGuide || '',
-    ]),
+    ['Policy Name', 'State', 'Role', 'Enforces Passkey', 'Blocks Passkey', 'Protects Registration', 'Auth Strength', 'Scope', 'Fix Guide'],
+    rows,
   );
 }
 
@@ -865,18 +881,119 @@ function renderApps(r) {
 }
 
 function renderPolicies(r) {
-  let h = '<table><thead><tr><th>Policy</th><th>Blocks Passkeys?</th><th>Action</th></tr></thead><tbody>';
-  r.policies.forEach((p) => {
-    const blk = p.blocksPasskeyRegistration ? '\u{1F534} Yes' : '\u{1F7E2} No';
+  const policies = r.policies || [];
+  const gaps     = r.policyGaps    || [];
+  const summary  = r.policySummary || {};
+  let h = '';
+
+  // ── Summary strip ──────────────────────────────────────────────────────────
+  const totalGaps = (summary.criticalGaps || 0) + (summary.highGaps || 0) + gaps.filter(g => g.severity === 'medium').length;
+  h += `<div class="policy-summary">
+    <div class="policy-stat-item">
+      <span class="psi-value">${policies.length}</span>
+      <span class="psi-label">Policies</span>
+    </div>
+    <div class="policy-stat-item ${summary.enforcing > 0 ? 'good' : ''}">
+      <span class="psi-value">${summary.enforcing || 0}</span>
+      <span class="psi-label">Enforcing passkeys</span>
+    </div>
+    <div class="policy-stat-item ${summary.protecting > 0 ? 'good' : ''}">
+      <span class="psi-value">${summary.protecting || 0}</span>
+      <span class="psi-label">Protecting enrollment</span>
+    </div>
+    ${summary.blocking > 0 ? `<div class="policy-stat-item danger">
+      <span class="psi-value">${summary.blocking}</span>
+      <span class="psi-label">Blocking passkeys</span>
+    </div>` : ''}
+    ${totalGaps > 0 ? `<div class="policy-stat-item ${summary.criticalGaps > 0 ? 'danger' : 'warn'}">
+      <span class="psi-value">${totalGaps}</span>
+      <span class="psi-label">Gaps detected</span>
+    </div>` : `<div class="policy-stat-item good">
+      <span class="psi-value">0</span>
+      <span class="psi-label">Gaps detected</span>
+    </div>`}
+  </div>`;
+
+  // ── Gap analysis ───────────────────────────────────────────────────────────
+  if (gaps.length > 0) {
+    const typeLabels = { missing: 'Missing Policy', config: 'Config Required', 'device-specific': 'Device-Specific', recommended: 'Recommended' };
+    h += `<div class="gap-analysis">
+      <div class="gap-analysis-header">
+        Policy Gaps &amp; Recommendations
+        <span class="gap-sub">Derived from your live tenant data</span>
+      </div>
+      <div class="gap-list">`;
+    gaps.forEach(g => {
+      const typeTag = typeLabels[g.type] || g.type;
+      h += `<div class="gap-card ${escapeHtml(g.severity)}">
+        <div class="gap-card-top">
+          <span class="gap-sev-badge ${escapeHtml(g.severity)}">${escapeHtml(g.severity.toUpperCase())}</span>
+          <span class="gap-type-tag">${escapeHtml(typeTag)}</span>
+          <span class="gap-card-title">${escapeHtml(g.title)}</span>
+        </div>
+        <p class="gap-card-desc">${escapeHtml(g.description)}</p>
+        <div class="gap-rec"><strong>Recommendation:</strong> ${escapeHtml(g.recommendation)}</div>
+        <div class="gap-card-footer">
+          <span class="gap-context">${escapeHtml(g.context)}</span>
+          ${g.docUrl ? `<a href="${escapeHtml(g.docUrl)}" target="_blank" rel="noopener" class="gap-doc-link">Learn more →</a>` : ''}
+        </div>
+      </div>`;
+    });
+    h += `</div></div>`;
+  }
+
+  // ── Existing policies table ────────────────────────────────────────────────
+  const typeLabels = {
+    'enforces-passkey':    'Enforces Passkey',
+    'protects-registration': 'Protects Enrollment',
+    'blocks-passkey':      'Blocks Passkey',
+    'legacy-block':        'Blocks Legacy Auth',
+    'risk-based':          'Risk-Based',
+    'device-compliance':   'Device Compliance',
+    'other':               'Other',
+  };
+  const stateLabels = {
+    enabled: 'Enabled',
+    disabled: 'Disabled',
+    enabledForReportingButNotEnforced: 'Report-only',
+  };
+
+  h += `<div class="existing-policies-label">Conditional Access Policies (${policies.length})</div>`;
+  h += `<div class="table-wrapper"><table>
+    <thead><tr>
+      <th>Policy</th><th>State</th><th>Passkey Role</th><th>Scope</th><th>Auth Strength</th><th>Action</th>
+    </tr></thead><tbody>`;
+
+  if (policies.length === 0) {
+    h += `<tr><td colspan="6" style="text-align:center;color:var(--text-tertiary);padding:2rem">No CA policies found — or Policy.Read.All not consented.</td></tr>`;
+  }
+
+  policies.forEach(p => {
+    const typeLabel  = typeLabels[p.type] || 'Other';
+    const stateLabel = stateLabels[p.state] || p.state;
+    const scope = (() => {
+      const { includeUsers = [], includeGroups = [], includeRoles = [] } = p.scopeRaw || {};
+      if (includeUsers.includes('All')) return 'All Users';
+      const parts = [];
+      if (includeRoles.length > 0)  parts.push(`${includeRoles.length} role(s)`);
+      if (includeGroups.length > 0) parts.push(`${includeGroups.length} group(s)`);
+      if (includeUsers.length > 0 && !includeUsers.includes('All')) parts.push(`${includeUsers.length} user(s)`);
+      return parts.join(', ') || 'Unknown';
+    })();
+
     h += `<tr>
-      <td>${escapeHtml(p.displayName)}</td>
-      <td>${blk}</td>
-      <td>${escapeHtml(p.fixGuide || p.recommendation || 'None')}</td>
+      <td style="max-width:220px;font-weight:500">${escapeHtml(p.displayName)}</td>
+      <td><span class="state-badge ${escapeHtml(p.state)}">${escapeHtml(stateLabel)}</span></td>
+      <td><span class="policy-type-badge ${escapeHtml(p.type)}">${escapeHtml(typeLabel)}</span></td>
+      <td style="font-size:0.8rem;color:var(--text-secondary)">${escapeHtml(scope)}</td>
+      <td style="font-size:0.8rem;color:var(--text-secondary)">${escapeHtml(p.strengthName || '—')}</td>
+      <td style="font-size:0.8rem;color:var(--text-secondary)">${p.fixGuide ? escapeHtml(p.fixGuide) : '<span style="color:var(--text-tertiary)">—</span>'}</td>
     </tr>`;
   });
-  h += '</tbody></table>';
-  document.getElementById('policies-table').innerHTML = h;
 
+  h += '</tbody></table></div>';
+
+  document.getElementById('policies-table').innerHTML = h;
   const btn = document.getElementById('btn-export-policies');
   if (btn) { btn.classList.remove('hidden'); btn.onclick = exportPoliciesCsv; }
 }
