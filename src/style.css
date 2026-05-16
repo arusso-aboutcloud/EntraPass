@@ -1248,3 +1248,135 @@ footer {
 .policy-type-badge.risk-based          { background: rgba(139,92,246,0.1);         color: #a78bfa;             }
 .policy-type-badge.device-compliance   { background: var(--accent-light);          color: var(--accent-hover); }
 .policy-type-badge.other               { background: rgba(255,255,255,0.05);       color: var(--text-secondary); border: 1px solid var(--border); }
+
+/* ============================================
+   FIDO2 Method Inspector
+   ============================================ */
+.fido2-inspector {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  margin-bottom: 1.5rem;
+  overflow: hidden;
+}
+.fido2-inspector.fido2-disabled { border-color: var(--danger-border); background: var(--danger-bg); }
+
+.fido2-inspector-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1.1rem;
+  border-bottom: 1px solid var(--border-subtle);
+  background: rgba(255,255,255,0.02);
+}
+.fido2-inspector-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text);
+}
+.fido2-state-chip {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.2em 0.6em;
+  border-radius: var(--r-full);
+}
+.fido2-state-chip.enabled  { background: var(--good-bg);    color: var(--good);         border: 1px solid var(--good-border);   }
+.fido2-state-chip.disabled { background: var(--danger-bg);  color: var(--danger);       border: 1px solid var(--danger-border); }
+
+.fido2-config-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.fido2-config-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.75rem 1.25rem;
+  border-right: 1px solid var(--border-subtle);
+  min-width: 180px;
+}
+.fido2-config-cell:last-child { border-right: none; }
+.fido2-config-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-tertiary);
+  font-weight: 600;
+}
+.fido2-config-value {
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: var(--text);
+}
+.fido2-config-value.good { color: var(--good);   }
+.fido2-config-value.warn { color: var(--warn);   }
+
+.fido2-notice {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  padding: 0.875rem 1.1rem;
+  line-height: 1.6;
+}
+.fido2-notice.warn { color: var(--warn); }
+
+/* AAGUID list */
+.aaguid-section { padding: 0.875rem 1.1rem; }
+.aaguid-section-header {
+  display: flex;
+  align-items: baseline;
+  gap: 0.625rem;
+  margin-bottom: 0.625rem;
+}
+.aaguid-section-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary);
+}
+.aaguid-section-sub { font-size: 0.73rem; color: var(--text-tertiary); }
+
+.aaguid-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  overflow: hidden;
+}
+.aaguid-row {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.5rem 0.875rem;
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: 0.82rem;
+  flex-wrap: wrap;
+}
+.aaguid-row:last-child { border-bottom: none; }
+.aaguid-row:hover { background: rgba(255,255,255,0.03); }
+.aaguid-icon { flex-shrink: 0; font-size: 0.9rem; }
+.aaguid-name { font-weight: 600; color: var(--text); flex: 1; min-width: 160px; }
+.aaguid-vendor { font-size: 0.75rem; color: var(--text-secondary); white-space: nowrap; }
+.aaguid-guid {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--text-tertiary);
+  margin-left: auto;
+}
+.aaguid-type-badge {
+  font-size: 0.64rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.12em 0.45em;
+  border-radius: var(--r-full);
+  flex-shrink: 0;
+}
+.aaguid-type-badge.platform  { background: var(--info-bg);    color: var(--info);           }
+.aaguid-type-badge.hardware  { background: var(--good-bg);    color: var(--good);           }
+.aaguid-type-badge.unknown   { background: rgba(255,255,255,0.05); color: var(--text-tertiary); }

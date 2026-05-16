@@ -14,6 +14,7 @@ export class Analyzer {
       policies:      policyResult.policies,
       policyGaps:    policyResult.gaps,
       policySummary: policyResult.summary,
+      fido2Config:   policyResult.fido2Config,
       toxicCombos,
       recommendations,
       narrative,
@@ -165,6 +166,10 @@ export class Analyzer {
     const gaps     = this.detectPolicyGaps(enriched, users || [], devices || [], authMethodsConfig || []);
 
     const enabled = enriched.filter(p => p.state === 'enabled');
+    const fido2Config = authMethodsConfig.find(c =>
+      c.id === 'Fido2' || (c['@odata.type'] || '').toLowerCase().includes('fido2')
+    ) || null;
+
     const summary = {
       total:        enriched.length,
       enforcing:    enabled.filter(p => p.enforcesPasskey).length,
@@ -174,7 +179,7 @@ export class Analyzer {
       highGaps:     gaps.filter(g => g.severity === 'high').length,
     };
 
-    return { policies: enriched, gaps, summary };
+    return { policies: enriched, gaps, summary, fido2Config };
   }
 
   enrichPolicy(policy) {

@@ -92,6 +92,53 @@ const EFFORT = {
   low:      { cls: 'long',      label: '2–4 hrs'   },
 };
 
+// Well-known FIDO2 authenticator AAGUIDs — used to resolve the raw GUIDs
+// returned by the FIDO2 authentication method configuration into human-readable
+// device names in the policy inspector.
+const KNOWN_AAAGUIDS = {
+  // Yubico
+  'cb69481e-8ff7-4039-93ec-0a2729a154a8': { name: 'YubiKey 5 Series',                     vendor: 'Yubico',     type: 'hardware' },
+  'ee882879-721c-4913-9775-3dfcce97072a': { name: 'YubiKey 5 NFC',                         vendor: 'Yubico',     type: 'hardware' },
+  'fa2b99dc-9e39-4257-8f92-4a30d23c4118': { name: 'YubiKey 5 NFC FIPS',                    vendor: 'Yubico',     type: 'hardware' },
+  'c1f9a0bc-1dd2-404a-b27f-8e29047a43fd': { name: 'YubiKey 5 FIPS Series',                 vendor: 'Yubico',     type: 'hardware' },
+  'f8a011f3-8c0a-4d15-8006-17111f9edc7d': { name: 'Security Key by Yubico',                vendor: 'Yubico',     type: 'hardware' },
+  'b92c3f9a-c014-4056-887f-140a2501163b': { name: 'Security Key 2 by Yubico',              vendor: 'Yubico',     type: 'hardware' },
+  '6d44ba9b-f6ec-2e49-b930-0c8fe920cb73': { name: 'Security Key NFC by Yubico',            vendor: 'Yubico',     type: 'hardware' },
+  '149a2021-8ef6-4133-96b8-81f8d5b7f1f5': { name: 'Security Key NFC by Yubico (Enterprise)', vendor: 'Yubico',  type: 'hardware' },
+  '34f5766d-1536-4a24-9033-0e294e510fb0': { name: 'YubiKey 5 Nano',                        vendor: 'Yubico',     type: 'hardware' },
+  '2fc0579f-8113-47ea-b116-bb5a8db9202a': { name: 'YubiKey 5Ci',                           vendor: 'Yubico',     type: 'hardware' },
+  '73bb0cd4-e502-49b8-9c6f-b59445bf720b': { name: 'YubiKey 5C NFC',                        vendor: 'Yubico',     type: 'hardware' },
+  '85203421-48f9-4355-9bc8-8a53846e5083': { name: 'YubiKey 5Ci FIPS',                      vendor: 'Yubico',     type: 'hardware' },
+  'c5ef55ff-ad9a-4b9f-b580-adebafe026d0': { name: 'YubiKey 5 NFC FIPS (Enterprise)',       vendor: 'Yubico',     type: 'hardware' },
+  // Windows Hello
+  '08987058-cadc-4b81-b6e1-30de50dcbe96': { name: 'Windows Hello Hardware',                vendor: 'Microsoft',  type: 'platform' },
+  '9ddd1817-af5a-4672-a2b9-3e3dd95000a9': { name: 'Windows Hello Software',                vendor: 'Microsoft',  type: 'platform' },
+  '6028b017-b1d4-4c02-b4b3-afcdafc96bb2': { name: 'Windows Hello VBS Hardware',            vendor: 'Microsoft',  type: 'platform' },
+  'dd4ec289-e01d-41c9-bb89-70fa845d4bf2': { name: 'Windows Hello (TPM 2.0)',               vendor: 'Microsoft',  type: 'platform' },
+  // Apple
+  'adce0002-35bc-c60a-648b-0b25f1f05503': { name: 'Apple iCloud Keychain (passkey)',        vendor: 'Apple',      type: 'platform' },
+  // Google
+  '42b4fb4a-2866-43b2-9bf7-6c6669c2e5d3': { name: 'Google Titan Security Key v2',          vendor: 'Google',     type: 'hardware' },
+  'de503f9c-21a4-4f76-b4b7-558eb55c6f89': { name: 'Google Password Manager',               vendor: 'Google',     type: 'platform' },
+  'b5397666-4885-aa6b-cebf-e52262a439a2': { name: 'Chrome on macOS / ChromeOS',            vendor: 'Google',     type: 'platform' },
+  // Feitian
+  '12ded745-4bed-47d4-abaa-e713f51d6393': { name: 'Feitian BioPass FIDO2',                 vendor: 'Feitian',    type: 'hardware' },
+  '77010bd7-212a-4fc9-b236-d2ca5e9d4084': { name: 'Feitian BioPass FIDO2 Pro',             vendor: 'Feitian',    type: 'hardware' },
+  'ee041bce-25e5-4cdb-8f86-897fd6418464': { name: 'Feitian ePass FIDO2-NFC',               vendor: 'Feitian',    type: 'hardware' },
+  'b6ede29c-3772-412c-8a78-539c1f4c62d2': { name: 'Feitian FIDO2 Key',                     vendor: 'Feitian',    type: 'hardware' },
+  // HID Global
+  '692db549-7ae5-44d5-a1e5-dd20a493b723': { name: 'HID Crescendo Key',                     vendor: 'HID Global', type: 'hardware' },
+  'c80dbd9a-533f-4a17-b941-1a2f1c7cedff': { name: 'HID Crescendo C2300',                   vendor: 'HID Global', type: 'hardware' },
+  // Swissbit
+  'e13c7ba3-0868-4b91-b7b1-f73b6de301af': { name: 'Swissbit iShield Key',                  vendor: 'Swissbit',   type: 'hardware' },
+  // Ensurity
+  '454e5346-4944-4ffd-6c93-8e9267193e9a': { name: 'Ensurity ThinC',                        vendor: 'Ensurity',   type: 'hardware' },
+  // eWBM
+  '87dbc5a1-4c94-4dc8-8a47-97d800fd1f3c': { name: 'eWBM Goldengate FIDO2',                 vendor: 'eWBM',       type: 'hardware' },
+  // OneSpan
+  '30b5035e-d297-4fc1-875f-961a05e33e90': { name: 'OneSpan FIDO Touch',                    vendor: 'OneSpan',    type: 'hardware' },
+};
+
 // ============================================
 // Bootstrap
 // ============================================
@@ -880,6 +927,100 @@ function renderApps(r) {
   if (btn) { btn.classList.remove('hidden'); btn.onclick = exportAppsCsv; }
 }
 
+function renderFido2Inspector(cfg) {
+  if (!cfg) {
+    return `<div class="fido2-inspector fido2-disabled">
+      <div class="fido2-inspector-header">
+        <span class="fido2-inspector-title">FIDO2 / Passkey Method Configuration</span>
+        <span class="fido2-state-chip disabled">Not configured</span>
+      </div>
+      <p class="fido2-notice">The FIDO2 authentication method was not found in your tenant's Authentication Methods policy. Enable it before proceeding with passkey deployment.</p>
+    </div>`;
+  }
+
+  const enabled     = cfg.state === 'enabled';
+  const attested    = cfg.isAttestationEnforced === true;
+  const kr          = cfg.keyRestrictions || {};
+  const isEnforced  = kr.isEnforced === true;
+  const enforceType = (kr.enforcementType || 'allow').toLowerCase();
+  const aaGuids     = (kr.aaGuids || []).map(g => g.toLowerCase());
+
+  // Covered users label
+  const targets = cfg.includeTargets || [];
+  const coversAll = targets.some(t => t.id === 'all_users' || t.id === 'AllUsers');
+  const userCoverage = targets.length === 0 ? 'All users (default)'
+    : coversAll ? 'All users'
+    : `${targets.length} group(s)`;
+
+  // Key restrictions label
+  let krLabel = 'None — all authenticators accepted';
+  if (isEnforced && aaGuids.length > 0) {
+    krLabel = enforceType === 'allow'
+      ? `Allow list (${aaGuids.length} AAGUID${aaGuids.length !== 1 ? 's' : ''})`
+      : `Block list (${aaGuids.length} AAGUID${aaGuids.length !== 1 ? 's' : ''})`;
+  } else if (isEnforced && aaGuids.length === 0) {
+    krLabel = enforceType === 'allow'
+      ? 'Allow list (empty — all blocked)'
+      : 'Block list (empty — all allowed)';
+  }
+
+  let h = `<div class="fido2-inspector ${enabled ? '' : 'fido2-disabled'}">
+    <div class="fido2-inspector-header">
+      <span class="fido2-inspector-title">FIDO2 / Passkey Method Configuration</span>
+      <span class="fido2-state-chip ${enabled ? 'enabled' : 'disabled'}">${enabled ? 'Enabled' : 'Disabled'}</span>
+    </div>
+    <div class="fido2-config-row">
+      <div class="fido2-config-cell">
+        <span class="fido2-config-label">Attestation enforcement</span>
+        <span class="fido2-config-value ${attested ? 'good' : 'warn'}">${attested ? '✓ Enforced' : '✗ Not enforced'}</span>
+      </div>
+      <div class="fido2-config-cell">
+        <span class="fido2-config-label">Key restrictions</span>
+        <span class="fido2-config-value ${isEnforced && aaGuids.length > 0 ? 'good' : ''}">${escapeHtml(krLabel)}</span>
+      </div>
+      <div class="fido2-config-cell">
+        <span class="fido2-config-label">Covered users</span>
+        <span class="fido2-config-value">${escapeHtml(userCoverage)}</span>
+      </div>
+    </div>`;
+
+  if (isEnforced && aaGuids.length > 0) {
+    const listLabel = enforceType === 'allow' ? 'Allowed Authenticators' : 'Blocked Authenticators';
+    h += `<div class="aaguid-section">
+      <div class="aaguid-section-header">
+        <span class="aaguid-section-label">${listLabel} (${aaGuids.length})</span>
+        <span class="aaguid-section-sub">Matched against ${Object.keys(KNOWN_AAAGUIDS).length} known device models</span>
+      </div>
+      <div class="aaguid-list">`;
+    aaGuids.forEach(guid => {
+      const known = KNOWN_AAAGUIDS[guid];
+      const icon  = known?.type === 'platform' ? '💻' : known ? '🔑' : '❓';
+      const name  = known?.name || 'Unknown authenticator';
+      const badge = known?.type === 'platform'
+        ? `<span class="aaguid-type-badge platform">Platform</span>`
+        : known
+          ? `<span class="aaguid-type-badge hardware">Hardware</span>`
+          : `<span class="aaguid-type-badge unknown">Unrecognised</span>`;
+      const vendor = known?.vendor ? `<span class="aaguid-vendor">${escapeHtml(known.vendor)}</span>` : '';
+      h += `<div class="aaguid-row">
+        <span class="aaguid-icon">${icon}</span>
+        <span class="aaguid-name">${escapeHtml(name)}</span>
+        ${vendor}
+        ${badge}
+        <span class="aaguid-guid">${escapeHtml(guid)}</span>
+      </div>`;
+    });
+    h += `</div></div>`;
+  } else if (!isEnforced) {
+    h += `<p class="fido2-notice">No AAGUID restrictions — any FIDO2-compliant device (hardware keys, platform passkeys, software authenticators) can be enrolled by users.</p>`;
+  } else if (isEnforced && aaGuids.length === 0 && enforceType === 'allow') {
+    h += `<p class="fido2-notice warn">Allow list is enforced but empty — no authenticator can currently be enrolled. Add at least one AAGUID to unblock registration.</p>`;
+  }
+
+  h += `</div>`;
+  return h;
+}
+
 function renderPolicies(r) {
   const policies = r.policies || [];
   const gaps     = r.policyGaps    || [];
@@ -913,6 +1054,9 @@ function renderPolicies(r) {
       <span class="psi-label">Gaps detected</span>
     </div>`}
   </div>`;
+
+  // ── FIDO2 method inspector ────────────────────────────────────────────────
+  h += renderFido2Inspector(r.fido2Config || null);
 
   // ── Gap analysis ───────────────────────────────────────────────────────────
   if (gaps.length > 0) {
