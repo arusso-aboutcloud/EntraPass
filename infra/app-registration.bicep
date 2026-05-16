@@ -41,37 +41,37 @@ resource appReg 'Microsoft.Graph/applications@1.0' = {
       resourceAccess: [
         // User.Read - Sign in and read user profile
         {
-          id: 'e1fe6dd8-ba31-4d61-89e7-88639da4923c'
+          id: 'e1fe6dd8-ba31-4d61-89e7-88639da4683d'
           type: 'Scope'
         }
         // User.Read.All - Read all users' full profiles
         {
-          id: 'df021288-bdef-4463-88db-98f22de89214'
+          id: 'a154be20-db9c-4678-8ab7-66f6cc099a59'
           type: 'Scope'
         }
         // Device.Read.All - Read all devices
         {
-          id: '951183d1-1a61-466f-a6d1-1f55c005e95d'
+          id: '951183d1-1a61-466f-a6d1-1fde911bfd95'
           type: 'Scope'
         }
         // Policy.Read.All - Read all conditional access policies
         {
-          id: '246dd0d5-5bd0-4def-940b-0421030a5b7b'
+          id: '572fea84-0151-49b2-9301-11cb16974376'
           type: 'Scope'
         }
         // Application.Read.All - Read all applications
         {
-          id: '9a5d68dd-52b0-4cc2-bd40-abcf44ac3a30'
+          id: 'c79f8feb-a9db-4090-85f9-90d820caa0eb'
           type: 'Scope'
         }
         // AuditLog.Read.All - Read audit logs
         {
-          id: '26456419-2c0a-41c4-9ff7-4b10e1e682df'
+          id: 'e4c9e354-4dc5-45b8-9e7c-e1393b0b1a20'
           type: 'Scope'
         }
         // Organization.Read.All - Read organization information
         {
-          id: '130f2d35-2658-4bcb-a614-ee92b9697645'
+          id: '4908d5b9-3fb2-4b1e-9336-1888b7937185'
           type: 'Scope'
         }
       ]

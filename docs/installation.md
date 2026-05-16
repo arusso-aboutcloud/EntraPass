@@ -104,13 +104,13 @@ $app = New-MgApplication `
     @{
       ResourceAppId  = "00000003-0000-0000-c000-000000000000"   # Microsoft Graph
       ResourceAccess = @(
-        @{ Id = "e1fe6dd8-ba31-4d61-89e7-88639da4923c"; Type = "Scope" }  # User.Read
-        @{ Id = "df021288-bdef-4463-88db-98f22de89214"; Type = "Scope" }  # User.Read.All
-        @{ Id = "951183d1-1a61-466f-a6d1-1f55c005e95d"; Type = "Scope" }  # Device.Read.All
-        @{ Id = "246dd0d5-5bd0-4def-940b-0421030a5b7b"; Type = "Scope" }  # Policy.Read.All
-        @{ Id = "9a5d68dd-52b0-4cc2-bd40-abcf44ac3a30"; Type = "Scope" }  # Application.Read.All
-        @{ Id = "26456419-2c0a-41c4-9ff7-4b10e1e682df"; Type = "Scope" }  # AuditLog.Read.All
-        @{ Id = "130f2d35-2658-4bcb-a614-ee92b9697645"; Type = "Scope" }  # Organization.Read.All
+        @{ Id = "e1fe6dd8-ba31-4d61-89e7-88639da4683d"; Type = "Scope" }  # User.Read
+        @{ Id = "a154be20-db9c-4678-8ab7-66f6cc099a59"; Type = "Scope" }  # User.Read.All
+        @{ Id = "951183d1-1a61-466f-a6d1-1fde911bfd95"; Type = "Scope" }  # Device.Read.All
+        @{ Id = "572fea84-0151-49b2-9301-11cb16974376"; Type = "Scope" }  # Policy.Read.All
+        @{ Id = "c79f8feb-a9db-4090-85f9-90d820caa0eb"; Type = "Scope" }  # Application.Read.All
+        @{ Id = "e4c9e354-4dc5-45b8-9e7c-e1393b0b1a20"; Type = "Scope" }  # AuditLog.Read.All
+        @{ Id = "4908d5b9-3fb2-4b1e-9336-1888b7937185"; Type = "Scope" }  # Organization.Read.All
       )
     }
   )
