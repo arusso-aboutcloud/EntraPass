@@ -100,15 +100,21 @@ Cloudflare Response Header Transform named **"EntraPass: Security Headers"**
 Transform so the policy is reviewable in git, but it is **inert** — Cloudflare
 Pages `_headers` is overridden by the Transform at the edge.
 
-**Planned for v0.1.2:** port the Transform's policy into `public/_headers`,
+**Future hardening:** port the Transform's policy into `public/_headers`,
 delete the Transform, and make `_headers` authoritative. At that point also:
 
 - Add `frame-src https://login.microsoftonline.com` (currently absent from
   the Transform, silently breaking MSAL's hidden-iframe silent-token path).
 - Drop `'unsafe-inline'` from `script-src` (the codebase no longer requires
   it — `main.js` uses `addEventListener` exclusively).
+- Restore `Referrer-Policy` to `no-referrer`. The Cloudflare Transform
+  currently emits `strict-origin-when-cross-origin`, which can leak the
+  EntraPass origin via `Referer` on outbound clicks (Microsoft docs, GitHub,
+  etc.). For a tenant-scanning tool whose URL itself may be sensitive in some
+  contexts, `no-referrer` is the safer default and matches what `_headers`
+  intended before the sync.
 
-Until v0.1.2, treat the Transform as the single source of runtime truth.
+Until that migration, treat the Transform as the single source of runtime truth.
 
 ---
 
@@ -118,4 +124,4 @@ Until v0.1.2, treat the Transform as the single source of runtime truth.
 - [x] Add EntraPass-specific WAF rule — GET/HEAD only, non-admin IPs
 - [x] Add EntraPass Response Header Transform Rule — CSP, HSTS, X-Frame, etc.
 - [ ] Review rate limiting for EntraPass AI Worker endpoint once deployed
-- [ ] v0.1.2: migrate CSP from CF Transform to `public/_headers`; add `frame-src`; drop `'unsafe-inline'`
+- [ ] Future hardening: migrate CSP from CF Transform to `public/_headers`; add `frame-src`; drop `'unsafe-inline'`; restore `Referrer-Policy: no-referrer`

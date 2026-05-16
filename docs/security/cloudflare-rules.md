@@ -108,7 +108,7 @@ X-Frame-Options: DENY
 > **Known gap:** `frame-src` is absent. Per CSP fallback rules this means
 > `frame-src` inherits `default-src 'self'`, blocking iframes from
 > `login.microsoftonline.com`. MSAL's hidden-iframe silent-token path is
-> silently broken. Planned fix for v0.1.2: add
+> silently broken. Future hardening: add
 > `frame-src https://login.microsoftonline.com` to the Transform and drop
 > `'unsafe-inline'` from `script-src` (no inline handlers remain in the
 > codebase). See `public/_headers` for the target policy.
