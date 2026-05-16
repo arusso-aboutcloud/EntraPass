@@ -415,6 +415,12 @@ a:hover { text-decoration: underline; }
   transition: background 0.15s, color 0.15s;
 }
 .btn-ghost:hover { background: var(--bg); color: var(--text); }
+.btn-export {
+  background: var(--primary-light);
+  color: var(--primary);
+  border-color: var(--primary-dim);
+}
+.btn-export:hover { background: var(--primary-dim); color: var(--primary-hover); }
 
 /* ============================================
    Dashboard Header

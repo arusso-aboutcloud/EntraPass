@@ -291,7 +291,7 @@ $app = New-MgApplication -DisplayName "entrapass-scanner" -SignInAudience AzureA
           <div class="section-card">
             <div class="section-card-header" style="display:flex;justify-content:space-between;align-items:center;">
               <h2>User Passkey Readiness</h2>
-              <button id="btn-export-readiness" class="btn-ghost hidden" style="font-size:0.82rem;">⬇ Export CSV</button>
+              <button id="btn-export-readiness" class="btn-ghost btn-export hidden" style="font-size:0.82rem;">⬇ Export CSV</button>
             </div>
             <div class="section-card-body">
               <div id="readiness-chart"></div>
@@ -305,7 +305,7 @@ $app = New-MgApplication -DisplayName "entrapass-scanner" -SignInAudience AzureA
           <div class="section-card">
             <div class="section-card-header" style="display:flex;justify-content:space-between;align-items:center;">
               <h2>App Compatibility</h2>
-              <button id="btn-export-apps" class="btn-ghost hidden" style="font-size:0.82rem;">⬇ Export CSV</button>
+              <button id="btn-export-apps" class="btn-ghost btn-export hidden" style="font-size:0.82rem;">⬇ Export CSV</button>
             </div>
             <div class="section-card-body">
               <div class="section-intro">
@@ -323,7 +323,7 @@ $app = New-MgApplication -DisplayName "entrapass-scanner" -SignInAudience AzureA
           <div class="section-card">
             <div class="section-card-header" style="display:flex;justify-content:space-between;align-items:center;">
               <h2>Conditional Access Policy Analysis</h2>
-              <button id="btn-export-policies" class="btn-ghost hidden" style="font-size:0.82rem;">⬇ Export CSV</button>
+              <button id="btn-export-policies" class="btn-ghost btn-export hidden" style="font-size:0.82rem;">⬇ Export CSV</button>
             </div>
             <div class="section-card-body">
               <div id="policies-table"></div>
