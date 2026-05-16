@@ -799,12 +799,7 @@ function renderScanNotices(r) {
 
 function renderReadiness(r) {
   const { users } = r.passkeyReadiness;
-  const container = document.getElementById('readiness-table');
-  let h = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.6rem;">'
-    + `<span style="font-size:0.85rem;color:var(--text-secondary);">${escapeHtml(String(users.length))} users analysed</span>`
-    + '<button id="btn-export-readiness" class="btn-ghost" style="font-size:0.8rem;padding:0.25rem 0.65rem;">⬇ Export CSV</button>'
-    + '</div>';
-  h += '<table><thead><tr><th>User</th><th>Status</th><th>Issues</th></tr></thead><tbody>';
+  let h = '<table><thead><tr><th>User</th><th>Status</th><th>Issues</th></tr></thead><tbody>';
   users.forEach((u) => {
     const ic = u.status === 'ready' ? '\u{1F7E2}'
       : u.status === 'attention' ? '\u{1F7E1}' : '\u{1F534}';
@@ -815,8 +810,10 @@ function renderReadiness(r) {
     </tr>`;
   });
   h += '</tbody></table>';
-  container.innerHTML = h;
-  container.querySelector('#btn-export-readiness')?.addEventListener('click', exportReadinessCsv);
+  document.getElementById('readiness-table').innerHTML = h;
+
+  const btn = document.getElementById('btn-export-readiness');
+  if (btn) { btn.classList.remove('hidden'); btn.onclick = exportReadinessCsv; }
 }
 
 function renderApps(r) {
@@ -825,12 +822,10 @@ function renderApps(r) {
   const flagged = total - compatible;
   const container = document.getElementById('apps-table');
 
-  let h = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">';
-  h += '<div style="font-size:0.9rem;color:var(--text-secondary);">';
+  let h = '<div style="margin-bottom:0.75rem;font-size:0.9rem;color:var(--text-secondary);">';
   h += '<span style="color:var(--good);">\u{1F7E2} ' + escapeHtml(String(compatible)) + ' compatible</span>';
   if (flagged > 0) h += ' <span style="color:var(--danger);margin-left:0.5rem;">\u{1F534} ' + escapeHtml(String(flagged)) + ' need review</span>';
-  h += ' <span style="margin-left:0.5rem;">of ' + escapeHtml(String(total)) + ' apps</span></div>';
-  h += '<button id="btn-export-apps" class="btn-ghost" style="font-size:0.8rem;padding:0.25rem 0.65rem;">⬇ Export CSV</button>';
+  h += ' <span style="margin-left:0.5rem;">of ' + escapeHtml(String(total)) + ' apps</span>';
   h += '</div>';
 
   h += '<div style="overflow-x:auto;">';
@@ -864,15 +859,13 @@ function renderApps(r) {
 
   h += '</tbody></table></div>';
   container.innerHTML = h;
-  container.querySelector('#btn-export-apps')?.addEventListener('click', exportAppsCsv);
+
+  const btn = document.getElementById('btn-export-apps');
+  if (btn) { btn.classList.remove('hidden'); btn.onclick = exportAppsCsv; }
 }
 
 function renderPolicies(r) {
-  const container = document.getElementById('policies-table');
-  let h = '<div style="display:flex;justify-content:flex-end;margin-bottom:0.6rem;">'
-    + '<button id="btn-export-policies" class="btn-ghost" style="font-size:0.8rem;padding:0.25rem 0.65rem;">⬇ Export CSV</button>'
-    + '</div>';
-  h += '<table><thead><tr><th>Policy</th><th>Blocks Passkeys?</th><th>Action</th></tr></thead><tbody>';
+  let h = '<table><thead><tr><th>Policy</th><th>Blocks Passkeys?</th><th>Action</th></tr></thead><tbody>';
   r.policies.forEach((p) => {
     const blk = p.blocksPasskeyRegistration ? '\u{1F534} Yes' : '\u{1F7E2} No';
     h += `<tr>
@@ -882,6 +875,8 @@ function renderPolicies(r) {
     </tr>`;
   });
   h += '</tbody></table>';
-  container.innerHTML = h;
-  container.querySelector('#btn-export-policies')?.addEventListener('click', exportPoliciesCsv);
+  document.getElementById('policies-table').innerHTML = h;
+
+  const btn = document.getElementById('btn-export-policies');
+  if (btn) { btn.classList.remove('hidden'); btn.onclick = exportPoliciesCsv; }
 }

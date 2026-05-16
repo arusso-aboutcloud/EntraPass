@@ -289,7 +289,10 @@ $app = New-MgApplication -DisplayName "entrapass-scanner" -SignInAudience AzureA
         <!-- Readiness Tab -->
         <div id="tab-readiness" class="tab-content hidden">
           <div class="section-card">
-            <div class="section-card-header"><h2>User Passkey Readiness</h2></div>
+            <div class="section-card-header" style="display:flex;justify-content:space-between;align-items:center;">
+              <h2>User Passkey Readiness</h2>
+              <button id="btn-export-readiness" class="btn-ghost hidden" style="font-size:0.82rem;">⬇ Export CSV</button>
+            </div>
             <div class="section-card-body">
               <div id="readiness-chart"></div>
               <div id="readiness-table"></div>
@@ -300,7 +303,10 @@ $app = New-MgApplication -DisplayName "entrapass-scanner" -SignInAudience AzureA
         <!-- Apps Tab -->
         <div id="tab-apps" class="tab-content hidden">
           <div class="section-card">
-            <div class="section-card-header"><h2>App Compatibility</h2></div>
+            <div class="section-card-header" style="display:flex;justify-content:space-between;align-items:center;">
+              <h2>App Compatibility</h2>
+              <button id="btn-export-apps" class="btn-ghost hidden" style="font-size:0.82rem;">⬇ Export CSV</button>
+            </div>
             <div class="section-card-body">
               <div class="section-intro">
                 <strong>Why this matters:</strong> Apps using password credentials or legacy auth can silently <strong>bypass passkey authentication</strong> — even when a user has a passkey registered.
@@ -315,7 +321,10 @@ $app = New-MgApplication -DisplayName "entrapass-scanner" -SignInAudience AzureA
         <!-- Policies Tab -->
         <div id="tab-policies" class="tab-content hidden">
           <div class="section-card">
-            <div class="section-card-header"><h2>Conditional Access Policy Analysis</h2></div>
+            <div class="section-card-header" style="display:flex;justify-content:space-between;align-items:center;">
+              <h2>Conditional Access Policy Analysis</h2>
+              <button id="btn-export-policies" class="btn-ghost hidden" style="font-size:0.82rem;">⬇ Export CSV</button>
+            </div>
             <div class="section-card-body">
               <div id="policies-table"></div>
             </div>
