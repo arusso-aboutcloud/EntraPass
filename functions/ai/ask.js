@@ -259,17 +259,23 @@ export async function onRequest(context) {
     }, 200, cors);
   }
 
-  // Compact, non-identifying summary of scan data
+  // Compact, non-identifying summary of scan data.
+  // Handles both a pre-built summary (well-behaved clients that minimized
+  // before sending) and a full results object (legacy or buggy clients).
+  // The ?? fallback ensures PII is stripped even if a client sends raw results.
   const prUsers = results?.passkeyReadiness?.users || [];
+  if (prUsers.some(u => u.userPrincipalName || u.displayName)) {
+    console.warn('[ask.js] incoming results contain PII fields — client may be outdated');
+  }
   const summary = (results && typeof results === 'object') ? {
-    totalUsers:     results.passkeyReadiness?.total  || 0,
-    readyUsers:     prUsers.filter(u => u.status === 'ready').length,
-    capableUsers:   prUsers.filter(u => u.status === 'capable').length,
-    needsPrepUsers: prUsers.filter(u => u.status === 'needsPrep').length,
-    blockedUsers:   prUsers.filter(u => u.status === 'blocked').length,
-    exemptUsers:    prUsers.filter(u => u.status === 'exempt').length,
-    score:          results.score || 0,
-    recommendations: (results.recommendations || []).slice(0, 5).map(r => r.title || r.text),
+    totalUsers:     results.totalUsers     ?? results.passkeyReadiness?.total  ?? 0,
+    readyUsers:     results.readyUsers     ?? prUsers.filter(u => u.status === 'ready').length,
+    capableUsers:   results.capableUsers   ?? prUsers.filter(u => u.status === 'capable').length,
+    needsPrepUsers: results.needsPrepUsers ?? prUsers.filter(u => u.status === 'needsPrep').length,
+    blockedUsers:   results.blockedUsers   ?? prUsers.filter(u => u.status === 'blocked').length,
+    exemptUsers:    results.exemptUsers    ?? prUsers.filter(u => u.status === 'exempt').length,
+    score:          results.score          ?? 0,
+    recommendations: (results.recommendations || []).slice(0, 5).map(r => typeof r === 'string' ? r : (r.title || r.text)),
   } : null;
 
   // Validate and cap conversation history — structure only, no deep filter needed

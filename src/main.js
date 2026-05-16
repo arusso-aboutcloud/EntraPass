@@ -522,11 +522,25 @@ async function sendChat() {
 async function getAiAnswer(question, results, history = [], onChunk = () => {}) {
   const mode = document.getElementById('ai-mode').value;
 
+  // Minimize before any data leaves the browser: only counts + recommendation
+  // titles, no user names, UPNs, tenant identifiers, or Graph response bodies.
+  const prUsers = results?.passkeyReadiness?.users || [];
+  const summary = results ? {
+    totalUsers:     results.passkeyReadiness?.total  || 0,
+    readyUsers:     prUsers.filter(u => u.status === 'ready').length,
+    capableUsers:   prUsers.filter(u => u.status === 'capable').length,
+    needsPrepUsers: prUsers.filter(u => u.status === 'needsPrep').length,
+    blockedUsers:   prUsers.filter(u => u.status === 'blocked').length,
+    exemptUsers:    prUsers.filter(u => u.status === 'exempt').length,
+    score:          results.score || 0,
+    recommendations: (results.recommendations || []).slice(0, 5).map(r => r.title || r.text),
+  } : null;
+
   if (mode === 'cloudflare') {
     const r = await fetch('/ai/ask', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ question, results: results || {}, history }),
+      body: JSON.stringify({ question, results: summary || {}, history }),
     });
     if (!r.ok) {
       let msg = 'AI request failed';
@@ -548,8 +562,8 @@ async function getAiAnswer(question, results, history = [], onChunk = () => {}) 
       + 'When relevant, end your response with a "📖 Learn more:" line citing one '
       + 'official Microsoft documentation URL (learn.microsoft.com). '
       + 'Do not answer questions unrelated to Microsoft identity or EntraPass.';
-    const userMsg = results
-      ? `Scan results: ${JSON.stringify(results)}\n\nQuestion: ${question}`
+    const userMsg = summary
+      ? `Scan results: ${JSON.stringify(summary)}\n\nQuestion: ${question}`
       : `Question: ${question}`;
     const r = await fetch(ep + '/chat/completions', {
       method: 'POST',

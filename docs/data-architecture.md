@@ -267,8 +267,8 @@ on the selected mode:
 | Mode | Data leaving the browser |
 |---|---|
 | **Off** (default) | Nothing — rule-based responses only |
-| **Cloudflare Workers AI** | A non-identifying summary (counts only) is sent to the Cloudflare Pages Function (`functions/ai/ask.js`), which calls Cloudflare Workers AI. No user names or UPNs are transmitted. |
-| **Bring your own key (BYOK)** | The scan results and your question are sent to the AI endpoint you configure (e.g. OpenAI, Azure OpenAI) using your own API key |
+| **Cloudflare Workers AI** | A non-identifying summary (counts only) is built in the browser and sent to the Cloudflare Pages Function (`functions/ai/ask.js`), which calls Cloudflare Workers AI. No user names or UPNs are transmitted. |
+| **Bring your own key (BYOK)** | A non-identifying summary (same shape as the Cloudflare mode) and your question are sent to the AI endpoint you configure (e.g. OpenAI, Azure OpenAI) using your own API key |
 
 If you must keep all tenant data inside the browser, leave the AI Assistant set
 to **Off**.
