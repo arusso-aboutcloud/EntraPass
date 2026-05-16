@@ -1,22 +1,20 @@
 <#
 .SYNOPSIS
-  Applies Cloudflare security hardening for aboutcloud.io / entrapass.aboutcloud.io.
+  Applies Cloudflare security hardening for aboutcloud.io / Aboutcloud Entra apps.
 
 .DESCRIPTION
-  The admin IP is discovered automatically from the existing WAF bypass rule —
-  no additional secrets or parameters are needed beyond the API token.
+  The admin IP is discovered automatically from the existing WAF bypass rule.
 
-  Changes applied:
-    WAF Custom Rules (5/5, restructured):
-      1. [KEEP] Allow My IP (Bypass)
-      2. [NEW]  WAF: Block Scanners and Admin Paths    <- merges old rules 2 + 3
-      3. [KEEP] Entra RoleLens - Block API abuse and path probing
-      4. [KEEP] Umami - Block dashboard, allow trackers
-      5. [NEW]  EntraPass - Block non-GET methods
+  WAF Custom Rules (5/5):
+    1. Admin Bypass                         [KEEP + rename]
+    2. Global: Block Scanners + Admin Paths [KEEP + rename]
+    3. EntraApps: Block API Abuse           [EXPAND + rename]  entrarolelens/entrapass/entratracker/entraerrors + *.pages.dev
+    4. Umami: Protect Analytics Dashboard   [KEEP + rename]
+    5. EntraApps: Static SPA Enforcement    [EXPAND + rename]  entrapass/entrarolelens/entratracker/entraerrors
 
-    Response Header Transform:
-      1. [KEEP] Blog security headers
-      2. [NEW]  EntraPass - Security Headers (CSP, HSTS, X-Frame, etc.)
+  Response Header Transform:
+    1. Blog: Security Headers               [KEEP + rename]
+    2. EntraPass: Security Headers          [KEEP + rename]
 
   Required env var:
     CF_API_TOKEN  -- Cloudflare API token (Zone WAF + Transform Edit permissions)
@@ -36,13 +34,13 @@ if (-not $Token) { throw "CF_API_TOKEN env var not set." }
 $H    = @{ Authorization = "Bearer $Token"; "Content-Type" = "application/json" }
 $Base = "https://api.cloudflare.com/client/v4"
 
-function cf-get([string]$url) {
+function Invoke-CfGet([string]$url) {
     $r = Invoke-RestMethod $url -Headers $H -ErrorAction Stop
     if (-not $r.success) { throw "CF API error at $url : $($r.errors | ConvertTo-Json -Compress)" }
     return $r.result
 }
 
-function cf-put([string]$url, $body) {
+function Invoke-CfPut([string]$url, $body) {
     $json = $body | ConvertTo-Json -Depth 20 -Compress
     $r    = Invoke-RestMethod $url -Method Put -Headers $H -Body $json -ErrorAction Stop
     if (-not $r.success) { throw "CF API error (PUT $url): $($r.errors | ConvertTo-Json -Compress)" }
@@ -60,75 +58,100 @@ Write-Host "  ID: $ZoneId" -ForegroundColor DarkGray
 # =============================================================================
 Write-Host "`n[WAF] Fetching current ruleset..." -ForegroundColor Cyan
 
-$waf   = cf-get "$Base/zones/$ZoneId/rulesets/phases/http_request_firewall_custom/entrypoint"
+$waf   = Invoke-CfGet"$Base/zones/$ZoneId/rulesets/phases/http_request_firewall_custom/entrypoint"
 $wafId = $waf.id
 $rules = $waf.rules
 
-Write-Host ("  Current rules: {0}" -f $rules.Count)
+Write-Host ("  Found {0} rules:" -f $rules.Count)
 $rules | ForEach-Object { Write-Host ("    [{0}] {1}" -f $_.action, $_.description) -ForegroundColor DarkGray }
 
-# Identify rules to keep unchanged
-$bypass   = $rules | Where-Object { $_.description -match 'Allow My IP|Bypass' }  | Select-Object -First 1
-$roleLens = $rules | Where-Object { $_.description -match 'RoleLens|Entra Role' } | Select-Object -First 1
-$umami    = $rules | Where-Object { $_.description -match 'Umami' }               | Select-Object -First 1
+# Identify rules by description (patterns handle both old and new names for idempotency)
+$bypass = $rules | Where-Object { $_.description -match 'Allow My IP|Bypass|Admin Bypass' }            | Select-Object -First 1
+$global = $rules | Where-Object { $_.description -match 'Block Scanners|Malicious|Scanner|Admin Paths' }| Select-Object -First 1
+$rlens  = $rules | Where-Object { $_.description -match 'RoleLens|Entra Role|Block API Abuse|EntraApps.*API' } | Select-Object -First 1
+$umami  = $rules | Where-Object { $_.description -match 'Umami' }                                       | Select-Object -First 1
+$spas   = $rules | Where-Object { $_.description -match 'non-GET|Static SPA|SPA Enforcement|EntraApps.*SPA' } | Select-Object -First 1
 
-if (-not $bypass)   { throw "ABORT -- 'Allow My IP' rule not found." }
-if (-not $roleLens) { throw "ABORT -- 'EntraRoleLens' rule not found." }
-if (-not $umami)    { throw "ABORT -- 'Umami' rule not found." }
+foreach ($pair in @(
+    @('bypass',  $bypass),
+    @('global',  $global),
+    @('rlens',   $rlens),
+    @('umami',   $umami),
+    @('spas',    $spas)
+)) {
+    if (-not $pair[1]) { throw "ABORT -- rule not found: '$($pair[0])'. Check descriptions." }
+}
 
-# Auto-detect admin IP from the bypass rule expression: (ip.src in {x.x.x.x})
+# Auto-detect admin IP from bypass rule expression: (ip.src in {x.x.x.x})
 if ($bypass.expression -notmatch '\{(\d+\.\d+\.\d+\.\d+)\}') {
-    throw "Cannot extract admin IP from bypass rule expression: $($bypass.expression)"
+    throw "Cannot extract admin IP from bypass expression: $($bypass.expression)"
 }
 $AdminIp = $Matches[1]
 Write-Host "  Admin IP: detected from bypass rule." -ForegroundColor DarkGray
 
-# -- Consolidated expression (old Rules 2 + 3 merged into one) ----------------
-$consolidatedExpr = @'
-((http.user_agent eq "" or lower(http.user_agent) contains "scrapy" or lower(http.user_agent) contains "nikto" or lower(http.user_agent) contains "sqlmap" or lower(http.user_agent) contains "masscan" or lower(http.user_agent) contains "zgrab" or lower(http.user_agent) contains "zap" or lower(http.user_agent) contains "nuclei" or lower(http.user_agent) contains "dirbuster" or lower(http.user_agent) contains "gobuster" or lower(http.user_agent) contains "wfuzz" or lower(http.user_agent) contains "nmap" or lower(http.user_agent) contains "semrush" or lower(http.user_agent) contains "ahrefsbot" or lower(http.user_agent) contains "dotbot" or lower(http.user_agent) contains "mj12bot" or lower(http.user_agent) contains "blexbot" or lower(http.user_agent) contains "petalbot") or (http.host eq "images.aboutcloud.io" and http.request.method ne "GET") or (ip.src ne __ADMIN_IP__ and (http.request.uri.path contains "/ghost" or http.request.uri.path contains "/admin" or http.request.uri.path contains "/domainadmin" or http.request.uri.path contains "/rspamd" or http.request.uri.path contains "/wp-admin" or http.request.uri.path contains "/wp-login" or http.request.uri.path contains "/.env" or http.request.uri.path contains "/phpinfo" or http.request.uri.path contains "/.git"))) and not (http.host eq "nextcloud.aboutcloud.io") and not (http.host eq "entrarolelens.aboutcloud.io") and not (lower(http.user_agent) contains "nextcloud")
-'@
-$consolidatedExpr = $consolidatedExpr.Trim() -replace '__ADMIN_IP__', $AdminIp
+# -- Rule 1: Admin Bypass (rename only, keep expression + action_parameters) --
+$bypass.description = 'Admin Bypass'
 
-# -- EntraPass: static SPA -- only GET/HEAD are legitimate --------------------
-$entrapassExpr = @'
-http.host eq "entrapass.aboutcloud.io" and not http.request.method in {"GET" "HEAD"} and not ip.src eq __ADMIN_IP__
-'@
-$entrapassExpr = $entrapassExpr.Trim() -replace '__ADMIN_IP__', $AdminIp
+# -- Rule 2: Global: Block Scanners + Admin Paths (rename only) ---------------
+$global.description = 'Global: Block Scanners + Admin Paths'
 
-$newWafRules = @(
-    $bypass,
-    @{ action='block'; description='WAF: Block Scanners and Admin Paths'; enabled=$true; expression=$consolidatedExpr },
-    $roleLens,
-    $umami,
-    @{ action='block'; description='EntraPass - Block non-GET methods'; enabled=$true; expression=$entrapassExpr }
-)
+# -- Rule 3: EntraApps: Block API Abuse (rename + expand hosts) ---------------
+$apiAbuseExpr = @'
+((http.host in {"entrarolelens.aboutcloud.io" "rolelens-worker.russo-antonio76.workers.dev" "entrapass.aboutcloud.io" "entratracker.aboutcloud.io" "entraerrors.aboutcloud.io"} or http.host wildcard "*.pages.dev") and http.request.uri.path contains "/api/" and ((lower(http.user_agent) contains "sqlmap") or (lower(http.user_agent) contains "nikto") or (lower(http.user_agent) contains "nuclei") or (lower(http.user_agent) contains "dirbuster") or (lower(http.user_agent) contains "gobuster") or (lower(http.user_agent) contains "wfuzz") or (http.request.method eq "DELETE") or (http.request.method eq "PUT") or (http.request.method eq "PATCH") or (http.request.uri.path contains "/.env") or (http.request.uri.path contains "/.git") or (http.request.uri.path contains "/wp-") or (http.request.uri.path contains "/phpinfo")) and not (ip.src eq __ADMIN_IP__))
+'@
+$apiAbuseExpr = $apiAbuseExpr.Trim() -replace '__ADMIN_IP__', $AdminIp
+
+$ruleApiAbuse = @{
+    action      = 'block'
+    description = 'EntraApps: Block API Abuse'
+    enabled     = $true
+    expression  = $apiAbuseExpr
+}
+
+# -- Rule 4: Umami: Protect Analytics Dashboard (rename only) -----------------
+$umami.description = 'Umami: Protect Analytics Dashboard'
+
+# -- Rule 5: EntraApps: Static SPA Enforcement (rename + expand hosts) --------
+$spaExpr = @'
+http.host in {"entrapass.aboutcloud.io" "entrarolelens.aboutcloud.io" "entratracker.aboutcloud.io" "entraerrors.aboutcloud.io"} and not http.request.method in {"GET" "HEAD"} and not ip.src eq __ADMIN_IP__
+'@
+$spaExpr = $spaExpr.Trim() -replace '__ADMIN_IP__', $AdminIp
+
+$ruleSpa = @{
+    action      = 'block'
+    description = 'EntraApps: Static SPA Enforcement'
+    enabled     = $true
+    expression  = $spaExpr
+}
+
+# -- Apply WAF ----------------------------------------------------------------
+$newWafRules = @($bypass, $global, $ruleApiAbuse, $umami, $ruleSpa)
 
 Write-Host "`n  Applying 5 rules:"
-Write-Host "    1 [KEEP] $($bypass.description)"   -ForegroundColor Green
-Write-Host "    2 [NEW]  WAF: Block Scanners and Admin Paths  (consolidated old 2+3)" -ForegroundColor Yellow
-Write-Host "    3 [KEEP] $($roleLens.description)" -ForegroundColor Green
-Write-Host "    4 [KEEP] $($umami.description)"    -ForegroundColor Green
-Write-Host "    5 [NEW]  EntraPass - Block non-GET methods"  -ForegroundColor Yellow
+Write-Host "    1 [RENAME] $($bypass.description)"      -ForegroundColor Green
+Write-Host "    2 [RENAME] $($global.description)"      -ForegroundColor Green
+Write-Host "    3 [EXPAND] $($ruleApiAbuse.description) -- adds entrapass/entratracker/entraerrors" -ForegroundColor Yellow
+Write-Host "    4 [RENAME] $($umami.description)"       -ForegroundColor Green
+Write-Host "    5 [EXPAND] $($ruleSpa.description) -- adds entrarolelens/entratracker/entraerrors" -ForegroundColor Yellow
 
-$r1 = cf-put "$Base/zones/$ZoneId/rulesets/$wafId" @{ rules = $newWafRules }
+$r1 = Invoke-CfPut"$Base/zones/$ZoneId/rulesets/$wafId" @{ rules = $newWafRules }
 Write-Host ("  OK -- {0} rules active." -f $r1.rules.Count) -ForegroundColor Green
 
 # =============================================================================
-# 2.  Response Header Transform -- EntraPass security headers
+# 2.  Response Header Transform
 # =============================================================================
 Write-Host "`n[Headers] Fetching current ruleset..." -ForegroundColor Cyan
 
-$rht   = cf-get "$Base/zones/$ZoneId/rulesets/phases/http_response_headers_transform/entrypoint"
-$rhtId = $rht.id
+$rht      = Invoke-CfGet"$Base/zones/$ZoneId/rulesets/phases/http_response_headers_transform/entrypoint"
+$rhtId    = $rht.id
+$rhtRules = if ($rht.rules) { $rht.rules } else { @() }
 
-# Keep all existing rules; remove stale EntraPass header rule if present (idempotent)
-$keepRules = if ($rht.rules) {
-    @($rht.rules | Where-Object { $_.description -notmatch 'EntraPass.*(Header|Security)' })
-} else { @() }
+# Blog rule: rename only, preserve expression + action_parameters
+$blogRule = $rhtRules | Where-Object { $_.description -match 'Blog' } | Select-Object -First 1
+if (-not $blogRule) { throw "ABORT -- blog header rule not found." }
+$blogRule.description = 'Blog: Security Headers'
 
-foreach ($r in $keepRules) { Write-Host "    [KEEP] $($r.description)" -ForegroundColor Green }
-Write-Host "    [NEW]  EntraPass - Security Headers" -ForegroundColor Yellow
-
+# EntraPass headers rule: rebuild with new name (idempotent remove + re-add)
 $csp = ("default-src 'self'; " +
         "script-src 'self' 'unsafe-inline'; " +
         "connect-src 'self' https://login.microsoftonline.com https://graph.microsoft.com; " +
@@ -138,7 +161,7 @@ $csp = ("default-src 'self'; " +
 
 $epHeadersRule = @{
     action      = 'rewrite'
-    description = 'EntraPass - Security Headers'
+    description = 'EntraPass: Security Headers'
     enabled     = $true
     expression  = 'http.host eq "entrapass.aboutcloud.io"'
     action_parameters = @{
@@ -153,7 +176,14 @@ $epHeadersRule = @{
     }
 }
 
-$r2 = cf-put "$Base/zones/$ZoneId/rulesets/$rhtId" @{ rules = (@($keepRules) + @($epHeadersRule)) }
+# Build final list: blog (renamed) + all non-EntraPass rules + new EntraPass rule
+$otherRules  = @($rhtRules | Where-Object { $_.description -notmatch 'Blog|EntraPass' })
+$newRhtRules = @($blogRule) + $otherRules + @($epHeadersRule)
+
+Write-Host "    [RENAME] $($blogRule.description)"      -ForegroundColor Green
+Write-Host "    [RENAME] $($epHeadersRule.description)" -ForegroundColor Green
+
+$r2 = Invoke-CfPut"$Base/zones/$ZoneId/rulesets/$rhtId" @{ rules = $newRhtRules }
 Write-Host ("  OK -- {0} rules active." -f $r2.rules.Count) -ForegroundColor Green
 
 Write-Host "`nHardening complete." -ForegroundColor Green
