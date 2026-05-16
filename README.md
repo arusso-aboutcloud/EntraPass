@@ -63,18 +63,7 @@ Microsoft Graph API — there is no EntraPass backend, no database, and no telem
 
 ### High-level flow
 
-```
-User's Browser (SPA)                    Microsoft Graph API
-┌─────────────────────┐                 ┌───────────────────┐
-│  Setup Wizard       │                 │  Users            │
-│  → T&C + Config     │                 │  Devices          │
-│  → MSAL PKCE Auth   │── Bearer ──────▶│  CA Policies      │
-│  → Graph API Client │    Token        │  Applications     │
-│  → Analysis Engine  │◀── JSON ────────│  Auth Methods     │
-│  → Dashboard UI     │                 │  Sign-in Activity │
-│  → sessionStorage   │                 │  Org Info         │
-└─────────────────────┘                 └───────────────────┘
-```
+<img src="docs/diagrams/high-level-flow.svg" alt="High-level flow diagram" width="100%"/>
 
 See the full [Architecture Document](docs/architecture.md) and
 [Data Architecture](docs/data-architecture.md) for details.
