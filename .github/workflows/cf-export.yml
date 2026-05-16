@@ -1,0 +1,46 @@
+name: Export Cloudflare Rules
+
+on:
+  workflow_dispatch:
+    inputs:
+      zone:
+        description: 'Cloudflare zone to export (default: aboutcloud.io)'
+        required: false
+        default: 'aboutcloud.io'
+
+permissions:
+  contents: write
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Export Cloudflare rules
+        shell: pwsh
+        env:
+          CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ADMIN_IP:  ${{ secrets.CF_ADMIN_IP }}
+        run: |
+          $zone    = "${{ github.event.inputs.zone }}"
+          $adminIp = $env:CF_ADMIN_IP
+          if ($adminIp) {
+            .\infra\export-cf-rules.ps1 -Zone $zone -RedactIp $adminIp
+          } else {
+            .\infra\export-cf-rules.ps1 -Zone $zone
+          }
+
+      - name: Commit updated rules (if changed)
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/security/cloudflare-rules.md
+          if git diff --cached --quiet; then
+            echo "No changes to cloudflare-rules.md — nothing to commit."
+          else
+            git commit -m "chore: update cloudflare-rules.md [skip ci]"
+            git push
+          fi
