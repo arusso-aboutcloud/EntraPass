@@ -605,10 +605,21 @@ function exportReadinessCsv() {
   const ts = new Date().toISOString().slice(0, 10);
   downloadCsv(
     `entrapass-readiness-${ts}.csv`,
-    ['Display Name', 'UPN', 'Status', 'Issues', 'Last Sign-In', 'Devices', 'Auth Methods'],
+    ['Display Name', 'UPN', 'Account Type', 'Status', 'Privileged', 'Stale (>90d)', 'Issues', 'Recommended Action', 'Auth Methods', 'Device Count', 'Device Summary', 'Groups', 'Last Sign-In'],
     scanResults.passkeyReadiness.users.map(u => [
-      u.displayName, u.userPrincipalName, u.status,
-      u.issues.join('; '), u.lastSignIn || '', u.deviceCount, u.authMethodCount,
+      u.displayName,
+      u.userPrincipalName,
+      u.accountType,
+      u.status,
+      u.isPrivileged ? 'Yes' : 'No',
+      u.isStale      ? 'Yes' : 'No',
+      u.issues.join('; '),
+      u.recommendedAction || '',
+      (u.authMethodTypes || []).map(m => m.label).join('; '),
+      u.deviceCount,
+      u.deviceSummary || '',
+      (u.groups || []).join('; '),
+      u.lastSignIn || '',
     ]),
   );
 }
@@ -903,20 +914,209 @@ function renderScanNotices(r) {
 
 
 
+function renderUserCard(u) {
+  const STATUS_CFG = {
+    ready:     { cls: 'ready',      label: 'Ready',       icon: '✅' },
+    capable:   { cls: 'capable',    label: 'Capable',     icon: '🟢' },
+    needsPrep: { cls: 'needs-prep', label: 'Needs Prep',  icon: '🟡' },
+    blocked:   { cls: 'blocked',    label: 'Blocked',     icon: '🔴' },
+    exempt:    { cls: 'exempt',     label: 'Exempt',      icon: '⚪' },
+  };
+  const ACCT_CFG = {
+    member:          { label: 'Member',        cls: 'member' },
+    guest:           { label: 'Guest',         cls: 'guest'  },
+    'personal-msa':  { label: 'Personal MSA',  cls: 'msa'    },
+    breakglass:      { label: 'Break-glass',   cls: 'bg'     },
+  };
+
+  const sc = STATUS_CFG[u.status]     || STATUS_CFG.blocked;
+  const ac = ACCT_CFG[u.accountType]  || { label: u.accountType, cls: '' };
+
+  const authChips = (u.authMethodTypes || []).map(m =>
+    `<span class="auth-chip auth-chip-${escapeHtml(m.type)}">${escapeHtml(m.label)}</span>`
+  ).join('');
+
+  const issueChips = u.issues
+    .filter(i => !i.includes('Passkey / FIDO2 registered'))
+    .map(i => `<span class="user-issue-chip">${escapeHtml(i)}</span>`)
+    .join('');
+
+  const groupsSummary = u.groups && u.groups.length > 0
+    ? u.groups.slice(0, 3).join(', ') + (u.groups.length > 3 ? ` +${u.groups.length - 3}` : '')
+    : null;
+
+  const lastSignInDisplay = u.lastSignIn
+    ? new Date(u.lastSignIn).toLocaleDateString('en-GB', { year: 'numeric', month: 'short', day: 'numeric' })
+    : 'Never recorded';
+
+  const searchText = `${(u.displayName || '').toLowerCase()} ${(u.userPrincipalName || '').toLowerCase()}`;
+
+  const actionBoxCls = u.status === 'ready'  ? 'user-action-box-ready'
+    : u.status === 'exempt' ? 'user-action-box-exempt'
+    : '';
+
+  return `<div class="user-card user-card-${escapeHtml(sc.cls)}"
+              data-status="${escapeHtml(u.status)}"
+              data-search-text="${escapeHtml(searchText)}">
+    <div class="user-card-header">
+      <div class="user-card-identity">
+        <span class="user-card-upn">${escapeHtml(u.userPrincipalName || u.displayName || '')}</span>
+        ${u.displayName && u.displayName !== u.userPrincipalName
+          ? `<span class="user-card-name">${escapeHtml(u.displayName)}</span>` : ''}
+      </div>
+      <div class="user-card-badges">
+        <span class="user-status-badge user-status-${escapeHtml(sc.cls)}">${sc.icon} ${sc.label}</span>
+        <span class="user-account-badge acct-${escapeHtml(ac.cls)}">${escapeHtml(ac.label)}</span>
+        ${u.isPrivileged ? `<span class="user-flag-badge flag-privileged">⚡ Privileged</span>` : ''}
+        ${u.isStale      ? `<span class="user-flag-badge flag-stale">⏰ Stale</span>`           : ''}
+      </div>
+    </div>
+    ${issueChips ? `<div class="user-issue-chips">${issueChips}</div>` : ''}
+    ${u.recommendedAction ? `<div class="user-action-box ${actionBoxCls}">
+      <span class="user-action-label">${u.status === 'ready' ? 'Next step' : u.status === 'exempt' ? 'Guidance' : 'Recommended action'}</span>
+      <span class="user-action-text">${escapeHtml(u.recommendedAction)}</span>
+    </div>` : ''}
+    <div class="user-card-meta">
+      <div class="user-meta-chips">
+        ${authChips || '<span class="user-meta-empty">No auth methods recorded</span>'}
+      </div>
+      <div class="user-meta-info">
+        ${u.deviceSummary
+          ? `<span class="user-meta-item">💻 ${escapeHtml(u.deviceSummary)}</span>`
+          : `<span class="user-meta-item meta-missing">No device</span>`}
+        <span class="user-meta-item${u.isStale ? ' meta-stale' : ''}">🕐 ${escapeHtml(lastSignInDisplay)}</span>
+        ${groupsSummary ? `<span class="user-meta-item">👥 ${escapeHtml(groupsSummary)}</span>` : ''}
+      </div>
+    </div>
+  </div>`;
+}
+
 function renderReadiness(r) {
-  const { users } = r.passkeyReadiness;
-  let h = '<table><thead><tr><th>User</th><th>Status</th><th>Issues</th></tr></thead><tbody>';
-  users.forEach((u) => {
-    const ic = u.status === 'ready' ? '\u{1F7E2}'
-      : u.status === 'attention' ? '\u{1F7E1}' : '\u{1F534}';
-    h += `<tr>
-      <td>${escapeHtml(u.displayName)}</td>
-      <td>${ic} ${escapeHtml(u.status)}</td>
-      <td>${escapeHtml(u.issues.join(', ') || 'None')}</td>
-    </tr>`;
+  const pr = r.passkeyReadiness;
+  const { users, total, ready, capable, needsPrep, blocked, exempt } = pr;
+  const el = document.getElementById('readiness-table');
+  if (!el) return;
+
+  // ── Narrative ──────────────────────────────────────────────────────────────
+  let h = `<div class="readiness-narrative">
+    <div class="readiness-narrative-icon">🔑</div>
+    <div class="readiness-narrative-body">
+      <strong>Passkey readiness is personal.</strong>
+      Every identity in your tenant sits at a different point on the passkey journey — shaped by what MFA they have registered,
+      what device they use, and which Conditional Access policies cover them.
+      This view classifies each user so you know exactly <em>who</em> can self-enroll today, <em>who</em> needs one fix first,
+      and <em>who</em> is blocked until an admin acts.
+      Break-glass, guest, and personal Microsoft accounts follow a separate path — they are classified and explained, never silently merged.
+      <span class="readiness-narrative-tip">Showing ${escapeHtml(String(total))} user${total !== 1 ? 's' : ''}. Sign-in activity and device data depend on Graph delegated permissions — if values appear missing, verify AuditLog.Read.All and Device.Read.All are consented.</span>
+    </div>
+  </div>`;
+
+  // ── Summary strip ──────────────────────────────────────────────────────────
+  h += `<div class="policy-summary readiness-summary">
+    <div class="policy-stat-item">
+      <span class="psi-value">${escapeHtml(String(total))}</span>
+      <span class="psi-label">Total users</span>
+    </div>
+    <div class="policy-stat-item ${ready > 0 ? 'good' : ''}">
+      <span class="psi-value">${escapeHtml(String(ready))}</span>
+      <span class="psi-label">Ready</span>
+    </div>
+    <div class="policy-stat-item ${capable > 0 ? 'good' : ''}">
+      <span class="psi-value">${escapeHtml(String(capable))}</span>
+      <span class="psi-label">Capable</span>
+    </div>
+    <div class="policy-stat-item ${needsPrep > 0 ? 'warn' : ''}">
+      <span class="psi-value">${escapeHtml(String(needsPrep))}</span>
+      <span class="psi-label">Needs Prep</span>
+    </div>
+    <div class="policy-stat-item ${blocked > 0 ? 'danger' : ''}">
+      <span class="psi-value">${escapeHtml(String(blocked))}</span>
+      <span class="psi-label">Blocked</span>
+    </div>
+    ${exempt > 0 ? `<div class="policy-stat-item">
+      <span class="psi-value">${escapeHtml(String(exempt))}</span>
+      <span class="psi-label">Exempt</span>
+    </div>` : ''}
+  </div>`;
+
+  // ── Phase planner ──────────────────────────────────────────────────────────
+  h += `<div class="phase-planner">
+    <div class="phase-planner-label">Rollout Phases</div>
+    <div class="phase-planner-track">
+      <div class="phase-item phase-1">
+        <div class="phase-num">Phase 1</div>
+        <div class="phase-name">Pilot</div>
+        <div class="phase-detail">Users who can self-register passkeys today</div>
+        <div class="phase-count ${capable > 0 ? 'good' : ''}">${escapeHtml(String(capable))} user${capable !== 1 ? 's' : ''}</div>
+      </div>
+      <div class="phase-connector">→</div>
+      <div class="phase-item phase-2">
+        <div class="phase-num">Phase 2</div>
+        <div class="phase-name">Prep Wave</div>
+        <div class="phase-detail">One gap to resolve — MFA or device update</div>
+        <div class="phase-count ${needsPrep > 0 ? 'warn' : ''}">${escapeHtml(String(needsPrep))} user${needsPrep !== 1 ? 's' : ''}</div>
+      </div>
+      <div class="phase-connector">→</div>
+      <div class="phase-item phase-3">
+        <div class="phase-num">Phase 3</div>
+        <div class="phase-name">Full Onboarding</div>
+        <div class="phase-detail">Admin action required to unlock</div>
+        <div class="phase-count ${blocked > 0 ? 'danger' : ''}">${escapeHtml(String(blocked))} user${blocked !== 1 ? 's' : ''}</div>
+      </div>
+    </div>
+  </div>`;
+
+  // ── Filter pills + search ─────────────────────────────────────────────────
+  h += `<div class="readiness-filter-bar">
+    <button class="readiness-pill active" data-filter="all">All (${escapeHtml(String(total))})</button>
+    <button class="readiness-pill" data-filter="ready">✅ Ready (${escapeHtml(String(ready))})</button>
+    <button class="readiness-pill" data-filter="capable">🟢 Capable (${escapeHtml(String(capable))})</button>
+    <button class="readiness-pill" data-filter="needsPrep">🟡 Needs Prep (${escapeHtml(String(needsPrep))})</button>
+    <button class="readiness-pill" data-filter="blocked">🔴 Blocked (${escapeHtml(String(blocked))})</button>
+    ${exempt > 0 ? `<button class="readiness-pill" data-filter="exempt">⚪ Exempt (${escapeHtml(String(exempt))})</button>` : ''}
+    <input type="text" id="readiness-search" class="readiness-search" placeholder="Search by name or UPN…" autocomplete="off">
+  </div>`;
+
+  // ── User cards ────────────────────────────────────────────────────────────
+  if (users.length === 0) {
+    h += `<div class="readiness-empty">No users found. Run a full scan to populate readiness data.</div>`;
+  } else {
+    const SORT = { blocked: 0, needsPrep: 1, capable: 2, ready: 3, exempt: 4 };
+    const sorted = [...users].sort((a, b) => {
+      const d = (SORT[a.status] ?? 5) - (SORT[b.status] ?? 5);
+      if (d !== 0) return d;
+      return (b.isPrivileged ? 1 : 0) - (a.isPrivileged ? 1 : 0);
+    });
+    h += `<div id="readiness-user-list">`;
+    sorted.forEach(u => { h += renderUserCard(u); });
+    h += `</div>`;
+  }
+
+  el.innerHTML = h;
+
+  // Wire filter pills + search
+  const pills   = el.querySelectorAll('.readiness-pill');
+  const searchEl = document.getElementById('readiness-search');
+  const listEl  = document.getElementById('readiness-user-list');
+
+  function applyFilter() {
+    const active = el.querySelector('.readiness-pill.active')?.dataset.filter || 'all';
+    const q = (searchEl?.value || '').toLowerCase().trim();
+    listEl?.querySelectorAll('.user-card')?.forEach(card => {
+      const matchFilter = active === 'all' || card.dataset.status === active;
+      const matchSearch = !q || (card.dataset.searchText || '').includes(q);
+      card.classList.toggle('hidden', !(matchFilter && matchSearch));
+    });
+  }
+
+  pills.forEach(pill => {
+    pill.addEventListener('click', () => {
+      pills.forEach(p => p.classList.remove('active'));
+      pill.classList.add('active');
+      applyFilter();
+    });
   });
-  h += '</tbody></table>';
-  document.getElementById('readiness-table').innerHTML = h;
+  if (searchEl) searchEl.addEventListener('input', applyFilter);
 
   const btn = document.getElementById('btn-export-readiness');
   if (btn) { btn.classList.remove('hidden'); btn.onclick = exportReadinessCsv; }
