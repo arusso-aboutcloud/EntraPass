@@ -70,7 +70,7 @@ export class GraphAPI {
   }
 
   async getOrganization() {
-    const data = await this.fetch('/organization?$select=id,displayName');
+    const data = await this.fetch('/organization?$select=id,displayName,verifiedDomains');
     return data.value?.[0] || null;
   }
 

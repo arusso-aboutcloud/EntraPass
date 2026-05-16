@@ -51,79 +51,236 @@ export class Analyzer {
     return t.includes('fido2') || t.includes('passkey');
   }
 
-  analyzePasskeyReadiness({ users, devices, policies }, enrichedPolicies = []) {
+  // Classify an account into one of four identity types before any readiness logic.
+  // Break-glass and guest/MSA accounts follow completely different guidance paths.
+  classifyAccountType(user, tenantDomain) {
+    const upn      = (user.userPrincipalName || '').toLowerCase();
+    const name     = (user.displayName       || '').toLowerCase();
+    const type     = (user.userType          || 'member').toLowerCase();
+    const domain   = upn.split('@')[1] || '';
+
+    const BG_PATTERNS = ['breakglass','break-glass','emergency','emergencyaccess','bg01','bg02','bg-','bgadmin','emergency-access'];
+    if (BG_PATTERNS.some(p => upn.includes(p) || name.includes(p))) return 'breakglass';
+
+    if (type === 'guest' || upn.includes('#ext#')) return 'guest';
+
+    const PERSONAL_DOMAINS = ['outlook.com','hotmail.com','live.com','msn.com','gmail.com','yahoo.com'];
+    if (PERSONAL_DOMAINS.some(d => domain === d)) return 'personal-msa';
+
+    if (tenantDomain && domain && domain !== tenantDomain) return 'guest';
+
+    return 'member';
+  }
+
+  classifyAuthMethods(authMethods) {
+    const MAP = [
+      { re: /fido2|passkey/,              type: 'fido2',         label: 'Passkey / FIDO2' },
+      { re: /microsoftauthenticator/,     type: 'authenticator', label: 'Authenticator App' },
+      { re: /windowshelloforbusiness/,    type: 'whfb',          label: 'Windows Hello' },
+      { re: /softwareoath|oath|totp/,     type: 'totp',          label: 'TOTP App' },
+      { re: /phone|sms/,                  type: 'phone',         label: 'SMS / Phone' },
+      { re: /temporaryaccesspass/,        type: 'tap',           label: 'Temp Access Pass' },
+      { re: /email/,                      type: 'email',         label: 'Email OTP' },
+    ];
+    const seen = new Set();
+    return authMethods.flatMap(m => {
+      const t = (m['@odata.type'] || m.authenticationMethodType || '').toLowerCase();
+      if (t.includes('password')) return [];
+      const hit = MAP.find(r => r.re.test(t));
+      if (!hit || seen.has(hit.type)) return [];
+      seen.add(hit.type);
+      return [{ type: hit.type, label: hit.label }];
+    });
+  }
+
+  generateRecommendedAction({ accountType, hasFido, hasMfa, hasModernDevice, blockedByPolicy, isPrivileged, userDevices, authTypes }) {
+    if (accountType === 'breakglass') {
+      return 'Break-glass account — do not register passkeys. Verify: excluded from all CA policies, sign-in alert is active, emergency password stored offline.';
+    }
+    if (accountType === 'guest') {
+      return 'Guest account — passkey registration is governed by the user\'s home tenant. Verify they are in scope of your CA policies if applicable.';
+    }
+    if (accountType === 'personal-msa') {
+      return 'Personal Microsoft account — cannot be managed by tenant policies. Consider converting to a member account, or remove from tenant if access is no longer needed.';
+    }
+    if (hasFido) {
+      return 'Passkey already registered. Verify the CA policy enforcing passkey sign-in is active and covers this user.';
+    }
+    if (isPrivileged && !hasMfa) {
+      return 'CRITICAL — Privileged account with no MFA. Issue a Temporary Access Pass immediately and require passkey registration before any further admin activity.';
+    }
+    if (blockedByPolicy) {
+      return 'Blocked by a CA policy requiring password as a grant control. Update the policy to use Authentication Strength (FIDO2) or add a temporary exclusion for the passkey onboarding window.';
+    }
+    const hasAuthenticator = authTypes.some(a => a.type === 'authenticator' || a.type === 'whfb');
+    if (hasMfa && hasModernDevice) {
+      return hasAuthenticator
+        ? 'Ready to self-register. Share aka.ms/mysecurityinfo — user can add a passkey today without admin intervention.'
+        : 'Has MFA and a compatible device. Direct user to aka.ms/mysecurityinfo to add a passkey (Authenticator app recommended first).';
+    }
+    if (hasMfa && !hasModernDevice) {
+      return userDevices.length > 0
+        ? 'MFA registered but device OS is outdated. Upgrade to Windows 10+, iOS 16+, Android 14+, or macOS 13+. Alternatively, issue a FIDO2 hardware security key.'
+        : 'MFA registered but no enrolled device. Issue a FIDO2 hardware security key (YubiKey, Feitian, etc.) so the user can register without a platform authenticator.';
+    }
+    if (!hasMfa && hasModernDevice) {
+      return 'Compatible device enrolled but no MFA registered. Issue a Temporary Access Pass, then guide the user to register at aka.ms/mysecurityinfo.';
+    }
+    return isPrivileged
+      ? 'Privileged account with no MFA and no compatible device. Issue a TAP and a FIDO2 hardware key immediately — this is a critical security gap.'
+      : 'No MFA and no compatible device. Issue a Temporary Access Pass, then guide the user to register at aka.ms/mysecurityinfo. Consider issuing a FIDO2 hardware key if the user has no compatible personal device.';
+  }
+
+  summarizeDevices(userDevices) {
+    if (!userDevices.length) return null;
+    const parts = userDevices.slice(0, 2).map(d => {
+      const os  = d.operatingSystem || 'Unknown';
+      const ver = d.operatingSystemVersion ? ' ' + String(d.operatingSystemVersion).split('.')[0] : '';
+      return os + ver;
+    });
+    if (userDevices.length > 2) parts.push(`+${userDevices.length - 2}`);
+    return parts.join(' · ');
+  }
+
+  analyzePasskeyReadiness({ users, devices, policies, org }, enrichedPolicies = []) {
+    const tenantDomain = (org?.verifiedDomains || []).find(d => d.isDefault)?.name?.toLowerCase() || null;
+
     const result = {
-      total: users.length, ready: 0, needsAttention: 0, blocked: 0, users: [],
+      total: users.length,
+      ready: 0, capable: 0, needsPrep: 0, blocked: 0, exempt: 0,
+      needsAttention: 0, // = capable + needsPrep — kept for backward compat with overview hero + score
+      users: [],
       breakdown: { byDevice: { ready: 0, outdated: 0, none: 0 }, byPolicy: { blocked: 0, allowed: 0 } },
     };
-    const blockingPolicies = policies.filter(p => this.policyBlocksPasskeyRegistration(p));
+
+    const blockingPolicies  = policies.filter(p => this.policyBlocksPasskeyRegistration(p));
     const enforcingPolicies = enrichedPolicies.filter(p => p.enforcesPasskey && p.state === 'enabled');
 
     users.forEach(user => {
-      const issues = [];
-      const d = { modernDevice: false, blockedByPolicy: false };
-      const am = user.authMethods || [];
-      const hasFido = am.some(m => this.isPasskeyMethod(m));
-      const hasMfa  = am.some(m => this.isStrongAuthMethod(m));
-      if (!hasMfa) issues.push("No MFA method registered");
-      if (hasFido) issues.push("Already has passkey/FIDO2 registered");
-      const userDevices = devices.filter(d2 =>
-        (d2.registeredOwners || []).some(o => o.id === user.id || o.userPrincipalName === user.userPrincipalName)
-      );
-      userDevices.forEach(d2 => {
-        const osName = (d2.operatingSystem || '').toLowerCase();
-        const ver = parseInt(d2.operatingSystemVersion) || 0;
-        if ((osName.includes('windows') && ver >= 10) || (osName.includes('ios') && ver >= 16)
-          || (osName.includes('android') && ver >= 14) || (osName.includes('mac') && ver >= 13))
-          d.modernDevice = true;
+      const am          = user.authMethods || [];
+      const hasFido     = am.some(m => this.isPasskeyMethod(m));
+      const hasMfa      = am.some(m => this.isStrongAuthMethod(m));
+      const authTypes   = this.classifyAuthMethods(am);
+      const accountType = this.classifyAccountType(user, tenantDomain);
+
+      const isPrivileged = (user.groups || []).some(g => {
+        const n = (g.displayName || '').toLowerCase();
+        return n.includes('admin') || n.includes('global') || n.includes('privileged') || n.includes('exchange admin');
       });
-      if (d.modernDevice) result.breakdown.byDevice.ready++;
+
+      const lastSignInStr = user.signInActivity?.lastSuccessfulSignIn || null;
+      const lastSignIn    = lastSignInStr ? new Date(lastSignInStr) : null;
+      const isStale = lastSignIn
+        ? (Date.now() - lastSignIn.getTime()) > 90 * 86400000
+        : !hasFido && !lastSignInStr; // no recorded sign-in + no passkey = likely inactive
+
+      const userDevices = devices.filter(d =>
+        (d.registeredOwners || []).some(o => o.id === user.id || o.userPrincipalName === user.userPrincipalName)
+      );
+
+      let hasModernDevice = false;
+      userDevices.forEach(d => {
+        const os  = (d.operatingSystem || '').toLowerCase();
+        const ver = parseInt(d.operatingSystemVersion) || 0;
+        if ((os.includes('windows') && ver >= 10) || (os.includes('ios') && ver >= 16)
+          || (os.includes('android') && ver >= 14) || (os.includes('mac') && ver >= 13))
+          hasModernDevice = true;
+      });
+
+      if (hasModernDevice) result.breakdown.byDevice.ready++;
       else if (userDevices.length > 0) result.breakdown.byDevice.outdated++;
       else result.breakdown.byDevice.none++;
-      if (!d.modernDevice && userDevices.length > 0) issues.push("Device OS outdated for passkeys");
-      if (userDevices.length === 0 && !hasFido) issues.push("No compatible device registered");
+
+      let blockedByPolicy = false;
       blockingPolicies.forEach(p => {
-        if (p.conditions?.users?.includeUsers?.includes("All") || p.conditions?.users?.includeUsers?.includes(user.id)) {
-          issues.push("Blocked by CA policy: " + p.displayName);
-          d.blockedByPolicy = true;
+        if (p.conditions?.users?.includeUsers?.includes('All') || p.conditions?.users?.includeUsers?.includes(user.id)) {
+          blockedByPolicy = true;
         }
       });
-      if (d.blockedByPolicy) result.breakdown.byPolicy.blocked++;
+      if (blockedByPolicy) result.breakdown.byPolicy.blocked++;
       else result.breakdown.byPolicy.allowed++;
 
-      // Per-user CA coverage gap — only relevant for users who haven't enrolled a passkey yet
+      // CA coverage gap
+      let notCoveredByEnforcement = false;
       if (!hasFido && enforcingPolicies.length > 0) {
         const userGroupIds = (user.groups || []).map(g => g.id).filter(Boolean);
         const covered = enforcingPolicies.some(p => {
-          const { includeUsers = [], includeGroups = [], includeRoles = [] } = p.scopeRaw || {};
+          const { includeUsers = [], includeGroups = [] } = p.scopeRaw || {};
           const { excludeUsers = [], excludeGroups = [] } = p.conditions?.users || {};
           if (excludeUsers.includes(user.id)) return false;
           if (excludeGroups.some(g => userGroupIds.includes(g))) return false;
-          if (includeUsers.includes('All')) return true;
-          if (includeUsers.includes(user.id)) return true;
+          if (includeUsers.includes('All') || includeUsers.includes(user.id)) return true;
           if (includeGroups.some(g => userGroupIds.includes(g))) return true;
-          if (includeRoles.length > 0) return false; // role-scoped only — cannot resolve without role memberships
           return false;
         });
-        if (!covered) issues.push("Not covered by any passkey-enforcing CA policy");
+        notCoveredByEnforcement = !covered;
       }
 
-      let status = "ready";
-      if (issues.length > 0) status = d.blockedByPolicy ? "blocked" : "attention";
-      result.users.push({
-        id: user.id,
-        displayName: user.displayName || user.userPrincipalName,
-        userPrincipalName: user.userPrincipalName,
-        status, issues,
-        deviceCount: userDevices.length,
-        authMethodCount: am.length,
-        groups: (user.groups || []).map(g => g.displayName),
-        lastSignIn: user.signInActivity?.lastSuccessfulSignIn || null,
+      // ── 4-tier status ────────────────────────────────────────────────────
+      let status;
+      const issues = [];
+
+      if (accountType === 'breakglass') {
+        status = 'exempt';
+        issues.push('Break-glass account — exempt from passkey rollout');
+      } else if (accountType === 'guest' || accountType === 'personal-msa') {
+        status = 'exempt';
+        issues.push(accountType === 'personal-msa'
+          ? 'Personal Microsoft account — governed by MSA, not tenant policies'
+          : 'Guest / external account — passkey governed by home tenant');
+      } else if (hasFido) {
+        status = 'ready';
+        issues.push('Passkey / FIDO2 registered');
+      } else if (blockedByPolicy) {
+        status = 'blocked';
+        issues.push('Blocked by a CA policy requiring password');
+        if (!hasMfa) issues.push('No MFA registered');
+      } else if (!hasMfa && !hasModernDevice) {
+        status = 'blocked';
+        issues.push('No MFA registered');
+        issues.push('No compatible device registered');
+      } else if (!hasMfa) {
+        status = 'needsPrep';
+        issues.push('No MFA registered — TAP needed to bootstrap');
+        if (!hasModernDevice && userDevices.length > 0) issues.push('Device OS outdated');
+      } else if (!hasModernDevice) {
+        status = 'needsPrep';
+        issues.push(userDevices.length > 0 ? 'Device OS outdated for passkeys' : 'No compatible device registered');
+      } else {
+        status = 'capable'; // hasMfa + hasModernDevice + no blocker
+      }
+
+      if (isPrivileged && status !== 'exempt') issues.push('Privileged account — prioritise');
+      if (isStale      && status !== 'exempt') issues.push('Inactive >90 days — verify before onboarding');
+      if (notCoveredByEnforcement && status !== 'exempt') issues.push('Not in scope of any passkey-enforcing CA policy');
+
+      const recommendedAction = this.generateRecommendedAction({
+        accountType, hasFido, hasMfa, hasModernDevice, blockedByPolicy,
+        isPrivileged, userDevices, authTypes,
       });
-      if (status === "ready") result.ready++;
-      else if (status === "attention") result.needsAttention++;
-      else result.blocked++;
+
+      result[status]++;
+      if (status === 'capable' || status === 'needsPrep') result.needsAttention++;
+
+      result.users.push({
+        id:                user.id,
+        displayName:       user.displayName || user.userPrincipalName,
+        userPrincipalName: user.userPrincipalName,
+        accountType,
+        status,
+        isPrivileged,
+        isStale,
+        issues,
+        recommendedAction,
+        authMethodTypes:   authTypes,
+        deviceCount:       userDevices.length,
+        deviceSummary:     this.summarizeDevices(userDevices),
+        authMethodCount:   am.filter(m => !(m['@odata.type'] || '').toLowerCase().includes('password')).length,
+        groups:            (user.groups || []).map(g => g.displayName),
+        lastSignIn:        lastSignInStr,
+      });
     });
+
     return result;
   }
 

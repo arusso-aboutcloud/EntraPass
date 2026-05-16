@@ -929,7 +929,7 @@ function renderUserCard(u) {
     breakglass:      { label: 'Break-glass',   cls: 'bg'     },
   };
 
-  const sc = STATUS_CFG[u.status]     || STATUS_CFG.blocked;
+  const sc = STATUS_CFG[u.status]     || { cls: 'blocked', label: u.status || 'Unknown', icon: '❓' };
   const ac = ACCT_CFG[u.accountType]  || { label: u.accountType, cls: '' };
 
   const authChips = (u.authMethodTypes || []).map(m =>
@@ -941,8 +941,9 @@ function renderUserCard(u) {
     .map(i => `<span class="user-issue-chip">${escapeHtml(i)}</span>`)
     .join('');
 
-  const groupsSummary = u.groups && u.groups.length > 0
-    ? u.groups.slice(0, 3).join(', ') + (u.groups.length > 3 ? ` +${u.groups.length - 3}` : '')
+  const namedGroups = (u.groups || []).filter(Boolean);
+  const groupsSummary = namedGroups.length > 0
+    ? namedGroups.slice(0, 3).join(', ') + (namedGroups.length > 3 ? ` +${namedGroups.length - 3}` : '')
     : null;
 
   const lastSignInDisplay = u.lastSignIn
@@ -992,22 +993,33 @@ function renderUserCard(u) {
 }
 
 function renderReadiness(r) {
-  const pr = r.passkeyReadiness;
-  const { users, total, ready, capable, needsPrep, blocked, exempt } = pr;
-  const el = document.getElementById('readiness-table');
+  const pr    = r.passkeyReadiness;
+  const users = pr.users || [];
+  const el    = document.getElementById('readiness-table');
   if (!el) return;
+
+  // Derive counts from the actual user list — guards against stale cached summaries
+  // that predate the current analyzer version.
+  const cnt = (s) => users.filter(u => u.status === s).length;
+  const total    = users.length;
+  const ready    = typeof pr.ready    === 'number' ? pr.ready    : cnt('ready');
+  const capable  = typeof pr.capable  === 'number' ? pr.capable  : cnt('capable');
+  const needsPrep = typeof pr.needsPrep === 'number' ? pr.needsPrep : cnt('needsPrep');
+  const blocked  = typeof pr.blocked  === 'number' ? pr.blocked  : cnt('blocked');
+  const exempt   = typeof pr.exempt   === 'number' ? pr.exempt   : cnt('exempt');
 
   // ── Narrative ──────────────────────────────────────────────────────────────
   let h = `<div class="readiness-narrative">
     <div class="readiness-narrative-icon">🔑</div>
     <div class="readiness-narrative-body">
       <strong>Passkey readiness is personal.</strong>
-      Every identity in your tenant sits at a different point on the passkey journey — shaped by what MFA they have registered,
-      what device they use, and which Conditional Access policies cover them.
-      This view classifies each user so you know exactly <em>who</em> can self-enroll today, <em>who</em> needs one fix first,
-      and <em>who</em> is blocked until an admin acts.
-      Break-glass, guest, and personal Microsoft accounts follow a separate path — they are classified and explained, never silently merged.
-      <span class="readiness-narrative-tip">Showing ${escapeHtml(String(total))} user${total !== 1 ? 's' : ''}. Sign-in activity and device data depend on Graph delegated permissions — if values appear missing, verify AuditLog.Read.All and Device.Read.All are consented.</span>
+      Every identity sits at a different point on the passkey journey — shaped by which MFA methods are registered,
+      which devices are enrolled, and which Conditional Access policies apply to them.
+      This view classifies each user so you know exactly <em>who</em> can self-enroll today, <em>who</em> needs one thing fixed first,
+      and <em>who</em> requires a direct admin action before onboarding can begin.
+      Break-glass, guest, and personal Microsoft accounts are classified separately — they follow a different guidance path
+      and should never be mixed into passkey rollout metrics.
+      <span class="readiness-narrative-tip">Showing ${escapeHtml(String(total))} user${total !== 1 ? 's' : ''} (sampled). Missing sign-in or device data usually means AuditLog.Read.All or Device.Read.All permission is not consented — re-scan after granting consent.</span>
     </div>
   </div>`;
 
@@ -1039,28 +1051,29 @@ function renderReadiness(r) {
     </div>` : ''}
   </div>`;
 
-  // ── Phase planner ──────────────────────────────────────────────────────────
+  // ── Suggested rollout order ────────────────────────────────────────────────
+  // (This is an EntraPass rollout recommendation — not an official Microsoft framework.)
   h += `<div class="phase-planner">
-    <div class="phase-planner-label">Rollout Phases</div>
+    <div class="phase-planner-label">Suggested rollout order — based on your scan data</div>
     <div class="phase-planner-track">
       <div class="phase-item phase-1">
-        <div class="phase-num">Phase 1</div>
-        <div class="phase-name">Pilot</div>
-        <div class="phase-detail">Users who can self-register passkeys today</div>
+        <div class="phase-num">Start here</div>
+        <div class="phase-name">Capable users</div>
+        <div class="phase-detail">Have MFA + compatible device. Can self-register at <strong>aka.ms/mysecurityinfo</strong> today — no admin prep required.</div>
         <div class="phase-count ${capable > 0 ? 'good' : ''}">${escapeHtml(String(capable))} user${capable !== 1 ? 's' : ''}</div>
       </div>
       <div class="phase-connector">→</div>
       <div class="phase-item phase-2">
-        <div class="phase-num">Phase 2</div>
-        <div class="phase-name">Prep Wave</div>
-        <div class="phase-detail">One gap to resolve — MFA or device update</div>
+        <div class="phase-num">Then</div>
+        <div class="phase-name">Needs Prep</div>
+        <div class="phase-detail">One gap blocks self-registration. Admin: issue a <strong>Temporary Access Pass</strong> or enrol a compatible device first.</div>
         <div class="phase-count ${needsPrep > 0 ? 'warn' : ''}">${escapeHtml(String(needsPrep))} user${needsPrep !== 1 ? 's' : ''}</div>
       </div>
       <div class="phase-connector">→</div>
       <div class="phase-item phase-3">
-        <div class="phase-num">Phase 3</div>
-        <div class="phase-name">Full Onboarding</div>
-        <div class="phase-detail">Admin action required to unlock</div>
+        <div class="phase-num">Last</div>
+        <div class="phase-name">Blocked</div>
+        <div class="phase-detail">Multiple gaps or CA policy blocker. Admin must resolve each issue before passkey registration is possible.</div>
         <div class="phase-count ${blocked > 0 ? 'danger' : ''}">${escapeHtml(String(blocked))} user${blocked !== 1 ? 's' : ''}</div>
       </div>
     </div>
