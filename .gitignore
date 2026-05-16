@@ -10,3 +10,6 @@ Thumbs.db
 *.key
 *.pem
 .claude/
+
+# Cloudflare raw API exports — commit only the .md, not the raw JSON
+docs/security/cf-rules-dump.json
