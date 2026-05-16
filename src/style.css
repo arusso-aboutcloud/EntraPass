@@ -1315,13 +1315,31 @@ footer {
 .fido2-config-value.good { color: var(--good);   }
 .fido2-config-value.warn { color: var(--warn);   }
 
+.fido2-notice-row {
+  padding: 0.875rem 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
 .fido2-notice {
   font-size: 0.82rem;
   color: var(--text-secondary);
-  padding: 0.875rem 1.1rem;
   line-height: 1.6;
+  margin: 0;
 }
 .fido2-notice.warn { color: var(--warn); }
+.inspector-doc-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+}
+.inspector-doc-link {
+  font-size: 0.78rem;
+  color: var(--primary);
+  white-space: nowrap;
+}
+.inspector-doc-link:hover { color: var(--primary-hover); }
+.fido2-config-hint { margin-top: 0.25rem; }
 
 /* AAGUID list */
 .aaguid-section { padding: 0.875rem 1.1rem; }

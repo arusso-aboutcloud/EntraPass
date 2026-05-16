@@ -927,6 +927,19 @@ function renderApps(r) {
   if (btn) { btn.classList.remove('hidden'); btn.onclick = exportAppsCsv; }
 }
 
+const FIDO2_DOCS = {
+  setup:        'https://learn.microsoft.com/en-us/entra/identity/authentication/howto-authentication-passwordless-security-key',
+  settings:     'https://learn.microsoft.com/en-us/entra/identity/authentication/howto-authentication-passwordless-security-key#fido2-security-key-optional-settings',
+  aaguid:       'https://learn.microsoft.com/en-us/entra/identity/authentication/concept-fido2-hardware-vendor',
+  attestation:  'https://learn.microsoft.com/en-us/entra/identity/authentication/howto-authentication-passwordless-security-key#fido2-security-key-optional-settings',
+  tap:          'https://learn.microsoft.com/en-us/entra/identity/authentication/howto-authentication-temporary-access-pass',
+  strengths:    'https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-authentication-strengths',
+};
+
+function docLink(url, label) {
+  return `<a href="${url}" target="_blank" rel="noopener" class="inspector-doc-link">${label} →</a>`;
+}
+
 function renderFido2Inspector(cfg) {
   if (!cfg) {
     return `<div class="fido2-inspector fido2-disabled">
@@ -934,7 +947,13 @@ function renderFido2Inspector(cfg) {
         <span class="fido2-inspector-title">FIDO2 / Passkey Method Configuration</span>
         <span class="fido2-state-chip disabled">Not configured</span>
       </div>
-      <p class="fido2-notice">The FIDO2 authentication method was not found in your tenant's Authentication Methods policy. Enable it before proceeding with passkey deployment.</p>
+      <div class="fido2-notice-row">
+        <p class="fido2-notice">The FIDO2 security key authentication method was not found in your tenant's Authentication Methods policy. Passkeys cannot be registered or used until it is enabled — this is the prerequisite for all passkey work.</p>
+        <div class="inspector-doc-links">
+          ${docLink(FIDO2_DOCS.setup, 'Enable FIDO2 security keys')}
+          ${docLink(FIDO2_DOCS.aaguid, 'Supported hardware vendors')}
+        </div>
+      </div>
     </div>`;
   }
 
@@ -946,7 +965,7 @@ function renderFido2Inspector(cfg) {
   const aaGuids     = (kr.aaGuids || []).map(g => g.toLowerCase());
 
   // Covered users label
-  const targets = cfg.includeTargets || [];
+  const targets   = cfg.includeTargets || [];
   const coversAll = targets.some(t => t.id === 'all_users' || t.id === 'AllUsers');
   const userCoverage = targets.length === 0 ? 'All users (default)'
     : coversAll ? 'All users'
@@ -959,37 +978,53 @@ function renderFido2Inspector(cfg) {
       ? `Allow list (${aaGuids.length} AAGUID${aaGuids.length !== 1 ? 's' : ''})`
       : `Block list (${aaGuids.length} AAGUID${aaGuids.length !== 1 ? 's' : ''})`;
   } else if (isEnforced && aaGuids.length === 0) {
-    krLabel = enforceType === 'allow'
-      ? 'Allow list (empty — all blocked)'
-      : 'Block list (empty — all allowed)';
+    krLabel = enforceType === 'allow' ? 'Allow list (empty — all blocked)' : 'Block list (empty — all allowed)';
   }
 
   let h = `<div class="fido2-inspector ${enabled ? '' : 'fido2-disabled'}">
     <div class="fido2-inspector-header">
       <span class="fido2-inspector-title">FIDO2 / Passkey Method Configuration</span>
-      <span class="fido2-state-chip ${enabled ? 'enabled' : 'disabled'}">${enabled ? 'Enabled' : 'Disabled'}</span>
-    </div>
-    <div class="fido2-config-row">
-      <div class="fido2-config-cell">
-        <span class="fido2-config-label">Attestation enforcement</span>
-        <span class="fido2-config-value ${attested ? 'good' : 'warn'}">${attested ? '✓ Enforced' : '✗ Not enforced'}</span>
-      </div>
-      <div class="fido2-config-cell">
-        <span class="fido2-config-label">Key restrictions</span>
-        <span class="fido2-config-value ${isEnforced && aaGuids.length > 0 ? 'good' : ''}">${escapeHtml(krLabel)}</span>
-      </div>
-      <div class="fido2-config-cell">
-        <span class="fido2-config-label">Covered users</span>
-        <span class="fido2-config-value">${escapeHtml(userCoverage)}</span>
+      <div style="display:flex;align-items:center;gap:0.75rem">
+        <span class="fido2-state-chip ${enabled ? 'enabled' : 'disabled'}">${enabled ? 'Enabled' : 'Disabled'}</span>
+        ${!enabled ? docLink(FIDO2_DOCS.setup, 'How to enable') : docLink(FIDO2_DOCS.settings, 'Settings guide')}
       </div>
     </div>`;
 
+  if (!enabled) {
+    h += `<div class="fido2-notice-row">
+      <p class="fido2-notice">FIDO2 is disabled in your Authentication Methods policy. Re-enable it to allow passkey registration and authentication in this tenant.</p>
+      <div class="inspector-doc-links">
+        ${docLink(FIDO2_DOCS.setup, 'Enable FIDO2 security keys')}
+        ${docLink(FIDO2_DOCS.aaguid, 'Supported hardware vendors')}
+      </div>
+    </div>`;
+  }
+
+  h += `<div class="fido2-config-row">
+    <div class="fido2-config-cell">
+      <span class="fido2-config-label">Attestation enforcement</span>
+      <span class="fido2-config-value ${attested ? 'good' : 'warn'}">${attested ? '✓ Enforced' : '✗ Not enforced'}</span>
+      ${!attested ? `<span class="fido2-config-hint">${docLink(FIDO2_DOCS.attestation, 'Configure attestation')}</span>` : ''}
+    </div>
+    <div class="fido2-config-cell">
+      <span class="fido2-config-label">Key restrictions</span>
+      <span class="fido2-config-value ${isEnforced && aaGuids.length > 0 ? 'good' : ''}">${escapeHtml(krLabel)}</span>
+      ${!isEnforced ? `<span class="fido2-config-hint">${docLink(FIDO2_DOCS.aaguid, 'Browse certified hardware')}</span>` : ''}
+    </div>
+    <div class="fido2-config-cell">
+      <span class="fido2-config-label">Covered users</span>
+      <span class="fido2-config-value">${escapeHtml(userCoverage)}</span>
+    </div>
+  </div>`;
+
   if (isEnforced && aaGuids.length > 0) {
     const listLabel = enforceType === 'allow' ? 'Allowed Authenticators' : 'Blocked Authenticators';
+    const unknownCount = aaGuids.filter(g => !KNOWN_AAAGUIDS[g]).length;
     h += `<div class="aaguid-section">
       <div class="aaguid-section-header">
         <span class="aaguid-section-label">${listLabel} (${aaGuids.length})</span>
-        <span class="aaguid-section-sub">Matched against ${Object.keys(KNOWN_AAAGUIDS).length} known device models</span>
+        <span class="aaguid-section-sub">Matched against ${Object.keys(KNOWN_AAAGUIDS).length} known device models${unknownCount > 0 ? ` · ${unknownCount} unrecognised — verify with vendor` : ''}</span>
+        ${docLink(FIDO2_DOCS.aaguid, 'AAGUID reference')}
       </div>
       <div class="aaguid-list">`;
     aaGuids.forEach(guid => {
@@ -1005,16 +1040,27 @@ function renderFido2Inspector(cfg) {
       h += `<div class="aaguid-row">
         <span class="aaguid-icon">${icon}</span>
         <span class="aaguid-name">${escapeHtml(name)}</span>
-        ${vendor}
-        ${badge}
+        ${vendor}${badge}
         <span class="aaguid-guid">${escapeHtml(guid)}</span>
       </div>`;
     });
     h += `</div></div>`;
   } else if (!isEnforced) {
-    h += `<p class="fido2-notice">No AAGUID restrictions — any FIDO2-compliant device (hardware keys, platform passkeys, software authenticators) can be enrolled by users.</p>`;
+    h += `<div class="fido2-notice-row">
+      <p class="fido2-notice">No AAGUID restrictions — any FIDO2-compliant device can be enrolled. For enterprise environments, consider building an allow list from your approved hardware vendor AAGUIDs.</p>
+      <div class="inspector-doc-links">
+        ${docLink(FIDO2_DOCS.aaguid, 'Browse FIDO2-certified hardware')}
+        ${docLink(FIDO2_DOCS.settings, 'Configure key restrictions')}
+      </div>
+    </div>`;
   } else if (isEnforced && aaGuids.length === 0 && enforceType === 'allow') {
-    h += `<p class="fido2-notice warn">Allow list is enforced but empty — no authenticator can currently be enrolled. Add at least one AAGUID to unblock registration.</p>`;
+    h += `<div class="fido2-notice-row">
+      <p class="fido2-notice warn">Allow list is enforced but empty — no authenticator can currently be enrolled. Add at least one AAGUID to restore passkey registration.</p>
+      <div class="inspector-doc-links">
+        ${docLink(FIDO2_DOCS.aaguid, 'Find your hardware AAGUID')}
+        ${docLink(FIDO2_DOCS.settings, 'Key restriction settings')}
+      </div>
+    </div>`;
   }
 
   h += `</div>`;
