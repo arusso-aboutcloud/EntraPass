@@ -22,9 +22,10 @@ tenant and tells you how ready it is for **passkey (FIDO2) authentication**. It
 answers questions like:
 
 - Which users can use passkeys right now, and which are blocked?
+- Which users are "capable" and can self-register with no IT help?
 - Which devices are running an OS too old for passkeys?
 - Which Conditional Access policies block passkey registration?
-- Which apps may silently fall back to passwords?
+- Which app identities expose credentials that could bypass passkeys?
 
 It runs entirely in your browser. The only network calls it makes are to the
 Microsoft Graph API — there is no EntraPass backend, no database, and no telemetry.
@@ -35,13 +36,16 @@ Microsoft Graph API — there is no EntraPass backend, no database, and no telem
 
 | Feature | Description |
 |---|---|
-| **User Readiness Scan** | Analyzes users, devices, and auth methods to determine passkey readiness |
+| **4-Tier Passkey Readiness** | Classifies every user as Ready / Capable / Needs Prep / Blocked / Exempt — a precise picture of where each person stands |
+| **Readiness Score (0–100)** | Composite score weighted by user tiers, FIDO2 policy state, TAP availability, CA gaps, and critical risk combinations |
+| **Rollout Phase Planner** | Automatically groups users into actionable deployment phases based on their tier |
+| **Per-User Recommended Actions** | Specific next step for each user — register passkey, enable MFA, update device OS, resolve CA blocker |
 | **Device Compatibility** | Checks OS versions (Windows 10+, iOS 16+, Android 14+, macOS 13+) |
 | **CA Policy Advisor** | Identifies Conditional Access policies blocking passkey registration |
-| **Toxic Combination Detector** | Flags privileged users without MFA or passkey |
-| **Entra Tip — App Check** | Bonus analysis of app compatibility, including Microsoft-managed apps |
+| **Toxic Combination Detector** | Flags privileged users without MFA or passkey, and policies that allow password fallback |
+| **App Identities** | Analysis of app registrations and service principals — password credentials, owner coverage, legacy-auth signals |
 | **AI Assistant** | Optional AI chat (Cloudflare Workers AI or bring-your-own-key) to interpret results |
-| **Executive Summary** | Prioritized recommendations plus a phased rollout plan |
+| **Executive Summary** | Prioritized recommendations plus infrastructure health chips |
 | **Security First** | PKCE auth, your own app registration, browser-only data |
 
 ### What it does **not** do
@@ -118,9 +122,9 @@ Click **Scan Tenant Now** — all analysis happens in your browser.
 
 | Tab | What to look for |
 |---|---|
-| **Overview** | Stats, executive summary, recommendations, rollout plan |
-| **Passkey Readiness** | Per-user status and blockers |
-| **Entra Tip: Apps** | App compatibility with descriptions and fixes |
+| **Overview** | Animated readiness score, stat tiles, infrastructure health, executive summary |
+| **Passkey Readiness** | Per-user cards with 4-tier status, filter pills, phase planner |
+| **App Identities** | App registration risks — password credentials, owner gaps, legacy signals |
 | **CA Policies** | Conditional Access policies blocking passkeys |
 | **AI Assistant** | Ask questions about your results (opt-in) |
 
@@ -140,6 +144,7 @@ Click **Scan Tenant Now** — all analysis happens in your browser.
 | [Data Architecture](docs/data-architecture.md) | Data at each step, classification, lifecycle |
 | [User Manual](docs/user-manual.md) | Full user guide with dashboard walkthrough |
 | [Installation Guide](docs/installation.md) | Hosting, local dev, app registration, verification |
+| [FAQ](docs/FAQ.md) | Frequently asked questions |
 | [Contributing](CONTRIBUTING.md) | How to contribute |
 
 ---
@@ -198,11 +203,12 @@ wrangler.toml              # Cloudflare Pages / Workers configuration
 src/
   main.js                  # Application orchestration: MSAL, scan, rendering
   graph.js                 # Microsoft Graph API client
-  analyzer.js              # Analysis engine (readiness, apps, policies, risks)
+  analyzer.js              # Analysis engine (readiness, apps, policies, risks, score)
   style.css                # UI styling
 
-workers/
-  ai.js                    # Optional Cloudflare Worker for the AI Assistant
+functions/
+  ai/
+    ask.js                 # Cloudflare Pages Function for the AI Assistant
 
 infra/
   app-registration.bicep   # Bicep template (reference only — see note above)
@@ -219,8 +225,9 @@ docs/
   data-architecture.md     # Data flow documentation
   installation.md          # Installation guide
   user-manual.md           # User manual
+  FAQ.md                   # Frequently asked questions
   diagrams/
-    architecture.svg       # Architecture diagram
+    architecture.svg       # Architecture diagram (animated SVG)
 ```
 
 ### Environment variables
@@ -255,9 +262,9 @@ straight to sign-in.
 | `User.Read.All` | List all users in the tenant |
 | `Device.Read.All` | List all devices and their OS versions |
 | `Policy.Read.All` | Read Conditional Access and authentication-method policies |
-| `Application.Read.All` | Read app registrations for the compatibility check |
+| `Application.Read.All` | Read app registrations for the App Identities analysis |
 | `AuditLog.Read.All` | Read sign-in activity (last sign-in time) |
-| `Organization.Read.All` | Read the tenant display name |
+| `Organization.Read.All` | Read the tenant display name and verified domains |
 
 ---
 
@@ -275,6 +282,11 @@ Contributions are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md), then:
 
 MIT License — see [LICENSE](LICENSE) for details.
 
+> **Commercial use:** EntraPass is MIT-licensed and free to use. If you plan to
+> use it as part of a commercial product or paid service, we kindly ask that you
+> [reach out](https://aboutcloud.io) before doing so. See the LICENSE file for
+> the full note.
+
 ---
 
 ## 💬 Support
@@ -285,5 +297,5 @@ MIT License — see [LICENSE](LICENSE) for details.
 
 ---
 
-> Built for the passkey community — because phishing-resistant authentication
-> shouldn't be hard to adopt.
+> Built by [Aboutcloud](https://aboutcloud.io) for the passkey community — because
+> phishing-resistant authentication shouldn't be hard to adopt.

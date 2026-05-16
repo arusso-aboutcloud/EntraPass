@@ -1,7 +1,8 @@
 # EntraPass — User Manual
 
-> **Version:** 0.1.0
+> **Version:** 1.0.0
 > **Product:** EntraPass — Passkey Migration Assistant
+> **Published by:** [Aboutcloud](https://aboutcloud.io)
 > **License:** MIT
 
 ---
@@ -18,7 +19,8 @@
 8. [Using the AI Assistant](#8-using-the-ai-assistant)
 9. [Cleanup](#9-cleanup)
 10. [Troubleshooting](#10-troubleshooting)
-11. [FAQ](#11-faq)
+
+For answers to common questions, see the [FAQ](FAQ.md).
 
 ---
 
@@ -29,10 +31,11 @@ to assess how ready your organization is for **passkey (FIDO2) authentication**.
 
 It answers questions like:
 
-- Which users can use passkeys right now?
-- Which devices need OS updates?
+- Which users already have passkeys registered?
+- Which users can self-register a passkey with no IT help?
+- Which users need a device update or MFA registration first?
 - Which Conditional Access policies block passkey registration?
-- Which apps may silently fall back to passwords?
+- Which app identities expose credentials that could bypass passkeys?
 
 ### Key principles
 
@@ -108,7 +111,7 @@ The wizard offers three options. Pick whichever suits you — see the
 | Option | Summary |
 |---|---|
 | **Azure Portal blade** (recommended) | The wizard links to the "Register an application" blade; you add the 7 Graph permissions and grant admin consent |
-| **Azure Cloud Shell script** | Run a one-line script that creates the app and all 7 permissions, grants admin consent, and prints your Client ID and Tenant ID (press Enter to accept the default portal URL) |
+| **Azure Cloud Shell script** | Run a one-line script that creates the app and all 7 permissions, grants admin consent, and prints your Client ID and Tenant ID |
 | **Manual PowerShell** | Run the Microsoft Graph PowerShell commands yourself for full control |
 
 ### Step 3: Configure
@@ -141,79 +144,112 @@ After signing in and running a scan, the dashboard shows five tabs.
 
 ### Overview (default tab)
 
-```
-┌──────────┐  ┌────────┐  ┌────────┐  ┌────────┐
-│ Total    │  │ Ready  │  │ Needs  │  │ Blocked│
-│ Users    │  │        │  │ Attn.  │  │        │
-└──────────┘  └────────┘  └────────┘  └────────┘
+The Overview tab shows a high-level picture of your tenant's passkey readiness.
 
-Passkey Migration Summary
-  • Executive summary text
-  • Toxic combination alerts
-  • Prioritized recommendations
-```
+**Readiness score ring** — an animated 0–100 score that summarizes overall
+readiness. The score is computed from your user breakdown and infrastructure state.
 
-| Card | Meaning |
+| Score band | Reading |
 |---|---|
-| **Total Users** | Number of users analyzed (up to 50) |
-| **Ready** | Users who can use passkeys immediately |
-| **Needs Attention** | Users who need device or MFA updates |
-| **Blocked** | Users blocked by a Conditional Access policy |
+| 85–100 | Very strong — most users Ready or Capable |
+| 65–84 | Good progress — some gaps to address |
+| 40–64 | Needs work — significant blocked or unprepared users |
+| 0–39 | Significant gaps — review FIDO2 policy and CA policies |
 
-### Passkey Readiness
+**Stat tiles** (six):
 
-A **per-user table**:
-
-| Column | Description |
+| Tile | Meaning |
 |---|---|
-| **User** | Display name or UPN |
-| **Status** | 🟢 Ready / 🟡 Needs Attention / 🔴 Blocked |
+| **Total** | Number of users analyzed |
+| **Ready** | Users with a FIDO2 passkey already registered |
+| **Capable** | Users who can self-register a passkey today |
+| **Needs Prep** | Users with one gap to resolve |
+| **Blocked** | Users blocked by multiple gaps or a CA policy |
+| **Exempt** | Break-glass / guest / personal MSA — excluded from passkey targets |
+
+**Readiness breakdown bar** — a proportional bar showing the tier distribution.
+
+**Infrastructure health chips**:
+- **FIDO2 policy** — whether the FIDO2 authentication method is enabled for the tenant.
+- **TAP policy** — whether Temporary Access Pass is enabled (needed for onboarding).
+- **App risks** — number of app registrations with password credentials present.
+- **Policy gaps** — number of critical or high-severity CA policy findings.
+
+**Executive summary** — a natural-language summary with recommendations, prioritized
+from critical to low.
+
+### Passkey Readiness tab
+
+A detailed per-user view with filter pills and search.
+
+**Filter pills** — click any tier to show only those users:
+`All` | `Ready` | `Capable` | `Needs Prep` | `Blocked` | `Exempt`
+
+**Search** — type any text to filter by display name, UPN, or account type.
+
+**User cards** — each card shows:
+
+| Field | Description |
+|---|---|
+| **Display name + UPN** | UPN is always shown prominently (users with the same display name are always shown as separate cards) |
+| **Status badge** | Ready / Capable / Needs Prep / Blocked / Exempt |
+| **Account type badge** | Member / Guest / Personal MSA / Break-glass |
+| **Flags** | Privileged role, Stale sign-in (>90 days) |
 | **Issues** | Specific blockers for that user |
+| **Recommended action** | One specific next step |
+| **Auth methods** | Colored chips for registered MFA methods (FIDO2, Authenticator, TOTP, phone, TAP, etc.) |
+| **Devices** | Count and OS summary |
+| **Groups** | Named group membership (up to 3 shown, then +N) |
+| **Last sign-in** | Date of most recent sign-in |
 
-Common per-user issues:
+**Phase planner** — below the user cards, a rollout roadmap groups users into
+actionable phases:
 
-- "No MFA method registered"
-- "Device OS outdated for passkeys"
-- "No compatible device registered"
-- "Blocked by CA policy: [name]"
-- "Already has passkey/FIDO2 registered"
+| Phase | Who | What to do |
+|---|---|---|
+| Phase 1 — Pilot | Ready users | Start immediately — these users can enroll passkeys now |
+| Phase 2 — Capable | Capable users | Enable passkey registration; guide self-enrollment |
+| Phase 3 — Prepare | Needs Prep users | Address single gaps (MFA, device OS, device enrollment) |
+| Phase 4 — Unblock | Blocked users | Resolve CA policies or multiple blockers |
 
-### Entra Tip: Apps
+**CSV export** — exports 13 columns: Display Name, UPN, Account Type, Status,
+Privileged, Stale, Issues, Recommended Action, Auth Methods, Device Count, Device
+Summary, Groups, Last Sign-In.
 
-A **bonus analysis** of application compatibility.
+### App Identities tab
+
+Analysis of **app registrations and service principals** in your tenant.
 
 | Column | Description |
 |---|---|
-| **App** | Application name, plus a "Microsoft-managed" label where applicable |
-| **Status** | 🟢 OK / 🔴 Flagged / 📄 Info (Microsoft-managed) |
-| **Issues** | Password credentials, legacy auth, certificate auth |
+| **App** | Application name, plus a label for Microsoft-managed apps |
+| **Status** | OK / Flagged / Info |
+| **Issues** | Password credentials, no delegated permissions, no owners, legacy auth signals |
 | **Description & Fix** | Why it matters and what to do |
 
 Severity colors:
-
-- **Red (high)** — password credentials present (can bypass passkeys)
-- **Orange (medium)** — no delegated permissions (may fall back to password)
+- **Red (high)** — password credentials present (can bypass passkeys for that app)
+- **Orange (medium)** — no delegated permissions (may fall back to password flow)
 - **Gray (info)** — Microsoft-managed app, not directly fixable by you
 
-> Focus on your **custom enterprise apps** first. Microsoft first-party and
-> Microsoft-managed ("substrate") apps are included for completeness but are
-> not actionable by you.
+> Focus on **custom enterprise apps** first. Microsoft first-party apps are included
+> for completeness but are generally not actionable by your tenant admins.
 
-### CA Policies
+### CA Policies tab
 
 All **Conditional Access policies** and whether they block passkey registration.
 
 | Column | Description |
 |---|---|
 | **Policy** | Policy name |
-| **Blocks Passkeys?** | 🔴 Yes / 🟢 No |
+| **Blocks Passkeys?** | Yes / No |
 | **Action** | Fix recommendation if the policy blocks passkeys |
 
 A policy is flagged as blocking when it is enabled and requires "password" as a
-grant control — that prevents passkey-only authentication. The fix is to require
-**FIDO2 authentication strength** instead.
+grant control — that prevents passkey-only authentication. The recommended fix is
+to use **FIDO2 authentication strength** as the grant control instead.
 
-### AI Assistant (opt-in)
+### AI Assistant tab (opt-in)
 
 An optional AI chat for asking questions about your scan results. See
 [section 8](#8-using-the-ai-assistant).
@@ -226,11 +262,22 @@ An optional AI chat for asking questions about your scan results. See
 
 | Status | Criteria | What to do |
 |---|---|---|
-| **Ready** | Has an MFA method, a modern device, and no blocking policy | Start a pilot |
-| **Needs Attention** | Missing MFA, outdated device OS, or no registered device | Guide the user to register MFA and a modern device |
-| **Blocked** | A Conditional Access policy explicitly blocks passkeys | Update the CA policy to use FIDO2 authentication strength |
+| **Ready** | Has a FIDO2 passkey registered | Pilot group — start enforcing passkeys for these users |
+| **Capable** | Has MFA + a modern device, no CA blocker | Direct to self-registration at `aka.ms/mfasetup` |
+| **Needs Prep** | One gap: no MFA method, outdated device OS, or no modern device registered | Fix the single gap; user can then self-register |
+| **Blocked** | Multiple gaps, or a CA policy actively blocking passkey registration | Resolve the CA policy first; then address any remaining gaps |
+| **Exempt** | Break-glass account, guest, or personal MSA | Do not target for passkeys (these accounts are excluded by design) |
 
 "Modern device" means: Windows 10+, iOS 16+, Android 14+, or macOS 13+.
+
+### Account types
+
+| Type | Detected by | Treatment |
+|---|---|---|
+| **Member** | Standard domain account | Included in readiness analysis |
+| **Guest** | `#ext#` in UPN or `userType = Guest` | Exempt (passkey capability depends on home tenant) |
+| **Personal MSA** | outlook.com, hotmail.com, live.com | Exempt (cannot be managed by your tenant policies) |
+| **Break-glass** | Name matches emergency account patterns | Exempt (no MFA by design — do not enroll passkeys) |
 
 ### Toxic combinations
 
@@ -238,15 +285,15 @@ High-severity alerts shown on the Overview tab:
 
 | Severity | Example | Why it matters |
 |---|---|---|
-| **Critical** | A privileged user with no MFA and no passkey | A single-factor admin account is a direct security risk |
-| **High** | A CA policy allows password fallback alongside passkey | Users can bypass passkeys by choosing a password |
+| **Critical** | A privileged user with no MFA and no passkey | Single-factor admin account is a direct security risk |
+| **High** | A CA policy allows password fallback alongside passkey | Users can bypass passkeys by choosing password |
 
 ### Recommendations
 
 The recommendation list is prioritized:
 
 ```
-Critical 🚨  →  High 🔴  →  Medium 🟡  →  Low 🟢  →  All Clear ✅
+Critical   →  High   →  Medium   →  Low   →  All Clear
 ```
 
 ---
@@ -261,18 +308,17 @@ Each recommendation includes:
 | **Category** | Policy, Security Risk, Apps, etc. |
 | **Title** | "CA policy blocks passkeys: Require MFA" |
 | **Description** | "This policy requires password as a grant control..." |
-| **Fix** | "Create a separate CA policy for passkey-capable users..." |
+| **Fix** | "Replace the password grant control with FIDO2 authentication strength..." |
 
-### Rollout plan (from the executive summary)
+### Phase planner
 
-When you have ready users, the summary suggests a 4-phase rollout:
+The phase planner (in the Passkey Readiness tab) translates user tier counts into
+an actionable deployment plan:
 
-```
-Phase 1: Pilot with your ready users
-Phase 2: Enable passkeys for "needs attention" users after their updates
-Phase 3: Resolve blocking Conditional Access policies
-Phase 4: Full rollout
-```
+- **Phase 1 — Pilot** with Ready users (zero blockers, can start now)
+- **Phase 2 — Enable** Capable users to self-register (guided enrollment)
+- **Phase 3 — Prepare** Needs Prep users (one targeted fix each)
+- **Phase 4 — Unblock** blocked users (CA policy review and multi-gap resolution)
 
 ---
 
@@ -285,25 +331,26 @@ The AI Assistant is **opt-in and off by default**.
 1. Go to the **AI Assistant** tab.
 2. Choose a mode:
    - **Off** — rule-based responses only; no data leaves your browser.
-   - **Cloudflare Free AI** — requires the optional Cloudflare Worker
-     (`workers/ai.js`) to be deployed.
+   - **Cloudflare Free AI** — uses the Cloudflare Pages Function (`functions/ai/ask.js`).
+     Requires the optional AI binding to be configured in Cloudflare Pages settings.
    - **Bring your own key (BYOK)** — enter your API endpoint, key, and model
      (e.g. an OpenAI-compatible endpoint).
 
 ### Example questions
 
 - "Which users are blocked by CA policies?"
-- "What apps need password credentials removed?"
+- "What apps have password credentials that should be removed?"
 - "Create a rollout plan for my tenant."
-- "What's the biggest risk in my results?"
+- "What does the readiness score mean?"
+- "What is Temporary Access Pass and why does it matter?"
 
 ### Privacy
 
 | Mode | Where your scan data goes |
 |---|---|
 | **Off** | Nowhere — stays in the browser |
-| **Cloudflare Free AI** | To the Cloudflare Worker, which calls Cloudflare Workers AI |
-| **BYOK** | To the AI endpoint you configured, using your own key |
+| **Cloudflare Free AI** | A non-identifying summary (counts only) is sent to the Cloudflare Pages Function, which calls Cloudflare Workers AI |
+| **BYOK** | The summary and your question are sent to the AI endpoint you configured, using your own key |
 
 If you must keep all tenant data inside the browser, leave the AI Assistant
 set to **Off**.
@@ -335,8 +382,8 @@ This removes:
 - The App Registration from your tenant
 - The service principal and its admin consent (only with `-RevokeConsent`)
 
-> Omit `-RevokeConsent` if you want to keep the App Registration's consent for
-> future scans but still delete the app.
+> Omit `-RevokeConsent` if you want to keep the consent grants for future scans
+> but still remove the App Registration record.
 
 ---
 
@@ -350,69 +397,16 @@ This removes:
 | **Redirect / reply URL mismatch** | SPA redirect URI doesn't match the portal URL | The redirect URI must match your portal URL exactly |
 | **Config validation failed** | Invalid GUID format | Client ID and Tenant ID must be in 8-4-4-4-12 hex format |
 | **Session expired mid-scan** | Access token expired (~60 min) | Sign out and sign in again |
+| **All users show as Blocked (status = 0)** | Old cached results in sessionStorage | Click Reset app, then re-scan |
 | **Cleanup script fails** | Microsoft Graph module missing or insufficient rights | The script auto-installs the module; run as a user with `Application.ReadWrite.All` |
 
 ### Known limitations
 
 | Limitation | Detail |
 |---|---|
-| **Up to 50 users** | The scan analyzes per-user detail for the first 50 users returned, for performance |
+| **Up to 50 users** | The scan fetches per-user detail for the first 50 users returned, for performance |
 | **Up to 100 devices** | Device ownership is resolved for the first 100 devices |
 | **Read-only** | EntraPass is an assessment tool — it cannot make changes to your tenant |
-| **No persistent storage** | Results are lost when the tab closes; re-scan or capture them before closing |
-| **Entra ID only** | Cannot assess on-prem resources or non-Microsoft identity providers |
-
----
-
-## 11. FAQ
-
-### Is EntraPass a Microsoft product?
-
-No. EntraPass is an **open-source community tool** licensed under MIT. It is not
-affiliated with or endorsed by Microsoft.
-
-### Where is my data stored?
-
-**In your browser only.** Nothing is stored on an EntraPass server, sent to
-analytics, or shared with third parties. The only exception is the optional AI
-Assistant, which sends data to an AI endpoint only if you explicitly enable it.
-See [Data Architecture](data-architecture.md) for details.
-
-### Can this tool make changes to my tenant?
-
-**No.** EntraPass is **read-only**. It only reads data via Microsoft Graph — it
-cannot create users, change policies, or modify configurations.
-
-### Does the tool store passwords?
-
-**No.** EntraPass never requests, reads, or stores passwords. It only checks
-*which* authentication methods are registered — never their secrets.
-
-### Why do I need to create an App Registration?
-
-The App Registration is how EntraPass authenticates to Microsoft Graph on your
-behalf. By creating it in **your own tenant** you keep full control:
-
-| Aspect | Your App Registration | A shared third-party app |
-|---|---|---|
-| **Control** | You own it | A third party controls it |
-| **Audit** | Full audit trail in your tenant | No visibility |
-| **Permissions** | You grant and review consent | Pre-consented by the vendor |
-| **Lifecycle** | Delete it whenever you want | Persistent |
-
-### What if I don't want to use the setup wizard?
-
-When self-hosting, set `VITE_CLIENT_ID` and `VITE_TENANT_ID` at build time. The
-wizard is skipped and the app goes straight to sign-in. You still need an App
-Registration in your tenant.
-
-### Can I use this in production?
-
-EntraPass is **MIT-licensed with no warranty**. It is an **assessment tool** to
-help plan a passkey migration. Review the code and test in a non-production
-tenant first.
-
-### How do I get support?
-
-Open an issue on the [GitHub repository](https://github.com/arusso-aboutcloud/EntraPass/issues).
-As an open-source project, support is community-driven.
+| **No persistent storage** | Results are lost when the tab closes; re-scan or export CSV before closing |
+| **Entra ID only** | Cannot assess on-premises resources or non-Microsoft identity providers |
+| **sessionStorage cache** | Scan results are cached for the browser session; always use the live user array counts (not pre-computed fields) for display accuracy |

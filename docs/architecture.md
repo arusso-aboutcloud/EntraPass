@@ -1,8 +1,9 @@
 # EntraPass — Architecture Document
 
-> **Version:** 0.1.0
+> **Version:** 1.0.0
 > **License:** MIT
-> **Last updated:** 2026-05-14
+> **Published by:** [Aboutcloud](https://aboutcloud.io)
+> **Last updated:** 2026-05-16
 
 ---
 
@@ -63,7 +64,7 @@ browser — no backend servers, no data storage, no telemetry.
 | **Microsoft Graph API** | The only external call — authenticated, read-only, delegated permissions |
 | **GitHub** | Source code distribution only |
 | **Cloudflare Pages** | Static hosting (no backend, no API, no storage) |
-| **Cloudflare Workers AI** | Optional — only used if the AI Assistant is enabled in "Cloudflare" mode |
+| **Cloudflare Workers AI** | Optional — only used if the AI Assistant is enabled in "Cloudflare" mode, via the Pages Function at `functions/ai/ask.js` |
 
 ### 1.3 Deployment topology
 
@@ -71,8 +72,9 @@ browser — no backend servers, no data storage, no telemetry.
 ┌───────────────┐     ┌──────────────────┐     ┌──────────────────┐
 │   GitHub      │────▶│  Cloudflare      │────▶│  User's Browser  │
 │  Repository   │     │  Pages (CDN)     │     │  (SPA app)       │
-│  (source)     │     │  (static files)  │     └────────┬─────────┘
-└───────────────┘     └──────────────────┘              │
+│  (source)     │     │  + Pages Fn      │     └────────┬─────────┘
+└───────────────┘     │  (AI assistant)  │              │
+                      └──────────────────┘              │
                                                         │
                                               ┌─────────▼─────────┐
                                               │  Microsoft Graph  │
@@ -99,11 +101,12 @@ index.html                 # SPA entry point: setup wizard + dashboard markup
 src/
   main.js                  # Application orchestration: MSAL, scan, rendering
   graph.js                 # Microsoft Graph API client (data fetching)
-  analyzer.js              # Analysis engine (passkey readiness, apps, policies)
+  analyzer.js              # Analysis engine (passkey readiness, apps, policies, score)
   style.css                # UI styling
 
-workers/
-  ai.js                    # Optional Cloudflare Worker for the AI Assistant
+functions/
+  ai/
+    ask.js                 # Cloudflare Pages Function — optional AI Assistant endpoint
 
 infra/
   app-registration.bicep   # Bicep template (reference only — see note below)
@@ -116,8 +119,9 @@ docs/
   data-architecture.md     # Data flow documentation
   installation.md          # Installation guide
   user-manual.md           # User manual
+  FAQ.md                   # Frequently asked questions
   diagrams/
-    architecture.svg       # Architecture diagram
+    architecture.svg       # Architecture diagram (animated SVG)
 ```
 
 ### 2.2 Module dependencies
@@ -142,7 +146,7 @@ index.html
    ├── getConditionalAccessPolicies()   → GET /identity/conditionalAccess/policies
    ├── getApplications()                → GET /applications
    ├── getServicePrincipals()           → GET /servicePrincipals
-   ├── getOrganization()                → GET /organization
+   ├── getOrganization()                → GET /organization (incl. verifiedDomains)
    ├── getAuthorizationPolicy()         → GET /policies/authorizationPolicy
    └── getAuthenticationMethodsPolicy() → GET /policies/authenticationMethodsPolicy
    │
@@ -155,12 +159,14 @@ index.html
    └── getDeviceRegisteredOwners(id)       → GET /devices/{id}/registeredOwners
    │
 5. analyzer.analyzeAll({ users, devices, policies, apps, ... })
-   ├── analyzePasskeyReadiness()  → per-user readiness
-   ├── analyzeAppCompatibility()  → per-app compatibility
+   ├── classifyAccountType()      → member / guest / personal-msa / breakglass
+   ├── analyzePasskeyReadiness()  → 4-tier per-user status (ready/capable/needsPrep/blocked/exempt)
+   ├── analyzeAppCompatibility()  → per-app compatibility (App Identities tab)
    ├── analyzePolicies()          → per-policy analysis
-   ├── findToxicCombinations()    → security risks
+   ├── findToxicCombinations()    → critical/high security risks
    ├── generateRecommendations()  → prioritized actions
-   └── generateNarrative()        → executive summary
+   ├── generateNarrative()        → executive summary
+   └── computeReadinessScore()    → 0–100 composite score
    │
 6. renderDashboard(results)       → 5-tab view
 ```
@@ -176,7 +182,7 @@ index.html
 | **Purpose** | Single-page application shell with the setup wizard and the dashboard |
 | **Sections** | Auth screen (multi-step wizard), dashboard (5 tabs), loading overlay |
 | **State** | `hidden` / `active` CSS classes toggle section visibility |
-| **Key IDs** | `auth-screen`, `dashboard`, `tab-*`, `stats-grid`, etc. |
+| **Key IDs** | `auth-screen`, `dashboard`, `tab-*`, `stats-grid`, `readiness-section`, etc. |
 
 ### 3.2 `src/main.js` — application orchestrator
 
@@ -189,6 +195,10 @@ index.html
 | `window.signOut()` | Logs out and clears the session |
 | `window.startScan()` | Orchestrates the full scan pipeline |
 | `renderDashboard()` | Calls all render functions to populate the 5 tabs |
+| `renderOverviewHero()` | Animated score ring, stat tiles, infrastructure chips, recommendations |
+| `renderReadiness()` | 4-tier user cards, filter pills, search, phase planner |
+| `renderUserCard()` | Per-user card with status badge, account badge, auth chips, recommended action |
+| `exportReadinessCsv()` | 13-column CSV export of the readiness data |
 
 ### 3.3 `src/graph.js` — Graph API client
 
@@ -199,9 +209,9 @@ index.html
 | `getConditionalAccessPolicies()` | `GET /identity/conditionalAccess/policies` | `Policy.Read.All` |
 | `getApplications()` | `GET /applications` | `Application.Read.All` |
 | `getServicePrincipals()` | `GET /servicePrincipals` | `Application.Read.All` |
-| `getOrganization()` | `GET /organization` | `Organization.Read.All` |
+| `getOrganization()` | `GET /organization?$select=id,displayName,verifiedDomains` | `Organization.Read.All` |
 | `getAuthenticationMethodsForUser()` | `GET /users/{id}/authenticationMethods` | `User.Read.All` |
-| `getUserSignInActivity()` | `GET /users/{id}/signInActivity` | `AuditLog.Read.All` |
+| `getUserSignInActivity()` | `GET /users/{id}?$select=signInActivity` | `AuditLog.Read.All` |
 | `getUserMemberOf()` | `GET /users/{id}/memberOf` | `User.Read.All` |
 | `getDeviceRegisteredOwners()` | `GET /devices/{id}/registeredOwners` | `Device.Read.All` |
 | `getAuthorizationPolicy()` | `GET /policies/authorizationPolicy` | `Policy.Read.All` |
@@ -211,14 +221,59 @@ index.html
 
 | Method | Input | Output |
 |---|---|---|
-| `analyzePasskeyReadiness()` | users, devices, policies | Per-user readiness plus breakdown |
-| `analyzeAppCompatibility()` | apps, servicePrincipals | Per-app compatibility plus fixes |
-| `analyzePolicies()` | policies | Per-policy block/allow analysis |
+| `classifyAccountType()` | user object, tenant domain | `member` / `guest` / `personal-msa` / `breakglass` |
+| `classifyAuthMethods()` | raw authMethods array | Typed method list with labels |
+| `analyzePasskeyReadiness()` | users, devices, policies, auth methods | Per-user 4-tier status + counts |
+| `generateRecommendedAction()` | user status, issues, auth methods | Single recommended next step string |
+| `summarizeDevices()` | user device list | "Windows 10 · iOS 16 +N" compact string |
+| `analyzeAppCompatibility()` | apps, servicePrincipals | Per-app compatibility + severity + fix |
+| `analyzePolicies()` | policies | Per-policy block/allow analysis + gaps |
 | `findToxicCombinations()` | users, policies | Critical / high-risk combinations |
-| `generateRecommendations()` | all analysis | Prioritized recommendations |
+| `generateRecommendations()` | all analysis | Prioritized recommendations list |
 | `generateNarrative()` | all analysis | Executive summary text |
+| `computeReadinessScore()` | passkeyReadiness, toxicCombos, policyResult | 0–100 composite score |
 
-### 3.5 `infra/` — deployment templates
+#### 4-Tier Passkey Readiness Status
+
+| Status | Criteria |
+|---|---|
+| `ready` | FIDO2 passkey already registered |
+| `capable` | Has MFA + a modern device, no CA blocker |
+| `needsPrep` | Exactly one gap (MFA missing, device OS outdated, or no modern device) |
+| `blocked` | Multiple gaps, or a CA policy actively blocking passkey registration |
+| `exempt` | Break-glass account, guest (#ext# or userType=Guest), or personal MSA |
+
+#### Readiness Score formula
+
+```
+score = 100
+score -= (blocked  / effective) * 35    // weighted penalty for blocked users
+score -= (needsPrep / effective) * 12   // penalty for users needing prep
+score -= (capable  / effective) * 3     // small penalty for capable (not yet enrolled)
+score -= 20   if FIDO2 policy is not enabled
+score -= 8    if TAP policy is not enabled
+score -= min(critical_toxic_combos * 10, 15)
+score -= min(critical_gaps * 8, 10)
+score -= min(ca_blocking_policies * 4, 5)
+score -= min(high_gaps * 2, 4)
+score = clamp(score, 0, 100)
+
+where: effective = total - exempt
+```
+
+### 3.5 `functions/ai/ask.js` — AI Assistant Pages Function
+
+A Cloudflare Pages Function that provides the optional AI Assistant backend. It:
+
+- Accepts `POST /ai/ask` with `{ question, results, history }`.
+- Validates CORS (`ALLOWED_ORIGIN` env var), rate-limits by IP (20 req/min), and
+  checks payload size (512 KB max).
+- Applies prompt-injection, destructive-intent, and off-topic filters.
+- Calls `@cf/meta/llama-3.1-8b-instruct` via the Workers AI binding.
+- Falls back to a rule-based response if the AI binding is unavailable.
+- Streams the response as Server-Sent Events (SSE).
+
+### 3.6 `infra/` — deployment templates
 
 | File | Type | Purpose |
 |---|---|---|
@@ -323,9 +378,11 @@ All three methods create a **PKCE-only SPA** with no client secret
 | **Token interception** | PKCE (S256 code challenge), no client secret |
 | **Cross-tenant access** | The user's App Registration lives in their own tenant; delegated permissions only |
 | **Data exfiltration** | All analysis happens in the browser; no calls to an EntraPass server |
-| **Stored XSS** | No user-supplied content is persisted beyond config GUIDs in `sessionStorage` |
+| **Stored XSS** | All dynamic content is HTML-escaped via `escapeHtml()` before DOM insertion |
 | **Supply chain** | Open source (MIT); build verifiable from source; Trivy + Dependabot scanning |
 | **Credential leak** | No service principal secret, no client secret, no API keys stored or transmitted |
+| **AI prompt injection** | `functions/ai/ask.js` applies regex filters for injection, destructive, and off-topic inputs |
+| **AI data exposure** | The AI endpoint receives only a non-identifying summary (counts + recommendation titles), never raw user data |
 
 ### 6.2 Required permissions (Microsoft Graph, delegated)
 
@@ -335,9 +392,9 @@ All three methods create a **PKCE-only SPA** with no client secret
 | `User.Read.All` | List all users in the tenant |
 | `Device.Read.All` | List all devices and their OS versions |
 | `Policy.Read.All` | Read Conditional Access policies and the authentication-methods policy |
-| `Application.Read.All` | Read app registrations for the compatibility check |
+| `Application.Read.All` | Read app registrations for the App Identities analysis |
 | `AuditLog.Read.All` | Read sign-in activity (last sign-in time) |
-| `Organization.Read.All` | Read the tenant display name |
+| `Organization.Read.All` | Read the tenant display name and verified domains (used for account type classification) |
 
 ### 6.3 Data residency
 
@@ -350,8 +407,8 @@ Data deletion:   Tab close          → sessionStorage cleared
                  Cleanup script     → App Registration deleted
 ```
 
-> **AI Assistant note:** when the AI Assistant is enabled, scan results are sent
-> to the configured AI endpoint (Cloudflare Workers AI, or your own
-> bring-your-own-key endpoint). When the AI Assistant is **off** (the default),
-> no data leaves the browser except Graph API calls. See the
-> [Data Architecture](data-architecture.md) document for details.
+> **AI Assistant note:** when the AI Assistant is enabled, a **non-identifying
+> summary** (counts only, no names or UPNs) is sent to the configured AI endpoint.
+> When the AI Assistant is **off** (the default), no data leaves the browser except
+> Graph API calls. See the [Data Architecture](data-architecture.md) document for
+> details.
