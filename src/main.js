@@ -782,14 +782,14 @@ function renderOverviewHero(r) {
 
   const score       = r.readinessScore ?? 0;
   const scoreClass  = score >= 70 ? 'score-good'  : score >= 40 ? 'score-warn'  : 'score-danger';
-  const verdictCls  = score >= 70 ? 'good'         : score >= 40 ? 'warn'         : 'danger';
-  const verdictText = score >= 70
+  const sampled     = r.meta && r.meta.usersFound > total;
+  const verdictCls  = sampled ? 'neutral' : (score >= 70 ? 'good' : score >= 40 ? 'warn' : 'danger');
+  const verdictText = (score >= 70
     ? (ready > 0 ? 'Passkeys in use · rolling out' : 'Infrastructure ready · start rollout')
-    : score >= 40 ? 'Preparation underway' : 'Action required';
+    : score >= 40 ? 'Preparation underway' : 'Action required') + (sampled ? ' (sampled)' : '');
   const ringColor   = score >= 70 ? 'var(--good)' : score >= 40 ? 'var(--accent)' : 'var(--danger)';
   const circ        = 2 * Math.PI * 50;
   const targetOff   = circ * (1 - score / 100);
-  const sampled     = r.meta && r.meta.usersFound > total;
 
   // Infrastructure status signals for ring card
   const fido2Ok  = r.fido2Config?.state === 'enabled';
@@ -816,7 +816,8 @@ function renderOverviewHero(r) {
         <img src="/aboutcloud_logo.png" alt="Aboutcloud" class="ring-brand-logo">
         <span class="ring-brand-name">Aboutcloud EntraPass</span>
       </div>
-      <div class="ring-label">Readiness Score</div>
+      <div class="ring-label">${sampled ? 'Sample Readiness Score' : 'Readiness Score'}</div>
+      ${sampled ? `<div class="sample-notice">Score is computed on the first 50 users returned by Graph. The figure is indicative on tenants with more than 50 users; the CSV export captures the per-user detail for the analysed sample.</div>` : ''}
       <div class="ring-svg-wrapper">
         <svg width="128" height="128" viewBox="0 0 120 120">
           <circle cx="60" cy="60" r="50" fill="none" stroke="var(--border-subtle)" stroke-width="9" stroke-linecap="round"/>

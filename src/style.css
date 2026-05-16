@@ -640,9 +640,19 @@ main { padding: 2rem; max-width: 1200px; margin: 0 auto; }
   padding: 0.3rem 0.875rem;
   border-radius: var(--r-full);
 }
-.score-verdict.good   { background: var(--good-bg);   color: var(--good);   }
-.score-verdict.warn   { background: var(--warn-bg);   color: var(--warn);   }
-.score-verdict.danger { background: var(--danger-bg); color: var(--danger); }
+.score-verdict.good    { background: var(--good-bg);   color: var(--good);   }
+.score-verdict.warn    { background: var(--warn-bg);   color: var(--warn);   }
+.score-verdict.danger  { background: var(--danger-bg); color: var(--danger); }
+.score-verdict.neutral { color: var(--text-secondary); background: transparent; border: 1px solid var(--border-subtle); }
+.sample-notice {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  background: var(--surface-2);
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  margin: 0 0 0.75rem 0;
+  border-left: 3px solid var(--accent);
+}
 
 .ring-progress { transition: stroke-dashoffset 1.1s cubic-bezier(0.4, 0, 0.2, 1); }
 

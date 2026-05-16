@@ -245,6 +245,8 @@ index.html
 
 #### Readiness Score formula
 
+On tenants with more than 50 users, the score is computed from the first 50 users returned by Graph and is labelled as a sample score in the overview hero.
+
 ```
 score = 100
 score -= (blocked  / effective) * 35    // weighted penalty for blocked users

@@ -36,9 +36,9 @@ Microsoft Graph API — there is no EntraPass backend, no database, and no telem
 
 | Feature | Description |
 |---|---|
-| **4-Tier Passkey Readiness** | Classifies every user as Ready / Capable / Needs Prep / Blocked / Exempt — a precise picture of where each person stands |
-| **Readiness Score (0–100)** | Composite score weighted by user tiers, FIDO2 policy state, TAP availability, CA gaps, and critical risk combinations |
-| **Rollout Phase Planner** | Automatically groups users into actionable deployment phases based on their tier |
+| **4-Tier Passkey Readiness** | Classifies every user as Ready / Capable / Needs Prep / Blocked / Exempt — a precise picture of where each person stands (first 50 users on large tenants) |
+| **Readiness Score (0–100)** | Composite score weighted by user tiers, FIDO2 policy state, TAP availability, CA gaps, and critical risk combinations (labelled as a sample score on tenants with more than 50 users) |
+| **Rollout Phase Planner** | Automatically groups users into actionable deployment phases based on their tier (based on 50-user sample on large tenants) |
 | **Per-User Recommended Actions** | Specific next step for each user — register passkey, enable MFA, update device OS, resolve CA blocker |
 | **Device Compatibility** | Checks OS versions (Windows 10+, iOS 16+, Android 14+, macOS 13+) |
 | **CA Policy Advisor** | Identifies Conditional Access policies blocking passkey registration |

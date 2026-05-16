@@ -148,6 +148,7 @@ The Overview tab shows a high-level picture of your tenant's passkey readiness.
 
 **Readiness score ring** — an animated 0–100 score that summarizes overall
 readiness. The score is computed from your user breakdown and infrastructure state.
+On tenants with more than 50 users the ring label changes to "Sample Readiness Score" and the verdict pill is labelled "(sampled)" to indicate the score is based on the first 50 users returned by Graph.
 
 | Score band | Reading |
 |---|---|
