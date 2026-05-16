@@ -753,16 +753,18 @@ function renderOverviewHero(r) {
   const prescan = document.getElementById('overview-prescan');
   if (!hero) return;
 
-  // Derive all counts from actual user list — resilient to stale sessionStorage.
+  // Always derive counts from the actual user list.
+  // Pre-computed summary fields (pr.capable etc.) can be 0 from stale sessionStorage
+  // even when the users[] have real statuses — so never trust the summaries.
   const pr    = r.passkeyReadiness;
   const users = pr.users || [];
   const cnt   = s => users.filter(u => u.status === s).length;
   const total    = users.length;
-  const ready    = typeof pr.ready     === 'number' ? pr.ready     : cnt('ready');
-  const capable  = typeof pr.capable   === 'number' ? pr.capable   : cnt('capable');
-  const needsPrep = typeof pr.needsPrep === 'number' ? pr.needsPrep : cnt('needsPrep');
-  const blocked  = typeof pr.blocked   === 'number' ? pr.blocked   : cnt('blocked');
-  const exempt   = typeof pr.exempt    === 'number' ? pr.exempt    : cnt('exempt');
+  const ready    = cnt('ready');
+  const capable  = cnt('capable');
+  const needsPrep = cnt('needsPrep');
+  const blocked  = cnt('blocked');
+  const exempt   = cnt('exempt');
 
   const score       = r.readinessScore ?? 0;
   const scoreClass  = score >= 70 ? 'score-good'  : score >= 40 ? 'score-warn'  : 'score-danger';
@@ -796,6 +798,10 @@ function renderOverviewHero(r) {
 
   hero.innerHTML = `
     <div class="score-ring-card">
+      <div class="ring-brand">
+        <img src="/aboutcloud_logo.png" alt="Aboutcloud" class="ring-brand-logo">
+        <span class="ring-brand-name">Aboutcloud EntraPass</span>
+      </div>
       <div class="ring-label">Readiness Score</div>
       <div class="ring-svg-wrapper">
         <svg width="128" height="128" viewBox="0 0 120 120">
@@ -1071,15 +1077,14 @@ function renderReadiness(r) {
   const el    = document.getElementById('readiness-table');
   if (!el) return;
 
-  // Derive counts from the actual user list — guards against stale cached summaries
-  // that predate the current analyzer version.
+  // Always derive from the actual user list — pre-computed summaries can be stale.
   const cnt = (s) => users.filter(u => u.status === s).length;
   const total    = users.length;
-  const ready    = typeof pr.ready    === 'number' ? pr.ready    : cnt('ready');
-  const capable  = typeof pr.capable  === 'number' ? pr.capable  : cnt('capable');
-  const needsPrep = typeof pr.needsPrep === 'number' ? pr.needsPrep : cnt('needsPrep');
-  const blocked  = typeof pr.blocked  === 'number' ? pr.blocked  : cnt('blocked');
-  const exempt   = typeof pr.exempt   === 'number' ? pr.exempt   : cnt('exempt');
+  const ready    = cnt('ready');
+  const capable  = cnt('capable');
+  const needsPrep = cnt('needsPrep');
+  const blocked  = cnt('blocked');
+  const exempt   = cnt('exempt');
 
   // ── Narrative ──────────────────────────────────────────────────────────────
   let h = `<div class="readiness-narrative">

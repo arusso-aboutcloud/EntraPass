@@ -562,6 +562,29 @@ main { padding: 2rem; max-width: 1200px; margin: 0 auto; }
   gap: 0.75rem;
 }
 
+/* Aboutcloud brand row inside ring card */
+.ring-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding-bottom: 0.6rem;
+  border-bottom: 1px solid var(--border-subtle);
+  width: 100%;
+  justify-content: center;
+}
+.ring-brand-logo {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+  opacity: 0.9;
+}
+.ring-brand-name {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  letter-spacing: 0.01em;
+}
+
 .ring-label {
   font-size: 0.75rem;
   font-weight: 700;
@@ -596,7 +619,7 @@ main { padding: 2rem; max-width: 1200px; margin: 0 auto; }
 .ring-score-number.score-warn   { color: var(--accent); }
 .ring-score-number.score-danger { color: var(--danger); }
 
-.ring-score-sub { font-size: 0.7rem; color: var(--text-tertiary); margin-top: 0.2rem; font-weight: 500; }
+.ring-score-sub { font-size: 0.7rem; color: var(--text-secondary); margin-top: 0.2rem; font-weight: 500; }
 
 .score-verdict {
   font-size: 0.82rem;
@@ -685,7 +708,7 @@ main { padding: 2rem; max-width: 1200px; margin: 0 auto; }
 .stat-tile.exempt  .stat-tile-value { color: var(--text-secondary); }
 
 .stat-tile-label { font-size: 0.79rem; font-weight: 600; color: var(--text); }
-.stat-tile-sub   { font-size: 0.71rem; color: var(--text-tertiary); }
+.stat-tile-sub   { font-size: 0.71rem; color: var(--text-secondary); }
 
 /* Readiness breakdown bar (Overview hero) */
 .readiness-bar-block {
