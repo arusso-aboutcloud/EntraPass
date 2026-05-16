@@ -569,7 +569,7 @@ export class Analyzer {
     const isEnabled = state !== 'disabled';
 
     // --- What does the policy do? ---
-    const blocksPasskeyRegistration = isEnabled && builtIn.includes('password');
+    const blocksPasskeyRegistration = this.policyBlocksPasskeyRegistration(policy);
 
     // Enforces passkey: grant requires an auth strength containing FIDO2 or WHfB
     const enforcesPasskey = isEnabled && !!(
@@ -614,7 +614,7 @@ export class Analyzer {
     // --- Fix guide ---
     let fixGuide = null;
     if (blocksPasskeyRegistration) {
-      fixGuide = 'Replace the password grant control with an Authentication Strength that includes Passkey (FIDO2). Consider splitting: one policy for passkey users (FIDO2 strength), one for legacy users.';
+      fixGuide = 'Review this policy. If it blocks the security-info registration user action, ensure passkey-capable users are excluded from its scope. If it requires an authentication strength, ensure the strength includes at least one phishing-resistant combination (FIDO2, Windows Hello for Business, or device-bound push). Consider splitting into separate policies for passkey users and legacy users.';
     }
 
     return {
@@ -634,7 +634,7 @@ export class Analyzer {
       strengthName,
       authStrength: authStr || null,
       warning: blocksPasskeyRegistration
-        ? 'This policy requires password as a grant control, blocking passkey-only authentication.'
+        ? 'This policy prevents passkey-only users from completing the flow it governs (sign-in or security-info registration).'
         : null,
       fixGuide,
       recommendation: fixGuide,
@@ -809,15 +809,38 @@ export class Analyzer {
           combos.push({ severity: "critical", displayName: u.displayName || u.userPrincipalName, groups: (u.groups || []).map(g => g.displayName), description: "No MFA and no passkey on high-privilege account", fix: "Enable MFA immediately. Register passkey/FIDO2 as primary auth method." });
       }
     });
-    const vulnerablePolicies = (policies || []).filter(p => p.state !== "disabled" && p.grantControls?.builtInControls?.includes("password") && p.grantControls?.builtInControls?.includes("mfa"));
+    const PR = ['fido2', 'windowsHelloForBusiness', 'deviceBasedPush'];
+    const vulnerablePolicies = (policies || []).filter(p => {
+      if (p.state === 'disabled') return false;
+      const combos = p.grantControls?.authenticationStrength?.allowedCombinations || [];
+      return combos.some(c => PR.includes(c)) &&
+             combos.some(c => c === 'password' || c.startsWith('password,'));
+    });
     if (vulnerablePolicies.length > 0)
       combos.push({ severity: "high", displayName: "Password fallback enabled", description: vulnerablePolicies.length + " CA policies allow password fallback with passkey.", fix: "Update to require FIDO2 authentication strength." });
     return combos;
   }
 
   policyBlocksPasskeyRegistration(policy) {
-    if (policy.state === "disabled") return false;
-    return policy.grantControls?.builtInControls?.includes("password") || false;
+    if (policy.state === 'disabled') return false;
+    const grant      = policy.grantControls || {};
+    const userActions = policy.conditions?.applications?.includeUserActions || [];
+    const combos     = grant.authenticationStrength?.allowedCombinations   || [];
+    const PR         = ['fido2', 'windowsHelloForBusiness', 'deviceBasedPush'];
+
+    // (a) explicit block on the passkey registration user action
+    if (grant.builtInControls?.includes('block') &&
+        (userActions.includes('urn:user:registerSecurityInfo') ||
+         userActions.includes('urn:user:registerbiometricinfo'))) {
+      return true;
+    }
+
+    // (b) auth strength exists but offers no phishing-resistant path
+    if (combos.length > 0 && !combos.some(c => PR.includes(c))) {
+      return true;
+    }
+
+    return false;
   }
 
   generateRecommendations(passkeyReadiness, appCompatibility, policyResult, toxicCombos) {
