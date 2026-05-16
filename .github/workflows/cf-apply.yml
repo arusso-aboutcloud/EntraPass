@@ -3,17 +3,18 @@ name: Apply Cloudflare Hardening
 # Manual trigger only — makes live changes to Cloudflare WAF and header rules.
 # Required secrets:
 #   CLOUDFLARE_API_TOKEN  — Zone WAF + Transform Edit permissions
+#   CF_APPLY_CONFIG_JSON  — Operator config JSON (see infra/cf-apply-config.example.json)
 #   (Admin IP is auto-detected from the existing WAF bypass rule — no extra secret needed)
 on:
   workflow_dispatch:
     inputs:
       zone:
-        description: 'Cloudflare zone (default: aboutcloud.io)'
+        description: 'Cloudflare zone override (leave blank to use zone from CF_APPLY_CONFIG_JSON)'
         required: false
-        default: 'aboutcloud.io'
+        default: ''
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   apply:
@@ -22,6 +23,16 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+
+      - name: Materialise operator config
+        run: |
+          if [ -z "$CF_APPLY_CONFIG_JSON" ]; then
+            echo "::error::CF_APPLY_CONFIG_JSON secret is not set; see infra/cf-apply-config.example.json for the expected schema."
+            exit 1
+          fi
+          echo "$CF_APPLY_CONFIG_JSON" > infra/cf-apply-config.local.json
+        env:
+          CF_APPLY_CONFIG_JSON: ${{ secrets.CF_APPLY_CONFIG_JSON }}
 
       - name: Apply CF hardening
         shell: pwsh
@@ -37,14 +48,9 @@ jobs:
         run: |
           .\infra\export-cf-rules.ps1 -Zone "${{ github.event.inputs.zone }}"
 
-      - name: Commit updated cloudflare-rules.md
-        run: |
-          git config user.name  "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add docs/security/cloudflare-rules.md
-          if git diff --cached --quiet; then
-            echo "No changes to cloudflare-rules.md."
-          else
-            git commit -m "chore: update cloudflare-rules.md after hardening [skip ci]"
-            git push
-          fi
+      - name: Upload rules export as workflow artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
+        with:
+          name: cloudflare-rules-export
+          path: docs/security/cloudflare-rules.md
+          retention-days: 30

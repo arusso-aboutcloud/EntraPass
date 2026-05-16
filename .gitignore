@@ -11,5 +11,11 @@ Thumbs.db
 *.pem
 .claude/
 
-# Cloudflare raw API exports — commit only the .md, not the raw JSON
+# Cloudflare raw API exports — local only, never committed
 docs/security/cf-rules-dump.json
+
+# Operator-specific Cloudflare config — never commit
+infra/cf-apply-config.local.json
+
+# Cloudflare rules export — operator inventory, never commit
+docs/security/cloudflare-rules.md

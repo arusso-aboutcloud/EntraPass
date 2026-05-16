@@ -1,0 +1,29 @@
+{
+  "_comment": "Operator-specific Cloudflare configuration for apply-cf-hardening.ps1 and export-cf-rules.ps1. Copy this file to cf-apply-config.local.json, fill in real values, and keep that copy gitignored. For CI/CD, store the full JSON as the CF_APPLY_CONFIG_JSON GitHub secret; the cf-apply workflow materialises it as cf-apply-config.local.json at runtime.",
+
+  "zone": "example.com",
+
+  "protectedHosts": [
+    "app1.example.com",
+    "app2.example.com",
+    "app3.example.com",
+    "app4.example.com"
+  ],
+
+  "workerSubdomains": [
+    "myworker.myusername.workers.dev"
+  ],
+
+  "analyticsHost": "analytics.example.com",
+
+  "aiAskExceptionHost": "app1.example.com",
+  "aiAskExceptionPath": "/ai/ask",
+
+  "ruleDescriptionPatterns": {
+    "bypass":   "Allow My IP|Bypass|Admin Bypass",
+    "scanner":  "Block Scanners|Malicious|Scanner|Admin Paths",
+    "apiAbuse": "RoleLens|Entra Role|Block API Abuse|EntraApps.*API",
+    "umami":    "Umami",
+    "spa":      "non-GET|Static SPA|SPA Enforcement|EntraApps.*SPA"
+  }
+}

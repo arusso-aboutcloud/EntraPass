@@ -1,8 +1,7 @@
 # NOTE: The runtime CSP for entrapass.aboutcloud.io is set by a Cloudflare
 # Response Header Transform ("EntraPass: Security Headers"), not by this file.
 # This file is kept in sync with the Transform so the policy is reviewable in
-# git, but editing it does NOT change production. See docs/security/README.md
-# for the migration plan to make this file authoritative.
+# git, but editing it does NOT change production.
 #
 # WARNING: frame-src is absent from the production Transform. This causes
 # frame-src to fall back to default-src 'self', which blocks iframes from

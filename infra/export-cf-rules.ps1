@@ -1,12 +1,16 @@
 <#
 .SYNOPSIS
-  Exports all Cloudflare security rules for aboutcloud.io to JSON + Markdown.
+  Exports all Cloudflare security rules for the configured zone to JSON + Markdown.
 
 .DESCRIPTION
+  Reads operator configuration from infra/cf-apply-config.local.json (gitignored)
+  or equivalent CF_* environment variables. See infra/cf-apply-config.example.json
+  for the expected schema.
+
   Queries the Cloudflare Ruleset API for every rule phase (WAF, Rate Limiting,
   Transform, Redirect, Configuration, Origin, Cache, Header rules) and writes:
     - docs/security/cf-rules-dump.json   -- raw API output (gitignored)
-    - docs/security/cloudflare-rules.md  -- human-readable summary for GitHub
+    - docs/security/cloudflare-rules.md  -- human-readable summary (gitignored)
 
   The admin IP is auto-detected from the WAF bypass rule and always redacted
   as [ADMIN-IP] in both output files. No additional secrets or parameters needed.
@@ -20,9 +24,34 @@
 #>
 
 param(
-    [string]$Zone   = "aboutcloud.io",
+    [string]$Zone   = "",
     [string]$OutDir = "docs\security"
 )
+
+# -- Load operator config (zone + bypass pattern) -------------------------------
+$_cfgFile = Join-Path $PSScriptRoot 'cf-apply-config.local.json'
+if (Test-Path $_cfgFile) {
+    $config = Get-Content $_cfgFile -Raw | ConvertFrom-Json
+} else {
+    $config = [PSCustomObject]@{
+        zone                    = $env:CF_ZONE
+        ruleDescriptionPatterns = if ($env:CF_RULE_DESCRIPTION_PATTERNS) { $env:CF_RULE_DESCRIPTION_PATTERNS | ConvertFrom-Json } else { $null }
+    }
+}
+
+if (-not $config.ruleDescriptionPatterns -or -not $config.ruleDescriptionPatterns.bypass) {
+    throw ("Required config field 'ruleDescriptionPatterns.bypass' is missing. " +
+           "Set it in infra/cf-apply-config.local.json or set CF_RULE_DESCRIPTION_PATTERNS env var. " +
+           "See infra/cf-apply-config.example.json for the full schema.")
+}
+if (-not $Zone) {
+    if (-not $config.zone) {
+        throw ("Zone not specified. Pass -Zone 'example.com' or set 'zone' " +
+               "in infra/cf-apply-config.local.json.")
+    }
+    $Zone = $config.zone
+}
+# -------------------------------------------------------------------------------
 
 $Token = $env:CF_API_TOKEN
 if (-not $Token) {
@@ -76,7 +105,7 @@ foreach ($Label in $Phases.Keys) {
 $AdminIp = ""
 $WafRuleset = $Export.rulesets["Custom WAF Rules"]
 if ($WafRuleset -and $WafRuleset.rules) {
-    $BypassRule = $WafRuleset.rules | Where-Object { $_.description -match 'Allow My IP|Bypass' } | Select-Object -First 1
+    $BypassRule = $WafRuleset.rules | Where-Object { $_.description -match $config.ruleDescriptionPatterns.bypass } | Select-Object -First 1
     if ($BypassRule -and $BypassRule.expression -match '\{(\d+\.\d+\.\d+\.\d+)\}') {
         $AdminIp = $Matches[1]
         Write-Host "  Admin IP detected and will be redacted as [ADMIN-IP]." -ForegroundColor DarkGray
