@@ -153,8 +153,8 @@ $blogRule.description = 'Blog: Security Headers'
 
 # EntraPass headers rule: rebuild with new name (idempotent remove + re-add)
 $csp = ("default-src 'self'; " +
-        "script-src 'self' 'unsafe-inline'; " +
-        "connect-src 'self' https://login.microsoftonline.com https://graph.microsoft.com; " +
+        "script-src 'self' 'unsafe-inline' https://analytics.aboutcloud.io; " +
+        "connect-src 'self' https://login.microsoftonline.com https://graph.microsoft.com https://analytics.aboutcloud.io; " +
         "img-src 'self' data:; " +
         "style-src 'self' 'unsafe-inline'; " +
         "frame-ancestors 'none'")
