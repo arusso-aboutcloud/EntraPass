@@ -58,7 +58,7 @@ Write-Host "  ID: $ZoneId" -ForegroundColor DarkGray
 # =============================================================================
 Write-Host "`n[WAF] Fetching current ruleset..." -ForegroundColor Cyan
 
-$waf   = Invoke-CfGet"$Base/zones/$ZoneId/rulesets/phases/http_request_firewall_custom/entrypoint"
+$waf   = Invoke-CfGet "$Base/zones/$ZoneId/rulesets/phases/http_request_firewall_custom/entrypoint"
 $wafId = $waf.id
 $rules = $waf.rules
 
@@ -134,7 +134,7 @@ Write-Host "    3 [EXPAND] $($ruleApiAbuse.description) -- adds entrapass/entrat
 Write-Host "    4 [RENAME] $($umami.description)"       -ForegroundColor Green
 Write-Host "    5 [EXPAND] $($ruleSpa.description) -- adds entrarolelens/entratracker/entraerrors" -ForegroundColor Yellow
 
-$r1 = Invoke-CfPut"$Base/zones/$ZoneId/rulesets/$wafId" @{ rules = $newWafRules }
+$r1 = Invoke-CfPut "$Base/zones/$ZoneId/rulesets/$wafId" @{ rules = $newWafRules }
 Write-Host ("  OK -- {0} rules active." -f $r1.rules.Count) -ForegroundColor Green
 
 # =============================================================================
@@ -142,7 +142,7 @@ Write-Host ("  OK -- {0} rules active." -f $r1.rules.Count) -ForegroundColor Gre
 # =============================================================================
 Write-Host "`n[Headers] Fetching current ruleset..." -ForegroundColor Cyan
 
-$rht      = Invoke-CfGet"$Base/zones/$ZoneId/rulesets/phases/http_response_headers_transform/entrypoint"
+$rht      = Invoke-CfGet "$Base/zones/$ZoneId/rulesets/phases/http_response_headers_transform/entrypoint"
 $rhtId    = $rht.id
 $rhtRules = if ($rht.rules) { $rht.rules } else { @() }
 
@@ -183,7 +183,7 @@ $newRhtRules = @($blogRule) + $otherRules + @($epHeadersRule)
 Write-Host "    [RENAME] $($blogRule.description)"      -ForegroundColor Green
 Write-Host "    [RENAME] $($epHeadersRule.description)" -ForegroundColor Green
 
-$r2 = Invoke-CfPut"$Base/zones/$ZoneId/rulesets/$rhtId" @{ rules = $newRhtRules }
+$r2 = Invoke-CfPut "$Base/zones/$ZoneId/rulesets/$rhtId" @{ rules = $newRhtRules }
 Write-Host ("  OK -- {0} rules active." -f $r2.rules.Count) -ForegroundColor Green
 
 Write-Host "`nHardening complete." -ForegroundColor Green
