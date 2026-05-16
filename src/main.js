@@ -1067,6 +1067,84 @@ function renderFido2Inspector(cfg) {
   return h;
 }
 
+function renderTapInspector(cfg) {
+  if (!cfg) {
+    return `<div class="fido2-inspector tap-inspector fido2-disabled">
+      <div class="fido2-inspector-header">
+        <span class="fido2-inspector-title">Temporary Access Pass (TAP) Configuration</span>
+        <span class="fido2-state-chip disabled">Not configured</span>
+      </div>
+      <div class="fido2-notice-row">
+        <p class="fido2-notice">Temporary Access Pass was not found in your Authentication Methods policy. TAP is required to bootstrap passkey enrollment for users who have no existing MFA method — new hire onboarding, lost credential recovery, and initial registration flows all depend on it.</p>
+        <div class="inspector-doc-links">
+          ${docLink(FIDO2_DOCS.tap, 'Enable Temporary Access Pass')}
+        </div>
+      </div>
+    </div>`;
+  }
+
+  const enabled        = cfg.state === 'enabled';
+  const isUsableOnce   = cfg.isUsableOnce === true;
+  const defaultLife    = cfg.defaultLifetimeInMinutes  ?? 60;
+  const minLife        = cfg.minimumLifetimeInMinutes  ?? 60;
+  const maxLife        = cfg.maximumLifetimeInMinutes  ?? 480;
+  const targets        = cfg.includeTargets || [];
+  const coversAll      = targets.length === 0 || targets.some(t => t.id === 'all_users' || t.id === 'AllUsers');
+  const userCoverage   = coversAll ? 'All users' : `${targets.length} group(s)`;
+  const longLifetime   = maxLife > 480;
+
+  let h = `<div class="fido2-inspector tap-inspector ${enabled ? '' : 'fido2-disabled'}">
+    <div class="fido2-inspector-header">
+      <span class="fido2-inspector-title">Temporary Access Pass (TAP) Configuration</span>
+      <div style="display:flex;align-items:center;gap:0.75rem">
+        <span class="fido2-state-chip ${enabled ? 'enabled' : 'disabled'}">${enabled ? 'Enabled' : 'Disabled'}</span>
+        ${docLink(FIDO2_DOCS.tap, enabled ? 'TAP settings guide' : 'How to enable TAP')}
+      </div>
+    </div>`;
+
+  if (!enabled) {
+    h += `<div class="fido2-notice-row">
+      <p class="fido2-notice">Temporary Access Pass is disabled. Without TAP, users who have no existing MFA method cannot satisfy a registration CA policy on day one — blocking passkey onboarding for new hires and lost-credential recovery flows.</p>
+      <div class="inspector-doc-links">
+        ${docLink(FIDO2_DOCS.tap, 'Enable Temporary Access Pass')}
+      </div>
+    </div>`;
+  } else {
+    h += `<div class="fido2-config-row">
+      <div class="fido2-config-cell">
+        <span class="fido2-config-label">Usage policy</span>
+        <span class="fido2-config-value ${isUsableOnce ? 'good' : 'warn'}">${isUsableOnce ? '✓ One-time use' : '⚠ Multi-use'}</span>
+        ${!isUsableOnce ? `<span class="fido2-config-hint">${docLink(FIDO2_DOCS.tap, 'TAP security guidance')}</span>` : ''}
+      </div>
+      <div class="fido2-config-cell">
+        <span class="fido2-config-label">Default lifetime</span>
+        <span class="fido2-config-value ${longLifetime ? 'warn' : ''}">${defaultLife} min</span>
+        ${longLifetime ? `<span class="fido2-config-hint" style="color:var(--warn)">Consider reducing — long-lived TAPs increase risk.</span>` : ''}
+      </div>
+      <div class="fido2-config-cell">
+        <span class="fido2-config-label">Lifetime range</span>
+        <span class="fido2-config-value">${minLife}–${maxLife} min</span>
+      </div>
+      <div class="fido2-config-cell">
+        <span class="fido2-config-label">Covered users</span>
+        <span class="fido2-config-value">${escapeHtml(userCoverage)}</span>
+      </div>
+    </div>`;
+
+    if (!isUsableOnce) {
+      h += `<div class="fido2-notice-row">
+        <p class="fido2-notice">Multi-use TAPs carry higher risk — a compromised pass can be reused until it expires. For onboarding flows, set <strong>isUsableOnce = true</strong> and issue TAPs on demand. Reserve multi-use only for break-glass emergency access scenarios.</p>
+        <div class="inspector-doc-links">
+          ${docLink(FIDO2_DOCS.tap, 'TAP best practices')}
+        </div>
+      </div>`;
+    }
+  }
+
+  h += `</div>`;
+  return h;
+}
+
 function renderPolicies(r) {
   const policies = r.policies || [];
   const gaps     = r.policyGaps    || [];
@@ -1103,6 +1181,9 @@ function renderPolicies(r) {
 
   // ── FIDO2 method inspector ────────────────────────────────────────────────
   h += renderFido2Inspector(r.fido2Config || null);
+
+  // ── TAP inspector ─────────────────────────────────────────────────────────
+  h += renderTapInspector(r.tapConfig || null);
 
   // ── Gap analysis ───────────────────────────────────────────────────────────
   if (gaps.length > 0) {
@@ -1177,7 +1258,13 @@ function renderPolicies(r) {
       <td><span class="policy-type-badge ${escapeHtml(p.type)}">${escapeHtml(typeLabel)}</span></td>
       <td style="font-size:0.8rem;color:var(--text-secondary)">${escapeHtml(scope)}</td>
       <td style="font-size:0.8rem;color:var(--text-secondary)">${escapeHtml(p.strengthName || '—')}</td>
-      <td style="font-size:0.8rem;color:var(--text-secondary)">${p.fixGuide ? escapeHtml(p.fixGuide) : '<span style="color:var(--text-tertiary)">—</span>'}</td>
+      <td style="font-size:0.8rem;color:var(--text-secondary)">${
+        p.fixGuide
+          ? escapeHtml(p.fixGuide)
+          : p.state === 'enabledForReportingButNotEnforced'
+            ? `<span style="color:var(--warn);${p.enforcesPasskey || p.protectsRegistration ? 'font-weight:600' : ''}">Report-only — review sign-in impact in Entra ID logs before enforcing.</span> <a href="https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-conditional-access-report-only" target="_blank" rel="noopener" class="inspector-doc-link">Report-only guide →</a>`
+            : '<span style="color:var(--text-tertiary)">—</span>'
+      }</td>
     </tr>`;
   });
 

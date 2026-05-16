@@ -1260,6 +1260,8 @@ footer {
   overflow: hidden;
 }
 .fido2-inspector.fido2-disabled { border-color: var(--danger-border); background: var(--danger-bg); }
+/* TAP inspector: warn color for disabled (not critical like FIDO2 being off) */
+.tap-inspector.fido2-disabled { border-color: var(--warn-border); background: var(--warn-bg); }
 
 .fido2-inspector-header {
   display: flex;

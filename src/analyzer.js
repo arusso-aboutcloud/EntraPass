@@ -1,8 +1,8 @@
 export class Analyzer {
   analyzeAll(data) {
-    const passkeyReadiness = this.analyzePasskeyReadiness(data);
-    const appCompatibility = this.analyzeAppCompatibility(data);
     const policyResult    = this.analyzePolicies(data);
+    const passkeyReadiness = this.analyzePasskeyReadiness(data, policyResult.policies);
+    const appCompatibility = this.analyzeAppCompatibility(data);
     const toxicCombos     = this.findToxicCombinations(passkeyReadiness, data);
     const recommendations = this.generateRecommendations(passkeyReadiness, appCompatibility, policyResult, toxicCombos);
     const narrative       = this.generateNarrative(passkeyReadiness, appCompatibility, policyResult.policies, toxicCombos);
@@ -15,6 +15,7 @@ export class Analyzer {
       policyGaps:    policyResult.gaps,
       policySummary: policyResult.summary,
       fido2Config:   policyResult.fido2Config,
+      tapConfig:     policyResult.tapConfig,
       toxicCombos,
       recommendations,
       narrative,
@@ -49,12 +50,14 @@ export class Analyzer {
     return t.includes('fido2') || t.includes('passkey');
   }
 
-  analyzePasskeyReadiness({ users, devices, policies }) {
+  analyzePasskeyReadiness({ users, devices, policies }, enrichedPolicies = []) {
     const result = {
       total: users.length, ready: 0, needsAttention: 0, blocked: 0, users: [],
       breakdown: { byDevice: { ready: 0, outdated: 0, none: 0 }, byPolicy: { blocked: 0, allowed: 0 } },
     };
     const blockingPolicies = policies.filter(p => this.policyBlocksPasskeyRegistration(p));
+    const enforcingPolicies = enrichedPolicies.filter(p => p.enforcesPasskey && p.state === 'enabled');
+
     users.forEach(user => {
       const issues = [];
       const d = { modernDevice: false, blockedByPolicy: false };
@@ -86,6 +89,24 @@ export class Analyzer {
       });
       if (d.blockedByPolicy) result.breakdown.byPolicy.blocked++;
       else result.breakdown.byPolicy.allowed++;
+
+      // Per-user CA coverage gap — only relevant for users who haven't enrolled a passkey yet
+      if (!hasFido && enforcingPolicies.length > 0) {
+        const userGroupIds = (user.groups || []).map(g => g.id).filter(Boolean);
+        const covered = enforcingPolicies.some(p => {
+          const { includeUsers = [], includeGroups = [], includeRoles = [] } = p.scopeRaw || {};
+          const { excludeUsers = [], excludeGroups = [] } = p.conditions?.users || {};
+          if (excludeUsers.includes(user.id)) return false;
+          if (excludeGroups.some(g => userGroupIds.includes(g))) return false;
+          if (includeUsers.includes('All')) return true;
+          if (includeUsers.includes(user.id)) return true;
+          if (includeGroups.some(g => userGroupIds.includes(g))) return true;
+          if (includeRoles.length > 0) return false; // role-scoped only — cannot resolve without role memberships
+          return false;
+        });
+        if (!covered) issues.push("Not covered by any passkey-enforcing CA policy");
+      }
+
       let status = "ready";
       if (issues.length > 0) status = d.blockedByPolicy ? "blocked" : "attention";
       result.users.push({
@@ -170,6 +191,10 @@ export class Analyzer {
       c.id === 'Fido2' || (c['@odata.type'] || '').toLowerCase().includes('fido2')
     ) || null;
 
+    const tapConfig = authMethodsConfig.find(c =>
+      c.id === 'TemporaryAccessPass' || (c['@odata.type'] || '').toLowerCase().includes('temporaryaccesspass')
+    ) || null;
+
     const summary = {
       total:        enriched.length,
       enforcing:    enabled.filter(p => p.enforcesPasskey).length,
@@ -179,7 +204,7 @@ export class Analyzer {
       highGaps:     gaps.filter(g => g.severity === 'high').length,
     };
 
-    return { policies: enriched, gaps, summary, fido2Config };
+    return { policies: enriched, gaps, summary, fido2Config, tapConfig };
   }
 
   enrichPolicy(policy) {
@@ -295,7 +320,26 @@ export class Analyzer {
       });
     }
 
-    // ── GAP 2: No phishing-resistant MFA enforcement ──────────────────────────
+    // ── GAP 2: Temporary Access Pass not enabled ──────────────────────────────
+    const tapConfig = authMethodsConfig.find(c =>
+      c.id === 'TemporaryAccessPass' || (c['@odata.type'] || '').toLowerCase().includes('temporaryaccesspass')
+    );
+    if (!tapConfig || tapConfig.state !== 'enabled') {
+      gaps.push({
+        id: 'gap-tap-disabled',
+        severity: 'high',
+        type: 'config',
+        title: 'Temporary Access Pass (TAP) is not enabled',
+        description: 'TAP is a time-limited passcode that lets admins bootstrap passkey enrollment for users who have no other MFA method — new hires, lost credential scenarios, and the initial passkey registration flow all depend on it. Without TAP, users caught by a registration CA policy (requiring proof of identity to enroll a new key) have no way to satisfy that policy on day one.',
+        recommendation: 'Entra ID → Protection → Authentication methods → Temporary Access Pass → Enable. Configure isUsableOnce = true with a short lifetime (1–8 hours) for onboarding. Scope to all users or an onboarding group. Issue TAPs on demand via the Entra portal or Graph API.',
+        docUrl: 'https://learn.microsoft.com/en-us/entra/identity/authentication/howto-authentication-temporary-access-pass',
+        context: tapConfig
+          ? 'Detected from: Authentication Methods Policy — Temporary Access Pass state is "disabled"'
+          : 'Detected from: No Temporary Access Pass configuration found in Authentication Methods Policy',
+      });
+    }
+
+    // ── GAP 3: No phishing-resistant MFA enforcement ──────────────────────────
     const enforcingAll  = enabled.filter(p => p.enforcesPasskey && p.allUsers);
     const enforcingAny  = enabled.filter(p => p.enforcesPasskey);
     if (enforcingAll.length === 0) {
