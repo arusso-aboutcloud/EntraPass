@@ -399,10 +399,49 @@ $app = New-MgApplication -DisplayName "entrapass-scanner" -SignInAudience AzureA
             </div>
           </div>
 
-          <!-- Example prompts (visible when AI is on) -->
+          <!-- Setup + chat — configure first so provider is chosen before picking a prompt -->
+          <div class="ai-configure-card">
+            <div class="ai-card-header">
+              <span class="ai-card-header-icon">✨</span>
+              <span class="ai-card-header-title">Configure &amp; Chat</span>
+            </div>
+            <div id="ai-setup">
+              <div class="ai-setup-row">
+                <label class="ai-setup-label" for="ai-mode">AI provider</label>
+                <select id="ai-mode">
+                  <option value="off">Off (rule-based only)</option>
+                  <option value="cloudflare">Cloudflare Free AI</option>
+                  <option value="byok">Bring Your Own Key</option>
+                </select>
+              </div>
+              <div id="byok-config" class="hidden">
+                <div class="byok-field">
+                  <label class="byok-label" for="ai-endpoint">API Endpoint</label>
+                  <input type="text" id="ai-endpoint" placeholder="https://api.openai.com/v1" />
+                </div>
+                <div class="byok-field">
+                  <label class="byok-label" for="ai-key">API Key</label>
+                  <input type="password" id="ai-key" placeholder="sk-…" />
+                </div>
+                <div class="byok-field">
+                  <label class="byok-label" for="ai-model">Model</label>
+                  <input type="text" id="ai-model" placeholder="gpt-4o-mini" />
+                </div>
+              </div>
+              <div id="ai-chat" class="hidden">
+                <div id="chat-messages"></div>
+                <div class="chat-input">
+                  <input type="text" id="chat-input" placeholder="Ask about your scan results, passkeys, or Entra ID…" />
+                  <button id="btn-send-chat">Send</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Example prompts -->
           <div class="ai-prompts-section" id="ai-prompts-hint">
             <div class="ai-prompts-label">💬 Ask the AI about your results</div>
-            <div class="ai-prompts-sublabel">Select a question to populate the chat — then choose an AI provider below and send.</div>
+            <div class="ai-prompts-sublabel">Select a question to populate the chat and send.</div>
             <div class="ai-prompts-grid">
               <button class="ai-prompt-chip" onclick="document.getElementById('chat-input').value=this.dataset.q;document.getElementById('chat-input').focus();" data-q="Help me understand my scan results — what do the numbers mean?">Understand my results</button>
               <button class="ai-prompt-chip" onclick="document.getElementById('chat-input').value=this.dataset.q;document.getElementById('chat-input').focus();" data-q="What is my current security risk level based on this scan? Is it high, medium, or low?">My security risk level</button>
@@ -416,36 +455,6 @@ $app = New-MgApplication -DisplayName "entrapass-scanner" -SignInAudience AzureA
               <button class="ai-prompt-chip" onclick="document.getElementById('chat-input').value=this.dataset.q;document.getElementById('chat-input').focus();" data-q="What are the app identity risks I should fix first?">App identity risks</button>
               <button class="ai-prompt-chip" onclick="document.getElementById('chat-input').value=this.dataset.q;document.getElementById('chat-input').focus();" data-q="How long will my passkey rollout take given the current scan results?">Estimated rollout timeline</button>
               <button class="ai-prompt-chip" onclick="document.getElementById('chat-input').value=this.dataset.q;document.getElementById('chat-input').focus();" data-q="Explain the readiness score and what it means for my tenant.">Explain the readiness score</button>
-            </div>
-          </div>
-
-          <!-- Setup + chat -->
-          <div class="card">
-            <div class="ai-card-header">
-              <span class="ai-card-header-icon">⚙️</span>
-              <span class="ai-card-header-title">Configure &amp; Chat</span>
-            </div>
-            <div id="ai-setup">
-              <div class="ai-setup-row">
-                <label class="ai-setup-label" for="ai-mode">AI provider</label>
-                <select id="ai-mode">
-                  <option value="off">Off (rule-based only)</option>
-                  <option value="cloudflare">Cloudflare Free AI</option>
-                  <option value="byok">Bring Your Own Key</option>
-                </select>
-              </div>
-              <div id="byok-config" class="hidden">
-                <input type="text" id="ai-endpoint" placeholder="API Endpoint (e.g., https://api.openai.com/v1)" />
-                <input type="password" id="ai-key" placeholder="API Key" />
-                <input type="text" id="ai-model" placeholder="Model (e.g., gpt-4o-mini)" />
-              </div>
-              <div id="ai-chat" class="hidden">
-                <div id="chat-messages"></div>
-                <div class="chat-input">
-                  <input type="text" id="chat-input" placeholder="Ask about your scan results, passkeys, or Entra ID…" />
-                  <button id="btn-send-chat">Send</button>
-                </div>
-              </div>
             </div>
           </div>
 
