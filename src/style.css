@@ -488,6 +488,9 @@ header h1 {
   border-bottom: 1px solid var(--border);
   padding: 0 1.5rem;
   overflow-x: auto;
+  position: sticky;
+  top: 56px;
+  z-index: 99;
 }
 
 .tab {
