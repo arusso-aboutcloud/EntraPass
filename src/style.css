@@ -176,6 +176,23 @@ a:hover { text-decoration: underline; }
 }
 .auth-desc strong { color: rgba(255,255,255,0.95); }
 
+.auth-preview {
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  border: 1px solid rgba(91,158,249,0.25);
+  box-shadow: 0 4px 24px rgba(0,0,0,0.5), 0 0 0 1px rgba(91,158,249,0.1);
+  max-height: 220px;
+  display: flex;
+  align-items: flex-start;
+}
+.auth-preview-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top;
+  display: block;
+}
+
 .auth-capabilities {
   display: grid;
   grid-template-columns: 1fr 1fr;
