@@ -701,7 +701,7 @@ export class Analyzer {
           ? `${enforcingAny.length} policy(ies) enforce passkey/phishing-resistant MFA but not for All Users. Users outside those scopes can sign in with password only, even after passkeys are deployed.`
           : 'No Conditional Access policy requires phishing-resistant authentication (FIDO2 or Windows Hello for Business). After passkeys are deployed, users can still sign in with just a password — making the deployment security-neutral.',
         recommendation: 'Create a CA policy: All Users → All Cloud Apps → Grant: Require Authentication Strength → Phishing-resistant MFA. Exclude break-glass accounts and the security info registration action.',
-        docUrl: 'https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-authentication-strengths',
+        docUrl: 'https://learn.microsoft.com/en-us/entra/identity/authentication/concept-authentication-strengths',
         context: enforcingAny.length > 0
           ? `Detected from: ${enforcingAny.length} policy(ies) enforce passkey strength but no "All Users" scope found`
           : 'Detected from: 0 enabled policies use an auth strength including FIDO2 or Windows Hello for Business',

@@ -69,7 +69,7 @@ let chatHistory = [];   // [{role, content}] — last N exchanges sent to the mo
 const MS_DOCS = [
   { icon: '🗺️', title: 'Plan a passwordless deployment', desc: 'Step-by-step guide for rolling out passkeys across your tenant', url: 'https://learn.microsoft.com/en-us/entra/identity/authentication/howto-authentication-passwordless-deployment' },
   { icon: '🔑', title: 'Enable FIDO2 security keys', desc: 'Configure the FIDO2 authentication method policy in Entra ID', url: 'https://learn.microsoft.com/en-us/entra/identity/authentication/howto-authentication-passwordless-security-key' },
-  { icon: '🛡️', title: 'Authentication strengths (CA)', desc: 'Enforce passkey-only sign-in via Conditional Access policies', url: 'https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-authentication-strengths' },
+  { icon: '🛡️', title: 'Authentication strengths (CA)', desc: 'Enforce passkey-only sign-in via Conditional Access policies', url: 'https://learn.microsoft.com/en-us/entra/identity/authentication/concept-authentication-strengths' },
   { icon: '📱', title: 'Passkeys in Microsoft Authenticator', desc: 'Enable and manage passkeys in Microsoft Authenticator (preview)', url: 'https://learn.microsoft.com/en-us/entra/identity/authentication/how-to-enable-authenticator-passkey' },
   { icon: '🖥️', title: 'FIDO2 compatibility matrix', desc: 'Supported browsers, platforms, and device OS requirements', url: 'https://learn.microsoft.com/en-us/entra/identity/authentication/fido2-compatibility' },
   { icon: '📚', title: 'Passwordless authentication overview', desc: "Microsoft's complete passwordless strategy and available methods", url: 'https://learn.microsoft.com/en-us/entra/identity/authentication/concept-authentication-passwordless' },
@@ -77,7 +77,7 @@ const MS_DOCS = [
 
 const CATEGORY_DOCS = {
   'Security Risk': 'https://learn.microsoft.com/en-us/entra/id-protection/concept-identity-protection-risks',
-  'Policy':        'https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-authentication-strengths',
+  'Policy':        'https://learn.microsoft.com/en-us/entra/identity/authentication/concept-authentication-strengths',
   'Blocked':       'https://learn.microsoft.com/en-us/entra/identity/authentication/howto-authentication-passwordless-deployment',
   'Attention':     'https://learn.microsoft.com/en-us/entra/identity/authentication/concept-fido2-hardware-vendor',
   'Apps':          'https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-conditional-access-cloud-apps',
@@ -928,7 +928,7 @@ function renderOverviewAlerts(r) {
       title: `CA policy blocks passkeys: ${p.displayName}`,
       desc: p.warning || 'This policy prevents passkey registration.',
       fix: p.fixGuide || null,
-      docUrl: 'https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-authentication-strengths',
+      docUrl: 'https://learn.microsoft.com/en-us/entra/identity/authentication/concept-authentication-strengths',
     });
   });
 
@@ -1399,7 +1399,7 @@ const FIDO2_DOCS = {
   aaguid:       'https://learn.microsoft.com/en-us/entra/identity/authentication/concept-fido2-hardware-vendor',
   attestation:  'https://learn.microsoft.com/en-us/entra/identity/authentication/howto-authentication-passwordless-security-key#fido2-security-key-optional-settings',
   tap:          'https://learn.microsoft.com/en-us/entra/identity/authentication/howto-authentication-temporary-access-pass',
-  strengths:    'https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-authentication-strengths',
+  strengths:    'https://learn.microsoft.com/en-us/entra/identity/authentication/concept-authentication-strengths',
 };
 
 function docLink(url, label) {
