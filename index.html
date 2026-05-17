@@ -334,15 +334,93 @@ $app = New-MgApplication -DisplayName "entrapass-scanner" -SignInAudience AzureA
 
         <!-- AI Tab -->
         <div id="tab-ai" class="tab-content hidden">
+
+          <!-- Hero intro -->
+          <div class="ai-hero">
+            <div class="ai-hero-icon">🤖</div>
+            <div class="ai-hero-body">
+              <h2 class="ai-hero-title">AI Assistant</h2>
+              <p class="ai-hero-desc">Ask questions about your tenant's passkey readiness in plain English. The assistant interprets your scan results and gives you actionable, personalised recommendations — without ever exposing user names, UPNs, or tenant identifiers to any external service.</p>
+            </div>
+          </div>
+
+          <!-- Mode comparison -->
+          <div class="ai-modes">
+
+            <div class="ai-mode-card">
+              <div class="ai-mode-icon">🔒</div>
+              <div class="ai-mode-title">Off</div>
+              <div class="ai-mode-sub">Rule-based only</div>
+              <ul class="ai-mode-features">
+                <li>Full analysis using built-in rules</li>
+                <li>No data leaves your browser</li>
+                <li>Maximum privacy — default setting</li>
+              </ul>
+              <div class="ai-data-pill ai-data-none">Data sent: nothing</div>
+            </div>
+
+            <div class="ai-mode-card ai-mode-card--featured">
+              <div class="ai-mode-badge">Free · No key needed</div>
+              <div class="ai-mode-icon">⚡</div>
+              <div class="ai-mode-title">Cloudflare AI</div>
+              <div class="ai-mode-sub">Llama 3.1 via Workers AI</div>
+              <ul class="ai-mode-features">
+                <li>No API key or account required</li>
+                <li>Powered by Cloudflare's free tier</li>
+                <li>Only count-level aggregates are sent</li>
+                <li>No names, UPNs, or tenant IDs transmitted</li>
+                <li>Rate-limited and CORS-protected</li>
+              </ul>
+              <div class="ai-data-pill ai-data-counts">Data sent: count-only summary</div>
+            </div>
+
+            <div class="ai-mode-card">
+              <div class="ai-mode-icon">🔑</div>
+              <div class="ai-mode-title">Bring Your Own Key</div>
+              <div class="ai-mode-sub">Any OpenAI-compatible API</div>
+              <ul class="ai-mode-features">
+                <li>Use GPT-4o, Claude, Mistral, or any compatible model</li>
+                <li>You choose the endpoint, model, and provider</li>
+                <li>Ideal for teams with existing AI contracts</li>
+                <li>Same count-only data minimisation applies</li>
+              </ul>
+              <div class="ai-data-pill ai-data-counts">Data sent: count-only summary</div>
+            </div>
+
+          </div>
+
+          <!-- Data privacy note -->
+          <div class="ai-privacy-note">
+            <span class="ai-privacy-icon">🛡️</span>
+            <div>
+              <strong>What is "count-only"?</strong> When AI is enabled, EntraPass builds a summary that contains only numbers — for example <em>"3 users ready, 1 needs prep, 0 blocked"</em>. No user names, email addresses, UPNs, device IDs, app names, or tenant identifiers are ever included in the payload sent to the AI provider. This minimisation happens client-side in your browser before any network request is made.
+            </div>
+          </div>
+
+          <!-- Example prompts (visible when AI is on) -->
+          <div class="ai-prompts-section" id="ai-prompts-hint">
+            <div class="ai-prompts-label">💬 Try asking…</div>
+            <div class="ai-prompts-grid">
+              <button class="ai-prompt-chip" onclick="document.getElementById('chat-input').value=this.dataset.q;document.getElementById('chat-input').focus();" data-q="What are the top 3 actions I should take to start the passkey rollout?">Top 3 rollout actions</button>
+              <button class="ai-prompt-chip" onclick="document.getElementById('chat-input').value=this.dataset.q;document.getElementById('chat-input').focus();" data-q="Which users need the most attention before I can enable passkeys?">Users needing attention</button>
+              <button class="ai-prompt-chip" onclick="document.getElementById('chat-input').value=this.dataset.q;document.getElementById('chat-input').focus();" data-q="What Conditional Access policy changes do I need to make to enforce passkeys?">CA policy changes needed</button>
+              <button class="ai-prompt-chip" onclick="document.getElementById('chat-input').value=this.dataset.q;document.getElementById('chat-input').focus();" data-q="Explain the readiness score and what it means for my tenant.">Explain the readiness score</button>
+              <button class="ai-prompt-chip" onclick="document.getElementById('chat-input').value=this.dataset.q;document.getElementById('chat-input').focus();" data-q="What are the app identity risks I should fix first?">App identity risks</button>
+              <button class="ai-prompt-chip" onclick="document.getElementById('chat-input').value=this.dataset.q;document.getElementById('chat-input').focus();" data-q="How long will my passkey rollout take given the current scan results?">Estimated rollout timeline</button>
+            </div>
+          </div>
+
+          <!-- Setup + chat -->
           <div class="card">
-            <h2>AI Assistant</h2>
             <div id="ai-setup">
-              <p>Bring your own AI API key or use the Cloudflare free tier. When set to "Off", no scan data leaves your browser.</p>
-              <select id="ai-mode">
-                <option value="off">Off (rule-based only)</option>
-                <option value="cloudflare">Cloudflare Free AI</option>
-                <option value="byok">Bring Your Own Key</option>
-              </select>
+              <div class="ai-setup-row">
+                <label class="ai-setup-label" for="ai-mode">AI provider</label>
+                <select id="ai-mode">
+                  <option value="off">Off (rule-based only)</option>
+                  <option value="cloudflare">Cloudflare Free AI</option>
+                  <option value="byok">Bring Your Own Key</option>
+                </select>
+              </div>
               <div id="byok-config" class="hidden">
                 <input type="text" id="ai-endpoint" placeholder="API Endpoint (e.g., https://api.openai.com/v1)" />
                 <input type="password" id="ai-key" placeholder="API Key" />
@@ -351,12 +429,13 @@ $app = New-MgApplication -DisplayName "entrapass-scanner" -SignInAudience AzureA
               <div id="ai-chat" class="hidden">
                 <div id="chat-messages"></div>
                 <div class="chat-input">
-                  <input type="text" id="chat-input" placeholder="Ask about passkeys, Entra ID, or EntraPass..." />
+                  <input type="text" id="chat-input" placeholder="Ask about your scan results, passkeys, or Entra ID…" />
                   <button id="btn-send-chat">Send</button>
                 </div>
               </div>
             </div>
           </div>
+
         </div>
       </main>
 

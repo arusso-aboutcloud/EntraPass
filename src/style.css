@@ -1112,6 +1112,152 @@ tr:hover td { background: var(--surface-2); }
 .chat-input input:focus { outline: 2px solid var(--primary); outline-offset: -1px; border-color: transparent; }
 
 /* ============================================
+   AI Tab — Hero, Mode Cards, Privacy Note, Prompts
+   ============================================ */
+.ai-hero {
+  display: flex;
+  align-items: flex-start;
+  gap: 1.25rem;
+  background: linear-gradient(135deg, rgba(0,120,212,0.08) 0%, rgba(91,158,249,0.05) 100%);
+  border: 1px solid var(--primary-dim);
+  border-radius: var(--r-lg);
+  padding: 1.5rem 1.75rem;
+  margin-bottom: 1.5rem;
+}
+.ai-hero-icon { font-size: 2.25rem; flex-shrink: 0; line-height: 1; margin-top: 0.1rem; }
+.ai-hero-title { font-size: 1.3rem; font-weight: 700; color: var(--text); margin-bottom: 0.4rem; }
+.ai-hero-desc { font-size: 0.9rem; color: var(--text-secondary); line-height: 1.65; max-width: 75ch; }
+
+.ai-modes {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+@media (max-width: 860px) { .ai-modes { grid-template-columns: 1fr; } }
+
+.ai-mode-card {
+  position: relative;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 1.25rem 1.25rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.ai-mode-card--featured {
+  border-color: var(--primary-dim);
+  background: linear-gradient(160deg, rgba(0,120,212,0.07) 0%, var(--surface) 60%);
+}
+.ai-mode-badge {
+  position: absolute;
+  top: -1px; right: 1rem;
+  background: var(--primary);
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 0.2em 0.6em;
+  border-radius: 0 0 var(--r-sm) var(--r-sm);
+}
+.ai-mode-icon { font-size: 1.6rem; margin-bottom: 0.15rem; }
+.ai-mode-title { font-size: 1rem; font-weight: 700; color: var(--text); }
+.ai-mode-sub { font-size: 0.78rem; color: var(--text-secondary); margin-bottom: 0.5rem; }
+.ai-mode-features {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 0.75rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  flex: 1;
+}
+.ai-mode-features li {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  padding-left: 1.1rem;
+  position: relative;
+}
+.ai-mode-features li::before {
+  content: '✓';
+  position: absolute;
+  left: 0;
+  color: var(--good);
+  font-weight: 700;
+  font-size: 0.75rem;
+}
+.ai-data-pill {
+  align-self: flex-start;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.2em 0.65em;
+  border-radius: var(--r-full);
+  border: 1px solid;
+}
+.ai-data-none   { color: var(--good);  border-color: var(--good-border);  background: var(--good-bg); }
+.ai-data-counts { color: var(--accent); border-color: rgba(251,146,60,0.3); background: var(--accent-light); }
+
+.ai-privacy-note {
+  display: flex;
+  gap: 0.875rem;
+  align-items: flex-start;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--primary);
+  border-radius: var(--r-md);
+  padding: 0.875rem 1rem;
+  margin-bottom: 1.25rem;
+  font-size: 0.83rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+.ai-privacy-icon { font-size: 1.2rem; flex-shrink: 0; margin-top: 0.05rem; }
+.ai-privacy-note strong { color: var(--text); }
+.ai-privacy-note em { color: var(--text-secondary); font-style: normal; font-family: var(--font-mono, monospace); font-size: 0.8rem; background: var(--surface); padding: 0.1em 0.3em; border-radius: 3px; border: 1px solid var(--border); }
+
+.ai-prompts-section {
+  margin-bottom: 1.25rem;
+}
+.ai-prompts-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 0.6rem;
+  letter-spacing: 0.02em;
+}
+.ai-prompts-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.ai-prompt-chip {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-full);
+  padding: 0.35em 0.9em;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+  font-family: var(--font);
+}
+.ai-prompt-chip:hover { border-color: var(--primary-dim); color: var(--primary); background: var(--primary-light); }
+
+.ai-setup-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+.ai-setup-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+/* ============================================
    Loading Overlay
    ============================================ */
 #loading-overlay {
