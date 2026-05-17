@@ -150,17 +150,19 @@ index.html
    ├── getAuthorizationPolicy()         → GET /policies/authorizationPolicy
    └── getAuthenticationMethodsPolicy() → GET /policies/authenticationMethodsPolicy
    │
-3. For each user (up to 50):
-   ├── getAuthenticationMethodsForUser(id) → GET /users/{id}/authenticationMethods
-   ├── getUserSignInActivity(id)           → GET /users/{id}/signInActivity
+3. Bulk registration report (single call, all users):
+   └── getUserRegistrationDetails()        → GET /reports/authenticationMethods/userRegistrationDetails
+   │
+4. For each user (up to 50):
+   ├── getUserSignInActivity(id)           → GET /users/{id}?$select=signInActivity
    └── getUserMemberOf(id)                 → GET /users/{id}/memberOf
    │
-4. For each device (up to 100):
+5. For each device (up to 100):
    └── getDeviceRegisteredOwners(id)       → GET /devices/{id}/registeredOwners
    │
-5. analyzer.analyzeAll({ users, devices, policies, apps, ... })
+6. analyzer.analyzeAll({ users, devices, policies, apps, ... })
    ├── classifyAccountType()      → member / guest / personal-msa / breakglass
-   ├── analyzePasskeyReadiness()  → 4-tier per-user status (ready/capable/needsPrep/blocked/exempt)
+   ├── analyzePasskeyReadiness()  → 5-tier per-user status (ready/capable/needsPrep/blocked/exempt/unknown)
    ├── analyzeAppCompatibility()  → per-app compatibility (App Identities tab)
    ├── analyzePolicies()          → per-policy analysis
    ├── findToxicCombinations()    → critical/high security risks
@@ -168,7 +170,7 @@ index.html
    ├── generateNarrative()        → executive summary
    └── computeReadinessScore()    → 0–100 composite score
    │
-6. renderDashboard(results)       → 5-tab view
+7. renderDashboard(results)       → 5-tab view
 ```
 
 ---
@@ -196,9 +198,9 @@ index.html
 | `window.startScan()` | Orchestrates the full scan pipeline |
 | `renderDashboard()` | Calls all render functions to populate the 5 tabs |
 | `renderOverviewHero()` | Animated score ring, stat tiles, infrastructure chips, recommendations |
-| `renderReadiness()` | 4-tier user cards, filter pills, search, phase planner |
+| `renderReadiness()` | 5-tier user cards, filter pills, search, phase planner |
 | `renderUserCard()` | Per-user card with status badge, account badge, auth chips, recommended action |
-| `exportReadinessCsv()` | 13-column CSV export of the readiness data |
+| `exportReadinessCsv()` | 15-column CSV export of the readiness data |
 
 ### 3.3 `src/graph.js` — Graph API client
 
@@ -210,7 +212,7 @@ index.html
 | `getApplications()` | `GET /applications` | `Application.Read.All` |
 | `getServicePrincipals()` | `GET /servicePrincipals` | `Application.Read.All` |
 | `getOrganization()` | `GET /organization?$select=id,displayName,verifiedDomains` | `Organization.Read.All` |
-| `getAuthenticationMethodsForUser()` | `GET /users/{id}/authenticationMethods` | `User.Read.All` |
+| `getUserRegistrationDetails()` | `GET /reports/authenticationMethods/userRegistrationDetails` | `AuditLog.Read.All` + Reports Reader role (see [Authentication Methods Activity: Permissions and licenses](https://learn.microsoft.com/en-us/entra/identity/authentication/howto-authentication-methods-activity)) |
 | `getUserSignInActivity()` | `GET /users/{id}?$select=signInActivity` | `AuditLog.Read.All` |
 | `getUserMemberOf()` | `GET /users/{id}/memberOf` | `User.Read.All` |
 | `getDeviceRegisteredOwners()` | `GET /devices/{id}/registeredOwners` | `Device.Read.All` |
@@ -222,8 +224,8 @@ index.html
 | Method | Input | Output |
 |---|---|---|
 | `classifyAccountType()` | user object, tenant domain | `member` / `guest` / `personal-msa` / `breakglass` |
-| `classifyAuthMethods()` | raw authMethods array | Typed method list with labels |
-| `analyzePasskeyReadiness()` | users, devices, policies, auth methods | Per-user 4-tier status + counts |
+| `classifyAuthMethods()` | `methodsRegistered` string array (from registration report) | Typed method list with labels |
+| `analyzePasskeyReadiness()` | users, devices, policies, auth methods | Per-user 5-tier status + counts; `unknown` tier used when registration data unavailable |
 | `generateRecommendedAction()` | user status, issues, auth methods | Single recommended next step string |
 | `summarizeDevices()` | user device list | "Windows 10 · iOS 16 +N" compact string |
 | `analyzeAppCompatibility()` | apps, servicePrincipals | Per-app compatibility + severity + fix |
@@ -233,7 +235,7 @@ index.html
 | `generateNarrative()` | all analysis | Executive summary text |
 | `computeReadinessScore()` | passkeyReadiness, toxicCombos, policyResult | 0–100 composite score |
 
-#### 4-Tier Passkey Readiness Status
+#### 5-Tier Passkey Readiness Status
 
 | Status | Criteria |
 |---|---|
@@ -242,6 +244,25 @@ index.html
 | `needsPrep` | Exactly one gap (MFA missing, device OS outdated, or no modern device) |
 | `blocked` | Multiple gaps, or a CA policy actively blocking passkey registration |
 | `exempt` | Break-glass account, guest (#ext# or userType=Guest), or personal MSA |
+| `unknown` | Registration report unavailable; excluded from score denominator |
+
+#### Data-availability (tri-state) model
+
+Both the registration report and per-user sign-in activity are modelled as tri-state objects to prevent unavailable data being silently misread as "bad":
+
+| Field | Shape | Notes |
+|---|---|---|
+| `registrationData` | `{ available, reason, isMfaRegistered, methodsRegistered, ... }` | `available: false` when report returns 403/429/5xx or user is disabled |
+| `signInActivity` | `{ available, reason, lastSuccessfulSignInDateTime, lastSignInDateTime, lastNonInteractiveSignInDateTime }` | `available: false` when permission denied, no P1/P2 licence, or field absent |
+
+`reason` values: `ok` · `permission_denied` · `no_record` · `http_429` · `http_5xx` · `network_error`
+
+Badge rules that depend on tri-state availability:
+- **"No MFA registered"** badge emitted only when `registrationData.available === true` and `isMfaRegistered === false`.
+- **"Inactive >90 days"** badge emitted only when `signInActivity.available === true` and the effective last sign-in is older than 90 days.
+- **`isStale`** is `null` (never `true`) when sign-in activity is unavailable — null never drives a negative classification.
+
+The effective last sign-in is `MAX(lastSuccessfulSignInDateTime, lastSignInDateTime, lastNonInteractiveSignInDateTime)` because `lastSuccessfulSignInDateTime` is only backfilled from December 2023 per the [signInActivity resource documentation](https://learn.microsoft.com/en-us/graph/api/resources/signinactivity).
 
 #### Readiness Score formula
 
@@ -260,7 +281,7 @@ score -= min(ca_blocking_policies * 4, 5)
 score -= min(high_gaps * 2, 4)
 score = clamp(score, 0, 100)
 
-where: effective = total - exempt
+where: effective = total - exempt - unknown
 ```
 
 ### 3.5 `functions/ai/ask.js` — AI Assistant Pages Function

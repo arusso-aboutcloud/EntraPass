@@ -23,6 +23,7 @@ export class GraphAPI {
   }
 
   // Fetches a single Graph resource. `path` is relative to baseUrl.
+  // Errors carry `.httpStatus` so callers can distinguish 403/429/5xx.
   async fetch(path) {
     const token = await this.getToken();
     const resp = await fetch(this.baseUrl + path, {
@@ -33,10 +34,11 @@ export class GraphAPI {
     });
 
     if (!resp.ok) {
-      // Log the raw body for debugging, but do not surface it to the UI.
       const body = await resp.text().catch(() => '');
       console.error(`Graph API ${resp.status} for ${path}:`, body);
-      throw new Error(`Graph API error (${resp.status}) for ${path}`);
+      const err = new Error(`Graph API error (${resp.status}) for ${path}`);
+      err.httpStatus = resp.status;
+      throw err;
     }
 
     return resp.json();
@@ -44,6 +46,7 @@ export class GraphAPI {
 
   // Fetches a collection, following @odata.nextLink so results are not
   // silently truncated at Graph's default page size.
+  // Errors carry `.httpStatus` so callers can distinguish 403/429/5xx.
   async fetchAll(path) {
     const results = [];
     let next = this.baseUrl + path;
@@ -60,7 +63,9 @@ export class GraphAPI {
       if (!resp.ok) {
         const body = await resp.text().catch(() => '');
         console.error(`Graph API ${resp.status} for ${next}:`, body);
-        throw new Error(`Graph API error (${resp.status})`);
+        const err = new Error(`Graph API error (${resp.status})`);
+        err.httpStatus = resp.status;
+        throw err;
       }
       const data = await resp.json();
       if (Array.isArray(data.value)) results.push(...data.value);
@@ -107,25 +112,59 @@ export class GraphAPI {
     }
   }
 
-  async getAuthenticationMethodsForUser(userId) {
+  // Bulk fetch of authentication registration state for all enabled users.
+  // Uses /reports/authenticationMethods/userRegistrationDetails (requires
+  // AuditLog.Read.All + Reports Reader or equivalent — see
+  // https://learn.microsoft.com/en-us/graph/api/authenticationmethodsroot-list-userregistrationdetails).
+  // Note: disabled users are not returned by this endpoint.
+  // Returns a tri-state object so callers can distinguish real data from
+  // a permission or availability failure.
+  async getUserRegistrationDetails() {
     try {
-      const data = await this.fetch('/users/' + encodeURIComponent(userId) + '/authenticationMethods');
-      return data.value || [];
-    } catch {
-      return [];
+      const records = await this.fetchAll(
+        '/reports/authenticationMethods/userRegistrationDetails'
+      );
+      return { available: true, reason: 'ok', records };
+    } catch (err) {
+      const s = err.httpStatus;
+      const reason = s === 403 ? 'permission_denied'
+                   : s === 429 ? 'http_429'
+                   : s >= 500  ? 'http_5xx'
+                   : 'network_error';
+      console.error('getUserRegistrationDetails failed:', reason, err.message);
+      return { available: false, reason, records: [] };
     }
   }
 
-  // signInActivity is a property of the user resource, not a navigation
-  // endpoint, so it must be retrieved via $select on the user object.
+  // signInActivity is a user-resource property, not a navigation endpoint,
+  // so it must be retrieved via $select on the user object.
+  // Returns a tri-state object: { available, reason,
+  //   lastSuccessfulSignInDateTime, lastSignInDateTime,
+  //   lastNonInteractiveSignInDateTime }
+  // Available only for tenants with Azure AD P1/P2 licences; requires
+  // AuditLog.Read.All. See
+  // https://learn.microsoft.com/en-us/graph/api/resources/signinactivity
   async getUserSignInActivity(userId) {
     try {
       const data = await this.fetch(
         '/users/' + encodeURIComponent(userId) + '?$select=signInActivity'
       );
-      return data.signInActivity || {};
-    } catch {
-      return {};
+      const sia = data.signInActivity;
+      if (!sia) return { available: false, reason: 'no_record' };
+      return {
+        available: true,
+        reason: 'ok',
+        lastSuccessfulSignInDateTime: sia.lastSuccessfulSignInDateTime || null,
+        lastSignInDateTime: sia.lastSignInDateTime || null,
+        lastNonInteractiveSignInDateTime: sia.lastNonInteractiveSignInDateTime || null,
+      };
+    } catch (err) {
+      const s = err.httpStatus;
+      const reason = s === 403 ? 'permission_denied'
+                   : s === 429 ? 'http_429'
+                   : s >= 500  ? 'http_5xx'
+                   : 'network_error';
+      return { available: false, reason };
     }
   }
 

@@ -32,10 +32,13 @@ export class Analyzer {
     // Derive tier counts from the actual user list — robust against stale cached summaries.
     const cnt       = s => users.filter(u => u.status === s).length;
     const exempt    = cnt('exempt');
+    const unknown   = cnt('unknown');
     const blocked   = cnt('blocked');
     const needsPrep = cnt('needsPrep');
     const capable   = cnt('capable');
-    const effective = total - exempt; // exempt accounts (break-glass/guest/MSA) don't move the needle
+    // 'unknown' users (registration data unavailable) are excluded from the denominator
+    // alongside 'exempt' — they cannot be scored and should not dilute the result.
+    const effective = total - exempt - unknown;
     if (effective === 0) return 85;
 
     let score = 100;
@@ -69,18 +72,6 @@ export class Analyzer {
     return Math.max(0, Math.min(100, Math.round(score)));
   }
 
-  isStrongAuthMethod(method) {
-    const t = (method['@odata.type'] || method.authenticationMethodType || '').toLowerCase();
-    return t.includes('fido2') || t.includes('passkey') || t.includes('windowshelloforbusiness')
-      || t.includes('microsoftauthenticator') || t.includes('softwareoath')
-      || t.includes('phone') || t.includes('temporaryaccesspass');
-  }
-
-  isPasskeyMethod(method) {
-    const t = (method['@odata.type'] || method.authenticationMethodType || '').toLowerCase();
-    return t.includes('fido2') || t.includes('passkey');
-  }
-
   // Classify an account into one of four identity types before any readiness logic.
   // Break-glass and guest/MSA accounts follow completely different guidance paths.
   classifyAccountType(user, tenantDomain) {
@@ -102,21 +93,23 @@ export class Analyzer {
     return 'member';
   }
 
-  classifyAuthMethods(authMethods) {
+  // Accepts the `methodsRegistered` string array from
+  // /reports/authenticationMethods/userRegistrationDetails.
+  // Values are camelCase strings such as 'passKeyDeviceBound',
+  // 'microsoftAuthenticatorPush', 'softwareOneTimePasscode', 'mobilePhone'.
+  classifyAuthMethods(methodsRegistered) {
     const MAP = [
-      { re: /fido2|passkey/,              type: 'fido2',         label: 'Passkey / FIDO2' },
-      { re: /microsoftauthenticator/,     type: 'authenticator', label: 'Authenticator App' },
-      { re: /windowshelloforbusiness/,    type: 'whfb',          label: 'Windows Hello' },
-      { re: /softwareoath|oath|totp/,     type: 'totp',          label: 'TOTP App' },
-      { re: /phone|sms/,                  type: 'phone',         label: 'SMS / Phone' },
-      { re: /temporaryaccesspass/,        type: 'tap',           label: 'Temp Access Pass' },
-      { re: /email/,                      type: 'email',         label: 'Email OTP' },
+      { re: /passkey|fido2/i,                type: 'fido2',         label: 'Passkey / FIDO2' },
+      { re: /microsoftauthenticator/i,       type: 'authenticator', label: 'Authenticator App' },
+      { re: /windowshelloforbusiness/i,      type: 'whfb',          label: 'Windows Hello' },
+      { re: /softwareonetimepasscode|oath/i, type: 'totp',          label: 'TOTP App' },
+      { re: /mobilephone|sms|phone/i,        type: 'phone',         label: 'SMS / Phone' },
+      { re: /temporaryaccesspass/i,          type: 'tap',           label: 'Temp Access Pass' },
+      { re: /email/i,                        type: 'email',         label: 'Email OTP' },
     ];
     const seen = new Set();
-    return authMethods.flatMap(m => {
-      const t = (m['@odata.type'] || m.authenticationMethodType || '').toLowerCase();
-      if (t.includes('password')) return [];
-      const hit = MAP.find(r => r.re.test(t));
+    return (methodsRegistered || []).flatMap(m => {
+      const hit = MAP.find(r => r.re.test(m));
       if (!hit || seen.has(hit.type)) return [];
       seen.add(hit.type);
       return [{ type: hit.type, label: hit.label }];
@@ -141,6 +134,9 @@ export class Analyzer {
     }
     if (blockedByPolicy) {
       return 'Blocked by a CA policy requiring password as a grant control. Update the policy to use Authentication Strength (FIDO2) or add a temporary exclusion for the passkey onboarding window.';
+    }
+    if (hasMfa === null) {
+      return 'Authentication method data unavailable — re-run the scan or verify the scanning account has Reports Reader (or equivalent) role so registration data can be retrieved.';
     }
     const hasAuthenticator = authTypes.some(a => a.type === 'authenticator' || a.type === 'whfb');
     if (hasMfa && hasModernDevice) {
@@ -177,8 +173,9 @@ export class Analyzer {
 
     const result = {
       total: users.length,
-      ready: 0, capable: 0, needsPrep: 0, blocked: 0, exempt: 0,
+      ready: 0, capable: 0, needsPrep: 0, blocked: 0, exempt: 0, unknown: 0,
       needsAttention: 0, // = capable + needsPrep — kept for backward compat with overview hero + score
+      partialDataCount: 0, // users where reg or sign-in data was unavailable
       users: [],
       breakdown: { byDevice: { ready: 0, outdated: 0, none: 0 }, byPolicy: { blocked: 0, allowed: 0 } },
     };
@@ -187,10 +184,22 @@ export class Analyzer {
     const enforcingPolicies = enrichedPolicies.filter(p => p.enforcesPasskey && p.state === 'enabled');
 
     users.forEach(user => {
-      const am          = user.authMethods || [];
-      const hasFido     = am.some(m => this.isPasskeyMethod(m));
-      const hasMfa      = am.some(m => this.isStrongAuthMethod(m));
-      const authTypes   = this.classifyAuthMethods(am);
+      // ── Registration data (bulk report) ──────────────────────────────────────
+      // Shape: { available, reason, isMfaRegistered, methodsRegistered, ... }
+      const reg             = user.registrationData || { available: false, reason: 'no_record' };
+      const methodsReg      = reg.available ? (reg.methodsRegistered || []) : [];
+
+      // hasFido: passkey registered. Only trust the positive when data is available.
+      const PASSKEY_METHODS = ['passKeyDeviceBound', 'fido2'];
+      const hasFido = methodsReg.some(m =>
+        PASSKEY_METHODS.includes(m) || m.toLowerCase().startsWith('passkey')
+      );
+
+      // hasMfa: null when registration data unavailable (drives 'unknown' tier).
+      // Use isMfaRegistered (policy-agnostic) from the bulk report.
+      const hasMfa = reg.available ? (reg.isMfaRegistered ?? false) : null;
+
+      const authTypes   = this.classifyAuthMethods(methodsReg);
       const accountType = this.classifyAccountType(user, tenantDomain);
 
       const isPrivileged = (user.groups || []).some(g => {
@@ -198,11 +207,25 @@ export class Analyzer {
         return n.includes('admin') || n.includes('global') || n.includes('privileged') || n.includes('exchange admin');
       });
 
-      const lastSignInStr = user.signInActivity?.lastSuccessfulSignIn || null;
-      const lastSignIn    = lastSignInStr ? new Date(lastSignInStr) : null;
-      const isStale = lastSignIn
-        ? (Date.now() - lastSignIn.getTime()) > 90 * 86400000
-        : !hasFido && !lastSignInStr; // no recorded sign-in + no passkey = likely inactive
+      // ── Sign-in activity (per-user fetch) ────────────────────────────────────
+      // Shape: { available, reason, lastSuccessfulSignInDateTime,
+      //          lastSignInDateTime, lastNonInteractiveSignInDateTime }
+      const sia = user.signInActivity || { available: false, reason: 'no_record' };
+
+      // Effective last sign-in: take the most-recent of the three timestamp fields.
+      // None of these fields are backfilled before Dec 2023, so absence != never signed in.
+      const effectiveLastSignIn = sia.available ? (
+        sia.lastSuccessfulSignInDateTime ||
+        sia.lastSignInDateTime ||
+        sia.lastNonInteractiveSignInDateTime || null
+      ) : null;
+
+      // isStale is null when data is unavailable — never assumed true.
+      const isStale = sia.available
+        ? (effectiveLastSignIn
+            ? (Date.now() - new Date(effectiveLastSignIn).getTime()) > 90 * 86400000
+            : null)
+        : null;
 
       const userDevices = devices.filter(d =>
         (d.registeredOwners || []).some(o => o.id === user.id || o.userPrincipalName === user.userPrincipalName)
@@ -246,7 +269,8 @@ export class Analyzer {
         notCoveredByEnforcement = !covered;
       }
 
-      // ── 4-tier status ────────────────────────────────────────────────────
+      // ── 5-tier status ────────────────────────────────────────────────────────
+      // 'unknown' = registration data unavailable; excluded from score denominator.
       let status;
       const issues = [];
 
@@ -264,15 +288,19 @@ export class Analyzer {
       } else if (blockedByPolicy) {
         status = 'blocked';
         issues.push('Blocked by a CA policy requiring password');
-        if (!hasMfa) issues.push('No MFA registered');
-      } else if (!hasMfa && !hasModernDevice) {
+        if (reg.available && hasMfa === false) issues.push('No MFA registered');
+      } else if (reg.available && hasMfa === false && !hasModernDevice) {
         status = 'blocked';
         issues.push('No MFA registered');
         issues.push('No compatible device registered');
-      } else if (!hasMfa) {
+      } else if (reg.available && hasMfa === false) {
         status = 'needsPrep';
         issues.push('No MFA registered — TAP needed to bootstrap');
         if (!hasModernDevice && userDevices.length > 0) issues.push('Device OS outdated');
+      } else if (hasMfa === null) {
+        // Registration report unavailable — cannot classify, do not penalise.
+        status = 'unknown';
+        issues.push('Registration data unavailable — re-run scan with Reports Reader role');
       } else if (!hasModernDevice) {
         status = 'needsPrep';
         issues.push(userDevices.length > 0 ? 'Device OS outdated for passkeys' : 'No compatible device registered');
@@ -280,8 +308,9 @@ export class Analyzer {
         status = 'capable'; // hasMfa + hasModernDevice + no blocker
       }
 
-      if (isPrivileged && status !== 'exempt') issues.push('Privileged account — prioritise');
-      if (isStale      && status !== 'exempt') issues.push('Inactive >90 days — verify before onboarding');
+      if (isPrivileged  && status !== 'exempt') issues.push('Privileged account — prioritise');
+      // Only emit the stale badge when sign-in data is actually available.
+      if (isStale === true && status !== 'exempt') issues.push('Inactive >90 days — verify before onboarding');
       if (notCoveredByEnforcement && status !== 'exempt') issues.push('Not in scope of any passkey-enforcing CA policy');
 
       const recommendedAction = this.generateRecommendedAction({
@@ -291,23 +320,27 @@ export class Analyzer {
 
       result[status]++;
       if (status === 'capable' || status === 'needsPrep') result.needsAttention++;
+      if (!reg.available || !sia.available) result.partialDataCount++;
 
       result.users.push({
-        id:                user.id,
-        displayName:       user.displayName || user.userPrincipalName,
-        userPrincipalName: user.userPrincipalName,
+        id:                         user.id,
+        displayName:                user.displayName || user.userPrincipalName,
+        userPrincipalName:          user.userPrincipalName,
         accountType,
         status,
         isPrivileged,
         isStale,
         issues,
         recommendedAction,
-        authMethodTypes:   authTypes,
-        deviceCount:       userDevices.length,
-        deviceSummary:     this.summarizeDevices(userDevices),
-        authMethodCount:   am.filter(m => !(m['@odata.type'] || '').toLowerCase().includes('password')).length,
-        groups:            (user.groups || []).map(g => g.displayName),
-        lastSignIn:        lastSignInStr,
+        authMethodTypes:            authTypes,
+        deviceCount:                userDevices.length,
+        deviceSummary:              this.summarizeDevices(userDevices),
+        authMethodCount:            methodsReg.length,
+        methodsRegistered:          methodsReg,
+        groups:                     (user.groups || []).map(g => g.displayName),
+        lastSignIn:                 effectiveLastSignIn,
+        registrationDataAvailable:  reg.available,
+        signInActivityAvailable:    sia.available,
       });
     });
 
@@ -799,13 +832,17 @@ export class Analyzer {
 
   findToxicCombinations(passkeyReadiness, { users, policies }) {
     const combos = [];
+    const PASSKEY_METHODS = ['passKeyDeviceBound', 'fido2'];
     (users || []).forEach(u => {
       const groups = (u.groups || []).map(g => (g.displayName || '').toLowerCase());
       const isPrivileged = groups.some(g => g.includes("admin") || g.includes("global") || g.includes("privileged") || g.includes("exchange"));
       if (isPrivileged) {
-        const hasFido = (u.authMethods || []).some(m => this.isPasskeyMethod(m));
-        const hasMfa  = (u.authMethods || []).some(m => this.isStrongAuthMethod(m));
-        if (!hasFido && !hasMfa)
+        const reg        = u.registrationData || { available: false };
+        const methodsReg = reg.available ? (reg.methodsRegistered || []) : [];
+        const hasFido    = methodsReg.some(m => PASSKEY_METHODS.includes(m) || m.toLowerCase().startsWith('passkey'));
+        const hasMfa     = reg.available ? (reg.isMfaRegistered ?? false) : null;
+        // Only fire when data is available — unknown data must not produce a false critical alert.
+        if (!hasFido && hasMfa === false)
           combos.push({ severity: "critical", displayName: u.displayName || u.userPrincipalName, groups: (u.groups || []).map(g => g.displayName), description: "No MFA and no passkey on high-privilege account", fix: "Enable MFA immediately. Register passkey/FIDO2 as primary auth method." });
       }
     });

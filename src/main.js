@@ -374,18 +374,35 @@ async function startScan() {
       })
     );
 
-    showLoading('Analyzing authentication methods and device ownership...');
+    showLoading('Fetching authentication registration report...');
 
-    // Phase 2: per-user detail (sampled for performance)
+    // Phase 2a: bulk registration report (single call, requires AuditLog.Read.All +
+    // Reports Reader or equivalent role — see
+    // https://learn.microsoft.com/en-us/graph/api/authenticationmethodsroot-list-userregistrationdetails).
+    // getUserRegistrationDetails() returns a tri-state object and never throws.
+    const regReport = await graphApi.getUserRegistrationDetails();
+    const regByUserId = new Map(
+      (regReport.records || []).map(rec => [rec.id, rec])
+    );
+
+    showLoading('Analyzing sign-in activity and device ownership...');
+
+    // Phase 2b: per-user sign-in activity + group membership (sampled for performance).
+    // getUserSignInActivity() returns tri-state and never throws.
     const userSample = users.slice(0, 50);
     const userDetails = await Promise.all(
       userSample.map(async (u) => {
-        const [authMethods, activity, groups] = await Promise.all([
-          graphApi.getAuthenticationMethodsForUser(u.id).catch(() => []),
-          graphApi.getUserSignInActivity(u.id).catch(() => ({})),
+        const [activity, groups] = await Promise.all([
+          graphApi.getUserSignInActivity(u.id),
           graphApi.getUserMemberOf(u.id).catch(() => []),
         ]);
-        return { ...u, authMethods, signInActivity: activity, groups };
+        const regRec = regByUserId.get(u.id);
+        const registrationData = regReport.available
+          ? (regRec
+              ? { available: true, reason: 'ok', ...regRec }
+              : { available: false, reason: 'no_record' })  // disabled users not returned by report
+          : { available: false, reason: regReport.reason };
+        return { ...u, registrationData, signInActivity: activity, groups };
       })
     );
 
@@ -413,10 +430,13 @@ async function startScan() {
 
     // Record sampling + fetch errors so the UI can be honest about coverage.
     scanResults.meta = {
-      usersFound: users.length,
-      usersAnalyzed: userDetails.length,
-      devicesFound: devices.length,
-      devicesAnalyzed: deviceDetails.length,
+      usersFound:                   users.length,
+      usersAnalyzed:                userDetails.length,
+      devicesFound:                 devices.length,
+      devicesAnalyzed:              deviceDetails.length,
+      registrationReportAvailable:  regReport.available,
+      registrationReportReason:     regReport.reason,
+      partialDataCount:             scanResults.passkeyReadiness?.partialDataCount ?? 0,
       errors,
     };
 
@@ -619,14 +639,16 @@ function exportReadinessCsv() {
   const ts = new Date().toISOString().slice(0, 10);
   downloadCsv(
     `entrapass-readiness-${ts}.csv`,
-    ['Display Name', 'UPN', 'Account Type', 'Status', 'Privileged', 'Stale (>90d)', 'Issues', 'Recommended Action', 'Auth Methods', 'Device Count', 'Device Summary', 'Groups', 'Last Sign-In'],
+    ['Display Name', 'UPN', 'Account Type', 'Status', 'Privileged', 'Stale (>90d)', 'Reg Data Available', 'Sign-in Data Available', 'Issues', 'Recommended Action', 'Auth Methods', 'Device Count', 'Device Summary', 'Groups', 'Last Sign-In'],
     scanResults.passkeyReadiness.users.map(u => [
       u.displayName,
       u.userPrincipalName,
       u.accountType,
       u.status,
       u.isPrivileged ? 'Yes' : 'No',
-      u.isStale      ? 'Yes' : 'No',
+      u.isStale === true ? 'Yes' : u.isStale === false ? 'No' : 'N/A',
+      u.registrationDataAvailable ? 'Yes' : 'No',
+      u.signInActivityAvailable   ? 'Yes' : 'No',
       u.issues.join('; '),
       u.recommendedAction || '',
       (u.authMethodTypes || []).map(m => m.label).join('; '),
@@ -1002,6 +1024,21 @@ function renderScanNotices(r) {
       + escapeHtml(String(meta.usersAnalyzed)) + ' of '
       + escapeHtml(String(meta.usersFound)) + ' users (sampled for performance).</div>';
   }
+  if (meta.registrationReportAvailable === false) {
+    const reason = meta.registrationReportReason || 'unknown';
+    const detail = reason === 'permission_denied'
+      ? ' — ensure the scanning account has the Reports Reader role (or equivalent). '
+        + 'See <a href="https://learn.microsoft.com/en-us/entra/identity/authentication/howto-authentication-methods-activity" target="_blank" rel="noopener noreferrer">Authentication Methods Activity: Permissions and licenses</a>.'
+      : ` (${escapeHtml(reason)}).`;
+    html += '<div class="notice notice-warn"><strong>Registration data unavailable.</strong> '
+      + 'The authentication methods activity report could not be read' + detail
+      + ' Users are classified as "Unknown" and excluded from the readiness score.</div>';
+  } else if (meta.partialDataCount > 0) {
+    html += '<div class="notice notice-info">'
+      + escapeHtml(String(meta.partialDataCount))
+      + ' user(s) have incomplete sign-in or registration data. '
+      + 'Their status is shown as "Unknown" and excluded from the readiness score.</div>';
+  }
   if (html) { el.innerHTML = html; el.classList.remove('hidden'); }
   else { el.classList.add('hidden'); el.innerHTML = ''; }
 }
@@ -1015,6 +1052,7 @@ function renderUserCard(u) {
     needsPrep: { cls: 'needs-prep', label: 'Needs Prep',  icon: '🟡' },
     blocked:   { cls: 'blocked',    label: 'Blocked',     icon: '🔴' },
     exempt:    { cls: 'exempt',     label: 'Exempt',      icon: '⚪' },
+    unknown:   { cls: 'unknown',    label: 'Unknown',     icon: '❓' },
   };
   const ACCT_CFG = {
     member:          { label: 'Member',        cls: 'member' },
@@ -1040,9 +1078,11 @@ function renderUserCard(u) {
     ? namedGroups.slice(0, 3).join(', ') + (namedGroups.length > 3 ? ` +${namedGroups.length - 3}` : '')
     : null;
 
-  const lastSignInDisplay = u.lastSignIn
-    ? new Date(u.lastSignIn).toLocaleDateString('en-GB', { year: 'numeric', month: 'short', day: 'numeric' })
-    : 'Never recorded';
+  const lastSignInDisplay = u.signInActivityAvailable === false
+    ? 'Data unavailable'
+    : (u.lastSignIn
+        ? new Date(u.lastSignIn).toLocaleDateString('en-GB', { year: 'numeric', month: 'short', day: 'numeric' })
+        : 'Not recorded');
 
   const searchText = `${(u.displayName || '').toLowerCase()} ${(u.userPrincipalName || '').toLowerCase()}`;
 
@@ -1062,8 +1102,8 @@ function renderUserCard(u) {
       <div class="user-card-badges">
         <span class="user-status-badge user-status-${escapeHtml(sc.cls)}">${sc.icon} ${sc.label}</span>
         <span class="user-account-badge acct-${escapeHtml(ac.cls)}">${escapeHtml(ac.label)}</span>
-        ${u.isPrivileged ? `<span class="user-flag-badge flag-privileged">⚡ Privileged</span>` : ''}
-        ${u.isStale      ? `<span class="user-flag-badge flag-stale">⏰ Stale</span>`           : ''}
+        ${u.isPrivileged    ? `<span class="user-flag-badge flag-privileged">⚡ Privileged</span>` : ''}
+        ${u.isStale === true ? `<span class="user-flag-badge flag-stale">⏰ Stale</span>`         : ''}
       </div>
     </div>
     ${issueChips ? `<div class="user-issue-chips">${issueChips}</div>` : ''}
@@ -1073,7 +1113,11 @@ function renderUserCard(u) {
     </div>` : ''}
     <div class="user-card-meta">
       <div class="user-meta-chips">
-        ${authChips || '<span class="user-meta-empty">No auth methods recorded</span>'}
+        ${authChips
+          ? authChips
+          : u.registrationDataAvailable === false
+            ? '<span class="user-meta-empty meta-unavailable">Registration data unavailable</span>'
+            : '<span class="user-meta-empty">No auth methods recorded</span>'}
       </div>
       <div class="user-meta-info">
         ${u.deviceSummary
@@ -1094,12 +1138,13 @@ function renderReadiness(r) {
 
   // Always derive from the actual user list — pre-computed summaries can be stale.
   const cnt = (s) => users.filter(u => u.status === s).length;
-  const total    = users.length;
-  const ready    = cnt('ready');
-  const capable  = cnt('capable');
+  const total     = users.length;
+  const ready     = cnt('ready');
+  const capable   = cnt('capable');
   const needsPrep = cnt('needsPrep');
-  const blocked  = cnt('blocked');
-  const exempt   = cnt('exempt');
+  const blocked   = cnt('blocked');
+  const exempt    = cnt('exempt');
+  const unknown   = cnt('unknown');
 
   // ── Narrative ──────────────────────────────────────────────────────────────
   let h = `<div class="readiness-narrative">
@@ -1112,7 +1157,7 @@ function renderReadiness(r) {
       and <em>who</em> requires a direct admin action before onboarding can begin.
       Break-glass, guest, and personal Microsoft accounts are classified separately — they follow a different guidance path
       and should never be mixed into passkey rollout metrics.
-      <span class="readiness-narrative-tip">Showing ${escapeHtml(String(total))} user${total !== 1 ? 's' : ''} (sampled). Missing sign-in or device data usually means AuditLog.Read.All or Device.Read.All permission is not consented — re-scan after granting consent.</span>
+      <span class="readiness-narrative-tip">Showing ${escapeHtml(String(total))} user${total !== 1 ? 's' : ''} (sampled).${unknown > 0 ? ` ${escapeHtml(String(unknown))} user${unknown !== 1 ? 's' : ''} could not be scored — verify the scanning account has the Reports Reader role so the authentication methods activity report can be fetched.` : ''}</span>
     </div>
   </div>`;
 
@@ -1141,6 +1186,10 @@ function renderReadiness(r) {
     ${exempt > 0 ? `<div class="policy-stat-item" role="button" tabindex="0" data-filter="exempt" title="Filter: Exempt">
       <span class="psi-value">${escapeHtml(String(exempt))}</span>
       <span class="psi-label">Exempt</span>
+    </div>` : ''}
+    ${unknown > 0 ? `<div class="policy-stat-item" role="button" tabindex="0" data-filter="unknown" title="Filter: Unknown (data unavailable)">
+      <span class="psi-value">${escapeHtml(String(unknown))}</span>
+      <span class="psi-label">Unknown</span>
     </div>` : ''}
   </div>`;
 
@@ -1179,7 +1228,8 @@ function renderReadiness(r) {
     <button class="readiness-pill" data-filter="capable">🟢 Capable (${escapeHtml(String(capable))})</button>
     <button class="readiness-pill" data-filter="needsPrep">🟡 Needs Prep (${escapeHtml(String(needsPrep))})</button>
     <button class="readiness-pill" data-filter="blocked">🔴 Blocked (${escapeHtml(String(blocked))})</button>
-    ${exempt > 0 ? `<button class="readiness-pill" data-filter="exempt">⚪ Exempt (${escapeHtml(String(exempt))})</button>` : ''}
+    ${exempt  > 0 ? `<button class="readiness-pill" data-filter="exempt">⚪ Exempt (${escapeHtml(String(exempt))})</button>` : ''}
+    ${unknown > 0 ? `<button class="readiness-pill" data-filter="unknown">❓ Unknown (${escapeHtml(String(unknown))})</button>` : ''}
     <input type="text" id="readiness-search" class="readiness-search" placeholder="Search by name or UPN…" autocomplete="off">
   </div>`;
 
@@ -1187,7 +1237,7 @@ function renderReadiness(r) {
   if (users.length === 0) {
     h += `<div class="readiness-empty">No users found. Run a full scan to populate readiness data.</div>`;
   } else {
-    const SORT = { blocked: 0, needsPrep: 1, capable: 2, ready: 3, exempt: 4 };
+    const SORT = { blocked: 0, needsPrep: 1, capable: 2, ready: 3, unknown: 4, exempt: 5 };
     const sorted = [...users].sort((a, b) => {
       const d = (SORT[a.status] ?? 5) - (SORT[b.status] ?? 5);
       if (d !== 0) return d;
