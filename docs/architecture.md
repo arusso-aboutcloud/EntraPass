@@ -161,7 +161,7 @@ index.html
    └── getDeviceRegisteredOwners(id)       → GET /devices/{id}/registeredOwners
    │
 6. analyzer.analyzeAll({ users, devices, policies, apps, ... })
-   ├── classifyAccountType()      → member / guest / personal-msa / breakglass
+   ├── classifyAccountType()      → member / guest / personal / breakglass
    ├── analyzePasskeyReadiness()  → 5-tier per-user status (ready/capable/needsPrep/blocked/exempt/unknown)
    ├── analyzeAppCompatibility()  → per-app compatibility (App Identities tab)
    ├── analyzePolicies()          → per-policy analysis
@@ -223,7 +223,7 @@ index.html
 
 | Method | Input | Output |
 |---|---|---|
-| `classifyAccountType()` | user object, tenant domain | `member` / `guest` / `personal-msa` / `breakglass` |
+| `classifyAccountType()` | user object, tenant domain | `member` / `guest` / `personal` / `breakglass` |
 | `classifyAuthMethods()` | `methodsRegistered` string array (from registration report) | Typed method list with labels |
 | `analyzePasskeyReadiness()` | users, devices, policies, auth methods | Per-user 5-tier status + counts; `unknown` tier used when registration data unavailable |
 | `generateRecommendedAction()` | user status, issues, auth methods | Single recommended next step string |
@@ -282,7 +282,29 @@ score -= min(high_gaps * 2, 4)
 score = clamp(score, 0, 100)
 
 where: effective = total - exempt - unknown
+
+When effective = 0 (all users are exempt or have unknown registration status),
+the function returns null and the score ring renders '—' with verdict text
+'No scorable users'. This prevents a misleading numeric score when no
+classifiable users exist.
 ```
+
+#### App credential staleness thresholds
+
+The `analyzeApp()` method classifies each `passwordCredential` into one of four states using an `else-if` chain — a credential can only be in one state at a time:
+
+| State | Condition | Severity |
+|---|---|---|
+| `expired` | `endDateTime` is in the past | Critical |
+| `expiring-soon` | `endDateTime` is within 30 days | Critical |
+| `expiring` | `endDateTime` is 31–90 days away | High |
+| `stale` | `startDateTime` is more than 365 days ago and `endDateTime` is more than 90 days away | Medium |
+
+Credentials with no `endDateTime` are not flagged (Graph returns `null` for some legacy secrets — known limitation).
+
+Certificate credentials (`keyCredentials`) follow the same `expired` / `expiring-soon` / `expiring` states but have no `stale` classification.
+
+Date arithmetic uses `new Date(isoString)` which correctly parses ISO-8601 strings with UTC offsets. No division by zero is possible.
 
 ### 3.5 `functions/ai/ask.js` — AI Assistant Pages Function
 

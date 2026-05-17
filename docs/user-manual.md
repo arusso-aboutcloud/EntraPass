@@ -148,7 +148,7 @@ The Overview tab shows a high-level picture of your tenant's passkey readiness.
 
 **Readiness score ring** — an animated 0–100 score that summarizes overall
 readiness. The score is computed from your user breakdown and infrastructure state.
-On tenants with more than 50 users the ring label changes to "Sample Readiness Score" and the verdict pill is labelled "(sampled)" to indicate the score is based on the first 50 users returned by Graph.
+On tenants with more than 50 users the ring label changes to "Sample Readiness Score" and the verdict pill is labelled "(sampled)" to indicate the score is based on the first 50 users returned by Graph. When all scanned users are exempt or have no registration data available, the ring shows '—' and the verdict reads 'No scorable users' instead of a numeric score.
 
 | Score band | Reading |
 |---|---|
@@ -166,7 +166,7 @@ On tenants with more than 50 users the ring label changes to "Sample Readiness S
 | **Capable** | Users who can self-register a passkey today |
 | **Needs Prep** | Users with one gap to resolve |
 | **Blocked** | Users blocked by multiple gaps or a CA policy |
-| **Exempt** | Break-glass / guest / personal MSA — excluded from passkey targets |
+| **Exempt** | Break-glass / guest / personal account — excluded from passkey targets |
 
 **Readiness breakdown bar** — a proportional bar showing the tier distribution.
 
@@ -267,7 +267,7 @@ An optional AI chat for asking questions about your scan results. See
 | **Capable** | Has MFA + a modern device, no CA blocker | Direct to self-registration at `aka.ms/mfasetup` |
 | **Needs Prep** | One gap: no MFA method, outdated device OS, or no modern device registered | Fix the single gap; user can then self-register |
 | **Blocked** | Multiple gaps, or a CA policy actively blocking passkey registration | Resolve the CA policy first; then address any remaining gaps |
-| **Exempt** | Break-glass account, guest, or personal MSA | Do not target for passkeys (these accounts are excluded by design) |
+| **Exempt** | Break-glass account, guest, or personal account | Do not target for passkeys (these accounts are excluded by design) |
 
 "Modern device" means: Windows 10+, iOS 16+, Android 14+, or macOS 13+.
 
@@ -277,7 +277,7 @@ An optional AI chat for asking questions about your scan results. See
 |---|---|---|
 | **Member** | Standard domain account | Included in readiness analysis |
 | **Guest** | `#ext#` in UPN or `userType = Guest` | Exempt (passkey capability depends on home tenant) |
-| **Personal MSA** | outlook.com, hotmail.com, live.com | Exempt (cannot be managed by your tenant policies) |
+| **Personal account** | Common consumer email domains (gmail.com, outlook.com, icloud.com, proton.me, and others) | Exempt — governed by an external identity provider, not tenant policies |
 | **Break-glass** | Name matches emergency account patterns | Exempt (no MFA by design — do not enroll passkeys) |
 
 ### Toxic combinations
@@ -288,6 +288,23 @@ High-severity alerts shown on the Overview tab:
 |---|---|---|
 | **Critical** | A privileged user with no MFA and no passkey | Single-factor admin account is a direct security risk |
 | **High** | A CA policy allows password fallback alongside passkey | Users can bypass passkeys by choosing password |
+
+### Privileged user detection
+
+A user is flagged as privileged when any entry in their `/memberOf` response has `@odata.type` equal to `#microsoft.graph.directoryRole` (the primary signal, reliable even when the scanning account has limited permissions) or when the entry's display name contains 'admin', 'global', 'privileged', or 'exchange' (a best-effort fallback that can produce false positives for groups with similar names).
+
+### App credential staleness
+
+Each password credential on an app registration is classified into one of four mutually exclusive states:
+
+| State | Condition | Severity |
+|---|---|---|
+| **Expired** | `endDateTime` is in the past | Critical |
+| **Expiring soon** | `endDateTime` is within 30 days | Critical |
+| **Expiring** | `endDateTime` is 31–90 days away | High |
+| **Stale** | Created more than 365 days ago and not expiring within 90 days | Medium |
+
+Credentials with no `endDateTime` are not flagged (Graph returns `null` for some legacy secrets — known limitation).
 
 ### Recommendations
 

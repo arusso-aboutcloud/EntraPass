@@ -39,7 +39,7 @@ export class Analyzer {
     // 'unknown' users (registration data unavailable) are excluded from the denominator
     // alongside 'exempt' — they cannot be scored and should not dilute the result.
     const effective = total - exempt - unknown;
-    if (effective === 0) return 85;
+    if (effective === 0) return null;
 
     let score = 100;
 
@@ -85,8 +85,20 @@ export class Analyzer {
 
     if (type === 'guest' || upn.includes('#ext#')) return 'guest';
 
-    const PERSONAL_DOMAINS = ['outlook.com','hotmail.com','live.com','msn.com','gmail.com','yahoo.com'];
-    if (PERSONAL_DOMAINS.some(d => domain === d)) return 'personal-msa';
+    const PERSONAL_DOMAINS = [
+      'outlook.com','hotmail.com','live.com','msn.com',
+      'gmail.com','yahoo.com',
+      'icloud.com','me.com','mac.com',
+      'proton.me','protonmail.com','pm.me',
+      'aol.com',
+      'fastmail.com','fastmail.fm',
+      'tutanota.com','tutanota.de','tuta.io',
+      'gmx.com','gmx.net','gmx.de',
+      'zoho.com','zohomail.com',
+      'yandex.com','yandex.ru',
+      'mail.com',
+    ];
+    if (PERSONAL_DOMAINS.some(d => domain === d)) return 'personal';
 
     if (tenantDomain && domain && domain !== tenantDomain) return 'guest';
 
@@ -123,8 +135,8 @@ export class Analyzer {
     if (accountType === 'guest') {
       return 'Guest account — passkey registration is governed by the user\'s home tenant. Verify they are in scope of your CA policies if applicable.';
     }
-    if (accountType === 'personal-msa') {
-      return 'Personal Microsoft account — cannot be managed by tenant policies. Consider converting to a member account, or remove from tenant if access is no longer needed.';
+    if (accountType === 'personal') {
+      return 'Personal account — governed by an external identity provider, not tenant policies. Remove from tenant if access is no longer needed, or re-invite with a work or school account.';
     }
     if (hasFido) {
       return 'Passkey already registered. Verify the CA policy enforcing passkey sign-in is active and covers this user.';
@@ -203,8 +215,13 @@ export class Analyzer {
       const accountType = this.classifyAccountType(user, tenantDomain);
 
       const isPrivileged = (user.groups || []).some(g => {
+        // Primary: @odata.type discriminates directoryRole objects from groups.
+        // Fires even when the scanning account can't read the role's displayName.
+        if ((g['@odata.type'] || '').includes('directoryRole')) return true;
+        // Fallback: displayName substring match. Best-effort — known to produce false
+        // positives on groups whose names contain 'admin', 'global', etc.
         const n = (g.displayName || '').toLowerCase();
-        return n.includes('admin') || n.includes('global') || n.includes('privileged') || n.includes('exchange admin');
+        return n.includes('admin') || n.includes('global') || n.includes('privileged') || n.includes('exchange');
       });
 
       // ── Sign-in activity (per-user fetch) ────────────────────────────────────
@@ -277,10 +294,10 @@ export class Analyzer {
       if (accountType === 'breakglass') {
         status = 'exempt';
         issues.push('Break-glass account — exempt from passkey rollout');
-      } else if (accountType === 'guest' || accountType === 'personal-msa') {
+      } else if (accountType === 'guest' || accountType === 'personal') {
         status = 'exempt';
-        issues.push(accountType === 'personal-msa'
-          ? 'Personal Microsoft account — governed by MSA, not tenant policies'
+        issues.push(accountType === 'personal'
+          ? 'Personal account — governed by external identity provider, not tenant policies'
           : 'Guest / external account — passkey governed by home tenant');
       } else if (hasFido) {
         status = 'ready';
@@ -834,8 +851,11 @@ export class Analyzer {
     const combos = [];
     const PASSKEY_METHODS = ['passKeyDeviceBound', 'fido2'];
     (users || []).forEach(u => {
-      const groups = (u.groups || []).map(g => (g.displayName || '').toLowerCase());
-      const isPrivileged = groups.some(g => g.includes("admin") || g.includes("global") || g.includes("privileged") || g.includes("exchange"));
+      const isPrivileged = (u.groups || []).some(g => {
+        if ((g['@odata.type'] || '').includes('directoryRole')) return true;
+        const n = (g.displayName || '').toLowerCase();
+        return n.includes('admin') || n.includes('global') || n.includes('privileged') || n.includes('exchange');
+      });
       if (isPrivileged) {
         const reg        = u.registrationData || { available: false };
         const methodsReg = reg.available ? (reg.methodsRegistered || []) : [];

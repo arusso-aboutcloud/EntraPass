@@ -170,7 +170,7 @@ deleting the App Registration (useful if you plan to scan again).
 | **Capable** | Has MFA + a modern device, no CA blocker | Self-registration ready — guide user to register |
 | **Needs Prep** | One gap: missing MFA, no modern device, or stale sign-in | Fix the single gap; user can become Capable |
 | **Blocked** | Multiple gaps, or a CA policy actively blocking registration | Resolve the CA policy or address multiple blockers |
-| **Exempt** | Break-glass, guest, or personal MSA account | Do not target for passkeys — by design |
+| **Exempt** | Break-glass, guest, or personal account | Do not target for passkeys — by design |
 
 ### Why are my break-glass accounts shown as Exempt?
 
@@ -184,12 +184,12 @@ EntraPass detects break-glass accounts by name patterns (common patterns like
 
 ### Why are my guests shown as Exempt?
 
-Guest accounts (#ext# in the UPN or `userType = Guest`) and personal Microsoft
-accounts (outlook.com, hotmail.com, live.com) are excluded from passkey targets
-because:
+Guest accounts (`#ext#` in the UPN or `userType = Guest`) and personal accounts
+(consumer email domains: outlook.com, gmail.com, icloud.com, proton.me, and others)
+are excluded from passkey targets because:
 
 - Guest passkey support depends on the **home tenant**, not your tenant.
-- Personal MSA accounts cannot be managed through your Entra ID policies.
+- Personal accounts are governed by an external identity provider and cannot be managed through your Entra ID policies.
 
 ### Why does a user appear twice?
 
@@ -236,6 +236,8 @@ infrastructure state:
 9. Subtract up to −5 for CA policies blocking passkey registration.
 10. Subtract up to −4 for high-severity policy gaps.
 11. Clamp to [0, 100].
+
+When no scorable users exist (all scanned users are exempt or have unknown registration status), the formula returns no score. The ring displays '—' and the verdict reads 'No scorable users'.
 
 ### What does the score mean in practice?
 

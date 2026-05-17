@@ -156,26 +156,28 @@ EntraPass classifies each user into one of five statuses:
 - **Capable** — Has MFA + a modern device; can self-register a passkey with no IT help.
 - **Needs Prep** — One gap (missing MFA or no modern device); needs targeted guidance.
 - **Blocked** — Multiple gaps or a CA policy actively blocking passkey registration.
-- **Exempt** — Break-glass accounts, guest users, or personal MSA accounts; \
-deliberately excluded from passkey targets (they should NOT get passkeys).
+- **Exempt** — Break-glass accounts, guest users, or personal accounts (consumer \
+email domains); deliberately excluded from passkey targets (they should NOT get passkeys).
 
 "Modern device": Windows 10+, iOS 16+, Android 14+, macOS 13+.
 
 ## Account Type Classification
 - **Member** — standard tenant account.
 - **Guest** — external (#ext# in UPN or userType=Guest); excluded from passkey targets.
-- **Personal MSA** — outlook.com, hotmail.com, live.com; excluded from passkey targets.
+- **Personal account** — consumer email domains (gmail.com, outlook.com, icloud.com, proton.me, and others); excluded from passkey targets.
 - **Break-glass** — emergency admin accounts (no MFA by design); excluded to avoid \
 skewing metrics.
 
 ## Readiness Score (0–100)
 Computed from the actual user breakdown:
 - Start at 100; subtract penalties for blocked / needsPrep / capable users (relative \
-to non-exempt total).
+to non-exempt, non-unknown total).
 - FIDO2 policy disabled: −20 pts. TAP policy disabled: −8 pts.
 - Additional penalties for critical toxic combinations, critical policy gaps, and \
 CA policies blocking passkey registration.
 - 85+: very strong. 65–84: good progress. 40–64: needs work. Below 40: significant gaps.
+- When all scanned users are exempt or have no registration data, the score ring \
+shows '—' instead of a number ('No scorable users').
 
 ## Scope
 Answer questions about: passkey migration, FIDO2, Conditional Access, authentication \

@@ -651,9 +651,10 @@ main { padding: 2rem; max-width: 1200px; margin: 0 auto; }
   line-height: 1;
   letter-spacing: -1px;
 }
-.ring-score-number.score-good   { color: var(--good);   }
-.ring-score-number.score-warn   { color: var(--accent); }
-.ring-score-number.score-danger { color: var(--danger); }
+.ring-score-number.score-good    { color: var(--good);           }
+.ring-score-number.score-warn    { color: var(--accent);         }
+.ring-score-number.score-danger  { color: var(--danger);         }
+.ring-score-number.score-neutral { color: var(--text-secondary); }
 
 .ring-score-sub { font-size: 0.7rem; color: var(--text-secondary); margin-top: 0.2rem; font-weight: 500; }
 
