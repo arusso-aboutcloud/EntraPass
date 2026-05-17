@@ -403,17 +403,27 @@ $app = New-MgApplication -DisplayName "entrapass-scanner" -SignInAudience AzureA
           <div class="ai-prompts-section" id="ai-prompts-hint">
             <div class="ai-prompts-label">💬 Try asking…</div>
             <div class="ai-prompts-grid">
+              <button class="ai-prompt-chip" onclick="document.getElementById('chat-input').value=this.dataset.q;document.getElementById('chat-input').focus();" data-q="Help me understand my scan results — what do the numbers mean?">Understand my results</button>
+              <button class="ai-prompt-chip" onclick="document.getElementById('chat-input').value=this.dataset.q;document.getElementById('chat-input').focus();" data-q="What is my current security risk level based on this scan? Is it high, medium, or low?">My security risk level</button>
+              <button class="ai-prompt-chip" onclick="document.getElementById('chat-input').value=this.dataset.q;document.getElementById('chat-input').focus();" data-q="How likely am I to have a smooth passkey rollout given these results?">Rollout success likelihood</button>
+              <button class="ai-prompt-chip" onclick="document.getElementById('chat-input').value=this.dataset.q;document.getElementById('chat-input').focus();" data-q="Which gaps are the most urgent to fix right now?">Most urgent gaps</button>
               <button class="ai-prompt-chip" onclick="document.getElementById('chat-input').value=this.dataset.q;document.getElementById('chat-input').focus();" data-q="What are the top 3 actions I should take to start the passkey rollout?">Top 3 rollout actions</button>
+              <button class="ai-prompt-chip" onclick="document.getElementById('chat-input').value=this.dataset.q;document.getElementById('chat-input').focus();" data-q="Should I fix Conditional Access policies or device compliance first — and why?">CA vs device: what first?</button>
+              <button class="ai-prompt-chip" onclick="document.getElementById('chat-input').value=this.dataset.q;document.getElementById('chat-input').focus();" data-q="Explain what 'Blocked', 'Needs Prep', and 'Ready' mean in this report.">What do statuses mean?</button>
               <button class="ai-prompt-chip" onclick="document.getElementById('chat-input').value=this.dataset.q;document.getElementById('chat-input').focus();" data-q="Which users need the most attention before I can enable passkeys?">Users needing attention</button>
               <button class="ai-prompt-chip" onclick="document.getElementById('chat-input').value=this.dataset.q;document.getElementById('chat-input').focus();" data-q="What Conditional Access policy changes do I need to make to enforce passkeys?">CA policy changes needed</button>
-              <button class="ai-prompt-chip" onclick="document.getElementById('chat-input').value=this.dataset.q;document.getElementById('chat-input').focus();" data-q="Explain the readiness score and what it means for my tenant.">Explain the readiness score</button>
               <button class="ai-prompt-chip" onclick="document.getElementById('chat-input').value=this.dataset.q;document.getElementById('chat-input').focus();" data-q="What are the app identity risks I should fix first?">App identity risks</button>
               <button class="ai-prompt-chip" onclick="document.getElementById('chat-input').value=this.dataset.q;document.getElementById('chat-input').focus();" data-q="How long will my passkey rollout take given the current scan results?">Estimated rollout timeline</button>
+              <button class="ai-prompt-chip" onclick="document.getElementById('chat-input').value=this.dataset.q;document.getElementById('chat-input').focus();" data-q="Explain the readiness score and what it means for my tenant.">Explain the readiness score</button>
             </div>
           </div>
 
           <!-- Setup + chat -->
           <div class="card">
+            <div class="ai-card-header">
+              <span class="ai-card-header-icon">⚙️</span>
+              <span class="ai-card-header-title">Configure &amp; Chat</span>
+            </div>
             <div id="ai-setup">
               <div class="ai-setup-row">
                 <label class="ai-setup-label" for="ai-mode">AI provider</label>

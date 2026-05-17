@@ -1118,27 +1118,27 @@ function renderReadiness(r) {
 
   // ── Summary strip ──────────────────────────────────────────────────────────
   h += `<div class="policy-summary readiness-summary">
-    <div class="policy-stat-item">
+    <div class="policy-stat-item" role="button" tabindex="0" data-filter="all" title="Show all users">
       <span class="psi-value">${escapeHtml(String(total))}</span>
       <span class="psi-label">Total users</span>
     </div>
-    <div class="policy-stat-item ${ready > 0 ? 'good' : ''}">
+    <div class="policy-stat-item ${ready > 0 ? 'good' : ''}" role="button" tabindex="0" data-filter="ready" title="Filter: Ready">
       <span class="psi-value">${escapeHtml(String(ready))}</span>
       <span class="psi-label">Ready</span>
     </div>
-    <div class="policy-stat-item ${capable > 0 ? 'good' : ''}">
+    <div class="policy-stat-item ${capable > 0 ? 'good' : ''}" role="button" tabindex="0" data-filter="capable" title="Filter: Capable">
       <span class="psi-value">${escapeHtml(String(capable))}</span>
       <span class="psi-label">Capable</span>
     </div>
-    <div class="policy-stat-item ${needsPrep > 0 ? 'warn' : ''}">
+    <div class="policy-stat-item ${needsPrep > 0 ? 'warn' : ''}" role="button" tabindex="0" data-filter="needsPrep" title="Filter: Needs Prep">
       <span class="psi-value">${escapeHtml(String(needsPrep))}</span>
       <span class="psi-label">Needs Prep</span>
     </div>
-    <div class="policy-stat-item ${blocked > 0 ? 'danger' : ''}">
+    <div class="policy-stat-item ${blocked > 0 ? 'danger' : ''}" role="button" tabindex="0" data-filter="blocked" title="Filter: Blocked">
       <span class="psi-value">${escapeHtml(String(blocked))}</span>
       <span class="psi-label">Blocked</span>
     </div>
-    ${exempt > 0 ? `<div class="policy-stat-item">
+    ${exempt > 0 ? `<div class="policy-stat-item" role="button" tabindex="0" data-filter="exempt" title="Filter: Exempt">
       <span class="psi-value">${escapeHtml(String(exempt))}</span>
       <span class="psi-label">Exempt</span>
     </div>` : ''}
@@ -1220,9 +1220,27 @@ function renderReadiness(r) {
       pills.forEach(p => p.classList.remove('active'));
       pill.classList.add('active');
       applyFilter();
+      syncReadinessTiles(pill.dataset.filter);
     });
   });
   if (searchEl) searchEl.addEventListener('input', applyFilter);
+
+  // Wire summary tiles → filter pills
+  const readinessTiles = el.querySelectorAll('.readiness-summary .policy-stat-item[data-filter]');
+  function syncReadinessTiles(f) {
+    readinessTiles.forEach(t => t.classList.toggle('active', t.dataset.filter === f));
+  }
+  readinessTiles.forEach(tile => {
+    tile.addEventListener('click', () => {
+      const f = tile.dataset.filter;
+      pills.forEach(p => p.classList.remove('active'));
+      const target = el.querySelector(`.readiness-pill[data-filter="${f}"]`);
+      if (target) { target.classList.add('active'); applyFilter(); }
+      syncReadinessTiles(f);
+    });
+    tile.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); tile.click(); } });
+  });
+  syncReadinessTiles('all');
 
   const btn = document.getElementById('btn-export-readiness');
   if (btn) { btn.classList.remove('hidden'); btn.onclick = exportReadinessCsv; }
@@ -1311,19 +1329,19 @@ function renderApps(r) {
 
   // ── Summary strip ─────────────────────────────────────────────────────────
   h += `<div class="policy-summary app-summary">
-    <div class="policy-stat-item">
+    <div class="policy-stat-item" role="button" tabindex="0" data-filter="all" title="Show all apps">
       <span class="psi-value">${apps.length}</span>
       <span class="psi-label">Custom apps scanned</span>
     </div>
-    <div class="policy-stat-item ${flagged.length > 0 ? (critCount > 0 ? 'danger' : 'warn') : 'good'}">
+    <div class="policy-stat-item ${flagged.length > 0 ? (critCount > 0 ? 'danger' : 'warn') : 'good'}" role="button" tabindex="0" data-filter="flagged" title="Filter: Need attention">
       <span class="psi-value">${flagged.length}</span>
       <span class="psi-label">Need attention</span>
     </div>
-    ${credExpiry > 0 ? `<div class="policy-stat-item danger">
+    ${credExpiry > 0 ? `<div class="policy-stat-item danger" role="button" tabindex="0" data-filter="flagged" title="Filter: Expiring credentials (in flagged)">
       <span class="psi-value">${credExpiry}</span>
       <span class="psi-label">Expiring credentials</span>
     </div>` : ''}
-    <div class="policy-stat-item good">
+    <div class="policy-stat-item good" role="button" tabindex="0" data-filter="clean" title="Filter: Clean apps">
       <span class="psi-value">${clean.length}</span>
       <span class="psi-label">Clean</span>
     </div>
@@ -1377,17 +1395,34 @@ function renderApps(r) {
   document.getElementById('apps-table').innerHTML = h;
 
   // Wire filter pills (post-render)
-  document.querySelectorAll('.app-filter-pill').forEach(pill => {
+  const appPills = document.querySelectorAll('.app-filter-pill');
+  function applyAppFilter(f) {
+    appPills.forEach(p => p.classList.toggle('active', p.dataset.filter === f));
+    const flaggedEl = document.getElementById('apps-flagged');
+    const cleanEl   = document.getElementById('apps-clean');
+    if (flaggedEl) flaggedEl.classList.toggle('hidden', f === 'clean');
+    if (cleanEl)   cleanEl.classList.toggle('hidden', f === 'flagged');
+  }
+  appPills.forEach(pill => {
     pill.addEventListener('click', () => {
-      document.querySelectorAll('.app-filter-pill').forEach(p => p.classList.remove('active'));
-      pill.classList.add('active');
-      const f = pill.dataset.filter;
-      const flaggedEl = document.getElementById('apps-flagged');
-      const cleanEl   = document.getElementById('apps-clean');
-      if (flaggedEl) flaggedEl.classList.toggle('hidden', f === 'clean');
-      if (cleanEl)   cleanEl.classList.toggle('hidden', f === 'flagged');
+      applyAppFilter(pill.dataset.filter);
+      syncAppTiles(pill.dataset.filter);
     });
   });
+
+  // Wire app summary tiles → filter pills
+  const appTiles = document.querySelectorAll('.app-summary .policy-stat-item[data-filter]');
+  function syncAppTiles(f) {
+    appTiles.forEach(t => t.classList.toggle('active', t.dataset.filter === f));
+  }
+  appTiles.forEach(tile => {
+    tile.addEventListener('click', () => {
+      applyAppFilter(tile.dataset.filter);
+      syncAppTiles(tile.dataset.filter);
+    });
+    tile.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); tile.click(); } });
+  });
+  syncAppTiles(defaultFilter);
 
   const btn = document.getElementById('btn-export-apps');
   if (btn) { btn.classList.remove('hidden'); btn.onclick = exportAppsCsv; }
@@ -1619,27 +1654,27 @@ function renderPolicies(r) {
 
   // ── Summary strip ──────────────────────────────────────────────────────────
   const totalGaps = (summary.criticalGaps || 0) + (summary.highGaps || 0) + gaps.filter(g => g.severity === 'medium').length;
-  h += `<div class="policy-summary">
-    <div class="policy-stat-item">
+  h += `<div class="policy-summary ca-summary">
+    <div class="policy-stat-item" role="button" tabindex="0" data-scroll="policies" title="View all policies">
       <span class="psi-value">${policies.length}</span>
       <span class="psi-label">Policies</span>
     </div>
-    <div class="policy-stat-item ${summary.enforcing > 0 ? 'good' : ''}">
+    <div class="policy-stat-item ${summary.enforcing > 0 ? 'good' : ''}" role="button" tabindex="0" data-scroll="policies" title="View enforcing policies">
       <span class="psi-value">${summary.enforcing || 0}</span>
       <span class="psi-label">Enforcing passkeys</span>
     </div>
-    <div class="policy-stat-item ${summary.protecting > 0 ? 'good' : ''}">
+    <div class="policy-stat-item ${summary.protecting > 0 ? 'good' : ''}" role="button" tabindex="0" data-scroll="policies" title="View protecting policies">
       <span class="psi-value">${summary.protecting || 0}</span>
       <span class="psi-label">Protecting enrollment</span>
     </div>
-    ${summary.blocking > 0 ? `<div class="policy-stat-item danger">
+    ${summary.blocking > 0 ? `<div class="policy-stat-item danger" role="button" tabindex="0" data-scroll="gaps" title="View blocking policy gaps">
       <span class="psi-value">${summary.blocking}</span>
       <span class="psi-label">Blocking passkeys</span>
     </div>` : ''}
-    ${totalGaps > 0 ? `<div class="policy-stat-item ${summary.criticalGaps > 0 ? 'danger' : 'warn'}">
+    ${totalGaps > 0 ? `<div class="policy-stat-item ${summary.criticalGaps > 0 ? 'danger' : 'warn'}" role="button" tabindex="0" data-scroll="gaps" title="View detected gaps">
       <span class="psi-value">${totalGaps}</span>
       <span class="psi-label">Gaps detected</span>
-    </div>` : `<div class="policy-stat-item good">
+    </div>` : `<div class="policy-stat-item good" role="button" tabindex="0" data-scroll="policies" title="No gaps — view policies">
       <span class="psi-value">0</span>
       <span class="psi-label">Gaps detected</span>
     </div>`}
@@ -1737,6 +1772,20 @@ function renderPolicies(r) {
   h += '</tbody></table></div>';
 
   document.getElementById('policies-table').innerHTML = h;
+
+  // Wire CA summary tiles → scroll to section
+  document.querySelectorAll('.ca-summary .policy-stat-item[data-scroll]').forEach(tile => {
+    tile.addEventListener('click', () => {
+      document.querySelectorAll('.ca-summary .policy-stat-item[data-scroll]').forEach(t => t.classList.remove('active'));
+      tile.classList.add('active');
+      const target = tile.dataset.scroll === 'gaps'
+        ? document.querySelector('#policies-table .gap-analysis')
+        : document.querySelector('#policies-table .existing-policies-label');
+      if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+    tile.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); tile.click(); } });
+  });
+
   const btn = document.getElementById('btn-export-policies');
   if (btn) { btn.classList.remove('hidden'); btn.onclick = exportPoliciesCsv; }
 }
