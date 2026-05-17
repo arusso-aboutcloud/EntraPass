@@ -1242,18 +1242,34 @@ tr:hover td { background: var(--surface-2); }
 .ai-privacy-note em { color: var(--text-secondary); font-style: normal; font-family: var(--font-mono, monospace); font-size: 0.8rem; background: var(--surface); padding: 0.1em 0.3em; border-radius: 3px; border: 1px solid var(--border); }
 
 .ai-prompts-section {
-  background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(255,255,255,0.1);
+  background: linear-gradient(135deg, rgba(91,158,249,0.07) 0%, rgba(91,158,249,0.03) 100%);
+  border: 1px solid var(--primary-dim);
   border-radius: var(--r-md);
-  padding: 1rem 1.25rem;
+  padding: 1.25rem 1.5rem;
   margin-bottom: 1.25rem;
+  position: relative;
+}
+.ai-prompts-section::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: var(--r-md);
+  box-shadow: 0 0 0 1px rgba(91,158,249,0.1) inset;
+  pointer-events: none;
 }
 .ai-prompts-label {
-  font-size: 0.82rem;
-  font-weight: 600;
+  font-size: 1rem;
+  font-weight: 700;
   color: var(--text);
-  margin-bottom: 0.75rem;
-  letter-spacing: 0.02em;
+  margin-bottom: 0.35rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.ai-prompts-sublabel {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.9rem;
 }
 .ai-prompts-grid {
   display: flex;
@@ -1261,8 +1277,8 @@ tr:hover td { background: var(--surface-2); }
   gap: 0.5rem;
 }
 .ai-prompt-chip {
-  background: var(--surface-2);
-  border: 1px solid rgba(255,255,255,0.18);
+  background: rgba(91,158,249,0.06);
+  border: 1px solid rgba(91,158,249,0.28);
   border-radius: var(--r-full);
   padding: 0.45em 1rem;
   font-size: 0.82rem;

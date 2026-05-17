@@ -401,7 +401,8 @@ $app = New-MgApplication -DisplayName "entrapass-scanner" -SignInAudience AzureA
 
           <!-- Example prompts (visible when AI is on) -->
           <div class="ai-prompts-section" id="ai-prompts-hint">
-            <div class="ai-prompts-label">💬 Try asking…</div>
+            <div class="ai-prompts-label">💬 Ask the AI about your results</div>
+            <div class="ai-prompts-sublabel">Select a question to populate the chat — then choose an AI provider below and send.</div>
             <div class="ai-prompts-grid">
               <button class="ai-prompt-chip" onclick="document.getElementById('chat-input').value=this.dataset.q;document.getElementById('chat-input').focus();" data-q="Help me understand my scan results — what do the numbers mean?">Understand my results</button>
               <button class="ai-prompt-chip" onclick="document.getElementById('chat-input').value=this.dataset.q;document.getElementById('chat-input').focus();" data-q="What is my current security risk level based on this scan? Is it high, medium, or low?">My security risk level</button>

@@ -1680,13 +1680,10 @@ function renderPolicies(r) {
     </div>`}
   </div>`;
 
-  // ── FIDO2 method inspector ────────────────────────────────────────────────
+  // ── Gaps section (FIDO2 + TAP inspectors + gap analysis) ────────────────────
+  h += `<div id="ca-section-gaps">`;
   h += renderFido2Inspector(r.fido2Config || null);
-
-  // ── TAP inspector ─────────────────────────────────────────────────────────
   h += renderTapInspector(r.tapConfig || null);
-
-  // ── Gap analysis ───────────────────────────────────────────────────────────
   if (gaps.length > 0) {
     const typeLabels = { missing: 'Missing Policy', config: 'Config Required', 'device-specific': 'Device-Specific', recommended: 'Recommended' };
     h += `<div class="gap-analysis">
@@ -1713,8 +1710,10 @@ function renderPolicies(r) {
     });
     h += `</div></div>`;
   }
+  h += `</div>`;
 
   // ── Existing policies table ────────────────────────────────────────────────
+  h += `<div id="ca-section-policies">`;
   const typeLabels = {
     'enforces-passkey':    'Enforces Passkey',
     'protects-registration': 'Protects Enrollment',
@@ -1770,18 +1769,27 @@ function renderPolicies(r) {
   });
 
   h += '</tbody></table></div>';
+  h += '</div>'; // close ca-section-policies
 
   document.getElementById('policies-table').innerHTML = h;
 
-  // Wire CA summary tiles → scroll to section
+  // Wire CA summary tiles → show/hide sections (no scroll)
+  function showCaSection(section) {
+    const gapsEl     = document.getElementById('ca-section-gaps');
+    const policiesEl = document.getElementById('ca-section-policies');
+    if (section === 'gaps') {
+      gapsEl?.classList.remove('hidden');
+      policiesEl?.classList.add('hidden');
+    } else {
+      gapsEl?.classList.add('hidden');
+      policiesEl?.classList.remove('hidden');
+    }
+  }
   document.querySelectorAll('.ca-summary .policy-stat-item[data-scroll]').forEach(tile => {
     tile.addEventListener('click', () => {
       document.querySelectorAll('.ca-summary .policy-stat-item[data-scroll]').forEach(t => t.classList.remove('active'));
       tile.classList.add('active');
-      const target = tile.dataset.scroll === 'gaps'
-        ? document.querySelector('#policies-table .gap-analysis')
-        : document.querySelector('#policies-table .existing-policies-label');
-      if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      showCaSection(tile.dataset.scroll);
     });
     tile.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); tile.click(); } });
   });
