@@ -273,6 +273,9 @@ $app = New-MgApplication -DisplayName "entrapass-scanner" -SignInAudience AzureA
         <button class="tab" data-tab="ai">
           AI Assistant (opt-in)
         </button>
+        <button class="tab" data-tab="guide">
+          How to Use
+        </button>
       </nav>
 
       <main id="main-content">
@@ -459,6 +462,153 @@ $app = New-MgApplication -DisplayName "entrapass-scanner" -SignInAudience AzureA
           </div>
 
         </div>
+
+        <!-- How to Use Tab -->
+        <div id="tab-guide" class="tab-content hidden">
+          <div class="guide-page">
+
+            <div class="guide-hero">
+              <div class="guide-hero-icon">📖</div>
+              <div>
+                <h2 class="guide-hero-title">How to use EntraPass</h2>
+                <p class="guide-hero-desc">A quick reference for reading your scan results and turning them into action. What to look at, what it means, and what to do next.</p>
+              </div>
+            </div>
+
+            <section class="guide-section">
+              <h3 class="guide-section-title">Tabs at a glance</h3>
+              <div class="guide-tab-grid">
+                <div class="guide-tab-card">
+                  <div class="guide-tab-label">Overview</div>
+                  <p>Your readiness score, user tier breakdown, and infrastructure health chips. Start here. The executive summary lists every gap in priority order — critical to low.</p>
+                </div>
+                <div class="guide-tab-card">
+                  <div class="guide-tab-label">Passkey Readiness</div>
+                  <p>Per-user cards with status, blockers, and one specific recommended action each. Filter by tier, search by name, export to CSV, and use the rollout phase planner at the bottom.</p>
+                </div>
+                <div class="guide-tab-card">
+                  <div class="guide-tab-label">App Identities</div>
+                  <p>App registrations that carry password credentials — these can bypass passkeys for that app. Focus on custom enterprise apps. Microsoft-managed apps are shown for completeness but are not directly fixable by your tenant admins.</p>
+                </div>
+                <div class="guide-tab-card">
+                  <div class="guide-tab-label">CA Policies</div>
+                  <p>Conditional Access policies that block passkey registration or allow password fallback alongside passkey auth. Each flagged policy shows the specific change required.</p>
+                </div>
+                <div class="guide-tab-card">
+                  <div class="guide-tab-label">AI Assistant</div>
+                  <p>Optional. Ask plain-English questions about your results. Cloudflare Free AI needs no key — or bring your own key for any OpenAI-compatible endpoint.</p>
+                </div>
+              </div>
+            </section>
+
+            <section class="guide-section">
+              <h3 class="guide-section-title">Reading the readiness score</h3>
+              <div class="guide-score-bands">
+                <div class="guide-band guide-band-great">
+                  <span class="guide-band-range">85 – 100</span>
+                  <span class="guide-band-label">Very strong</span>
+                  <span class="guide-band-action">Most users are Ready or Capable. Start your pilot with Ready users now.</span>
+                </div>
+                <div class="guide-band guide-band-good">
+                  <span class="guide-band-range">65 – 84</span>
+                  <span class="guide-band-label">Good progress</span>
+                  <span class="guide-band-action">Some gaps remain. Address Needs Prep users and review any flagged CA policies.</span>
+                </div>
+                <div class="guide-band guide-band-warn">
+                  <span class="guide-band-range">40 – 64</span>
+                  <span class="guide-band-label">Needs work</span>
+                  <span class="guide-band-action">Significant blocked users or infrastructure gaps. Work through the critical recommendations on the Overview tab first.</span>
+                </div>
+                <div class="guide-band guide-band-danger">
+                  <span class="guide-band-range">0 – 39</span>
+                  <span class="guide-band-label">Significant gaps</span>
+                  <span class="guide-band-action">FIDO2 policy may be disabled or many users are blocked. Fix infrastructure gaps before targeting individual users.</span>
+                </div>
+              </div>
+              <p class="guide-note">The score is computed live from each scan — re-scan after making changes to track progress. On tenants with more than 50 users it is based on the first 50 returned by Graph and is labelled as a sample. A score of '—' means no scorable users were found (all accounts are exempt or have unavailable registration data).</p>
+            </section>
+
+            <section class="guide-section">
+              <h3 class="guide-section-title">Acting on the five user tiers</h3>
+              <div class="guide-tier-list">
+                <div class="guide-tier">
+                  <span class="guide-tier-badge guide-tier-ready">Ready</span>
+                  <div><strong>Passkey already registered.</strong> Start your pilot with these users — they can authenticate with a passkey right now. Enable a passkey-only CA policy for this group first.</div>
+                </div>
+                <div class="guide-tier">
+                  <span class="guide-tier-badge guide-tier-capable">Capable</span>
+                  <div><strong>Can self-register with no IT help.</strong> Direct them to <code>aka.ms/mfasetup</code> and guide them to add a passkey. No admin action is required before they enroll.</div>
+                </div>
+                <div class="guide-tier">
+                  <span class="guide-tier-badge guide-tier-prep">Needs Prep</span>
+                  <div><strong>One gap to fix.</strong> Each user card shows exactly what is missing — MFA method, device OS update, or device enrollment. Fix that single gap and the user becomes Capable.</div>
+                </div>
+                <div class="guide-tier">
+                  <span class="guide-tier-badge guide-tier-blocked">Blocked</span>
+                  <div><strong>Multiple gaps or a CA policy is blocking registration.</strong> Check the CA Policies tab first. Resolve the policy block, then address any remaining individual gaps per the user card.</div>
+                </div>
+                <div class="guide-tier">
+                  <span class="guide-tier-badge guide-tier-exempt">Exempt</span>
+                  <div><strong>Do not enroll.</strong> Break-glass, guest, and personal accounts are deliberately excluded. Break-glass accounts have no MFA by design — enrolling passkeys on them would undermine emergency access.</div>
+                </div>
+              </div>
+            </section>
+
+            <section class="guide-section">
+              <h3 class="guide-section-title">Quick actions</h3>
+              <div class="guide-actions-grid">
+                <div class="guide-action-card">
+                  <div class="guide-action-title">📥 Export to CSV</div>
+                  <p>Passkey Readiness tab → scroll below the user cards. Exports 13 columns: display name, UPN, account type, status, privileged flag, stale flag, issues, recommended action, auth methods, device count, device OS summary, groups, and last sign-in.</p>
+                </div>
+                <div class="guide-action-card">
+                  <div class="guide-action-title">🗺 Rollout phase planner</div>
+                  <p>Bottom of the Passkey Readiness tab. Translates your tier counts into a four-phase roadmap: Phase 1 Pilot (Ready) → Phase 2 Enable (Capable) → Phase 3 Prepare (Needs Prep) → Phase 4 Unblock (Blocked).</p>
+                </div>
+                <div class="guide-action-card">
+                  <div class="guide-action-title">🔄 Re-scan</div>
+                  <p>Click <strong>Scan Tenant Now</strong> in the header at any time. Results are not cached between sessions — every scan reads live data from the Microsoft Graph API.</p>
+                </div>
+                <div class="guide-action-card">
+                  <div class="guide-action-title">🧹 Clean up</div>
+                  <p>Click <strong>Reset app</strong> in the header to clear all browser data without touching the App Registration. Run <code>cleanup-entrapass.ps1 -ClientId &lt;id&gt; -RevokeConsent</code> to also remove the App Registration from your tenant.</p>
+                </div>
+              </div>
+            </section>
+
+            <section class="guide-section guide-section--security">
+              <h3 class="guide-section-title">Data security</h3>
+              <div class="guide-security-grid">
+                <div class="guide-security-item">
+                  <span class="guide-security-icon">🔒</span>
+                  <div>
+                    <strong>Scan data never leaves your browser.</strong> All Microsoft Graph responses are processed in memory and written to <code>sessionStorage</code> only. Closing the browser tab clears everything automatically — no server ever stores your tenant data.
+                  </div>
+                </div>
+                <div class="guide-security-item">
+                  <span class="guide-security-icon">🛡️</span>
+                  <div>
+                    <strong>The AI sends numbers only.</strong> When AI is enabled, EntraPass sends a count-only summary — for example "3 ready, 1 needs prep, 0 blocked" — never names, UPNs, device IDs, app names, or tenant identifiers. This minimisation happens in your browser before any network request is made.
+                  </div>
+                </div>
+                <div class="guide-security-item">
+                  <span class="guide-security-icon">🏢</span>
+                  <div>
+                    <strong>You own the App Registration.</strong> EntraPass authenticates via a PKCE SPA App Registration created in your own tenant — no client secrets, no shared credentials. Delete it at any time from the Azure Portal to immediately revoke all access.
+                  </div>
+                </div>
+                <div class="guide-security-item">
+                  <span class="guide-security-icon">👁</span>
+                  <div>
+                    <strong>Read-only, always.</strong> EntraPass holds seven read-only delegated Graph permissions. It cannot create users, change policies, modify configurations, or register passkeys on anyone's behalf.
+                  </div>
+                </div>
+              </div>
+            </section>
+
+          </div>
+        </div>
+
       </main>
 
       <footer>

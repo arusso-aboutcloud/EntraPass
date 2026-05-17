@@ -1376,6 +1376,177 @@ tr:hover td { background: var(--surface-2); }
 .byok-field input { margin-bottom: 0; }
 
 /* ============================================
+   How to Use — Guide tab
+   ============================================ */
+.guide-page {
+  max-width: 900px;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  padding-bottom: 2rem;
+}
+.guide-hero {
+  display: flex;
+  align-items: flex-start;
+  gap: 1.1rem;
+  padding: 1.5rem 1.75rem;
+  background: linear-gradient(135deg, rgba(91,158,249,0.08) 0%, rgba(91,158,249,0.03) 100%);
+  border: 1px solid var(--primary-dim);
+  border-radius: var(--r-lg);
+}
+.guide-hero-icon { font-size: 2rem; flex-shrink: 0; line-height: 1; margin-top: 0.1rem; }
+.guide-hero-title { font-size: 1.2rem; font-weight: 700; color: var(--text); margin-bottom: 0.35rem; }
+.guide-hero-desc { font-size: 0.875rem; color: var(--text-secondary); line-height: 1.65; }
+
+.guide-section { display: flex; flex-direction: column; gap: 0.875rem; }
+.guide-section-title {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.guide-tab-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 0.75rem;
+}
+.guide-tab-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 0.875rem 1rem;
+}
+.guide-tab-label {
+  font-size: 0.83rem;
+  font-weight: 700;
+  color: var(--primary);
+  margin-bottom: 0.35rem;
+}
+.guide-tab-card p { font-size: 0.81rem; color: var(--text-secondary); line-height: 1.6; }
+
+.guide-score-bands { display: flex; flex-direction: column; gap: 0.45rem; }
+.guide-band {
+  display: grid;
+  grid-template-columns: 76px 130px 1fr;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.6rem 1rem;
+  border-radius: var(--r-md);
+  border: 1px solid transparent;
+}
+.guide-band-range { font-size: 0.82rem; font-weight: 700; font-family: var(--font-mono); }
+.guide-band-label { font-size: 0.82rem; font-weight: 600; }
+.guide-band-action { font-size: 0.79rem; color: var(--text-secondary); }
+.guide-band-great  { background: var(--good-bg);   border-color: var(--good-border);   }
+.guide-band-great .guide-band-range, .guide-band-great .guide-band-label  { color: var(--good); }
+.guide-band-good   { background: var(--info-bg);   border-color: var(--info-border);   }
+.guide-band-good .guide-band-range,  .guide-band-good .guide-band-label   { color: var(--info); }
+.guide-band-warn   { background: var(--warn-bg);   border-color: var(--warn-border);   }
+.guide-band-warn .guide-band-range,  .guide-band-warn .guide-band-label   { color: var(--warn); }
+.guide-band-danger { background: var(--danger-bg); border-color: var(--danger-border); }
+.guide-band-danger .guide-band-range,.guide-band-danger .guide-band-label { color: var(--danger); }
+.guide-note {
+  font-size: 0.79rem;
+  color: var(--text-tertiary);
+  line-height: 1.6;
+  padding: 0.45rem 0.75rem;
+  border-left: 2px solid var(--border);
+}
+
+.guide-tier-list { display: flex; flex-direction: column; gap: 0.5rem; }
+.guide-tier {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.875rem;
+  padding: 0.75rem 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  font-size: 0.83rem;
+  color: var(--text-secondary);
+  line-height: 1.55;
+}
+.guide-tier strong { color: var(--text); }
+.guide-tier code {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  background: var(--surface-2);
+  padding: 0.1em 0.35em;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+}
+.guide-tier-badge {
+  flex-shrink: 0;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.22em 0.7em;
+  border-radius: var(--r-full);
+  letter-spacing: 0.04em;
+  margin-top: 0.1rem;
+  white-space: nowrap;
+}
+.guide-tier-ready   { background: rgba(52,211,153,0.15);  color: #34d399; border: 1px solid rgba(52,211,153,0.3);  }
+.guide-tier-capable { background: rgba(91,158,249,0.15);  color: #5b9ef9; border: 1px solid rgba(91,158,249,0.3);  }
+.guide-tier-prep    { background: rgba(251,191,36,0.12);  color: #fbbf24; border: 1px solid rgba(251,191,36,0.3);  }
+.guide-tier-blocked { background: rgba(248,113,113,0.12); color: #f87171; border: 1px solid rgba(248,113,113,0.3); }
+.guide-tier-exempt  { background: rgba(255,255,255,0.05); color: var(--text-secondary); border: 1px solid var(--border); }
+
+.guide-actions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 0.75rem;
+}
+.guide-action-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 0.875rem 1rem;
+}
+.guide-action-title { font-size: 0.85rem; font-weight: 700; color: var(--text); margin-bottom: 0.4rem; }
+.guide-action-card p { font-size: 0.81rem; color: var(--text-secondary); line-height: 1.6; }
+.guide-action-card code {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  background: var(--surface-2);
+  padding: 0.1em 0.35em;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+}
+
+.guide-section--security .guide-section-title { color: var(--good); border-color: var(--good-border); }
+.guide-security-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 0.75rem;
+}
+.guide-security-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  background: var(--good-bg);
+  border: 1px solid var(--good-border);
+  border-radius: var(--r-md);
+  padding: 0.875rem 1rem;
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+.guide-security-icon { font-size: 1.1rem; flex-shrink: 0; margin-top: 0.05rem; }
+.guide-security-item strong { color: var(--text); }
+.guide-security-item code {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  background: rgba(0,0,0,0.25);
+  padding: 0.1em 0.35em;
+  border-radius: 3px;
+  border: 1px solid var(--good-border);
+}
+
+/* ============================================
    Loading Overlay
    ============================================ */
 #loading-overlay {
