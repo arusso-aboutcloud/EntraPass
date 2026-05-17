@@ -243,7 +243,7 @@ index.html
 | `capable` | Has MFA + a modern device, no CA blocker |
 | `needsPrep` | Exactly one gap (MFA missing, device OS outdated, or no modern device) |
 | `blocked` | Multiple gaps, or a CA policy actively blocking passkey registration |
-| `exempt` | Break-glass account, guest (#ext# or userType=Guest), or personal MSA |
+| `exempt` | Break-glass account, guest (#ext# or userType=Guest), or personal account |
 | `unknown` | Registration report unavailable; excluded from score denominator |
 
 #### Data-availability (tri-state) model

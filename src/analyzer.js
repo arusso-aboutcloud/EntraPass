@@ -791,7 +791,7 @@ export class Analyzer {
         description: `Your tenant has ${privilegedUsers.length} user(s) in admin or privileged groups. No CA policy specifically targets directory roles with phishing-resistant authentication strength. Admin accounts are the highest-value target for phishing and credential theft.`,
         recommendation: 'Create a dedicated CA policy targeting directory roles (Global Administrator, Privileged Role Administrator, Security Administrator, etc.) requiring Phishing-resistant MFA. Make this your highest-priority policy — enable it before the org-wide rollout.',
         docUrl: 'https://learn.microsoft.com/en-us/entra/identity/conditional-access/howto-conditional-access-policy-admin-mfa',
-        context: `Detected from: ${privilegedUsers.length} user(s) in admin-scoped groups + 0 enabled CA policies targeting directory roles with passkey strength`,
+        context: `Detected from: ${privilegedUsers.length} user(s) in directory roles or admin-scoped groups + 0 enabled CA policies targeting directory roles with passkey strength`,
       });
     }
 
