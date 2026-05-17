@@ -233,7 +233,7 @@ index.html
 | `findToxicCombinations()` | users, policies | Critical / high-risk combinations |
 | `generateRecommendations()` | all analysis | Prioritized recommendations list |
 | `generateNarrative()` | all analysis | Executive summary text |
-| `computeReadinessScore()` | passkeyReadiness, toxicCombos, policyResult | 0–100 composite score |
+| `computeReadinessScore()` | passkeyReadiness, toxicCombos, policyResult | 0–100 composite score; `null` when `effective = 0` or `total = 0` (ring renders '—') |
 
 #### 5-Tier Passkey Readiness Status
 
@@ -283,11 +283,24 @@ score = clamp(score, 0, 100)
 
 where: effective = total - exempt - unknown
 
-When effective = 0 (all users are exempt or have unknown registration status),
-the function returns null and the score ring renders '—' with verdict text
-'No scorable users'. This prevents a misleading numeric score when no
-classifiable users exist.
+When effective = 0 (all users are exempt or have unknown registration status)
+or total = 0 (Graph returns no users at all), the function returns null and
+the score ring renders '—' with verdict text 'No scorable users'. Both paths
+prevent a misleading numeric score when no classifiable users exist.
 ```
+
+#### Score penalty calibration
+
+User-tier coefficients (`35` / `12` / `3`) and infrastructure direct penalties (`20` / `8`) are explained in source comments. The remaining constants:
+
+| Stream | Per-unit | Cap | Rationale |
+|---|---|---|---|
+| Critical toxic combos | ×10 | 15 | A privileged admin with no MFA is a high org-wide risk. Cap at 15 prevents two or more combos from dominating the composite signal. |
+| Critical policy gaps | ×8 | 10 | Critical gaps affect all users simultaneously. Cap treats "fundamentally broken in multiple ways" as a severity plateau — the third critical gap adds nothing. |
+| Blocking CA policies | ×4 | 5 | A blocking policy is a correctable configuration fix. Cap reflects that a second blocking policy largely affects the same users as the first. |
+| High-severity gaps | ×2 | 4 | Best-practice shortfalls, not critical failures. Cap treats two-or-more high gaps identically. |
+
+**Double-counting (by design):** FIDO2 disabled contributes −20 directly (passkey enrollment impossible for all users) and adds `gap-fido2-disabled` as a critical gap (up to −8 more, shared with co-occurring critical gaps under the 10-point cap). TAP disabled contributes −8 directly and adds `gap-tap-disabled` as a high gap (up to −2 more). Both dual contributions are intentional — the cumulative effect ensures a completely disabled passkey infrastructure drives the score into the lower bands even when the user distribution is healthy.
 
 #### App credential staleness thresholds
 

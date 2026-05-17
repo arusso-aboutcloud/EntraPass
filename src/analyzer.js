@@ -27,7 +27,7 @@ export class Analyzer {
   computeReadinessScore(passkeyReadiness, toxicCombos, policyResult) {
     const users = passkeyReadiness.users || [];
     const total  = users.length;
-    if (total === 0) return 50;
+    if (total === 0) return null;
 
     // Derive tier counts from the actual user list — robust against stale cached summaries.
     const cnt       = s => users.filter(u => u.status === s).length;

@@ -259,6 +259,43 @@ The score is computed live from each scan's results. Changes can result from:
 - Device enrollments.
 - Different users returned by the Graph API (if you have many users).
 
+### Why did my score drop on a re-scan when nothing in my tenant changed?
+
+The score formula is computed live on each scan from data read directly from the
+Microsoft Graph API. Detection improvements landed in EntraPass change how that
+data is interpreted — which can change the gap and policy signals fed into the
+formula.
+
+**CA policy passkey-enforcement detection**
+
+The previous detector credited a CA policy as "enforcing passkeys" if any of its
+allowed authentication combinations included FIDO2 — including built-in Passwordless
+MFA strength, which also permits `microsoftAuthenticatorPush` and `deviceBasedPush`.
+These are strong credentials but not phishing-resistant.
+
+The corrected detector requires every allowed combination to be phishing-resistant
+(`fido2`, `windowsHelloForBusiness`, or `x509CertificateMultiFactor`). If your
+tenant has a CA policy using Passwordless MFA strength that was previously credited,
+the corrected reading adds:
+
+- −8 for `gap-enforce-phishing-resistant` (critical — no policy forces phishing-resistant auth for all users)
+- −2 for `gap-privileged-roles` (high — no phishing-resistant policy covers privileged roles)
+
+Maximum score reduction from this fix: **−10 points.**
+
+**Privileged user detection**
+
+The earlier rule identified privileged users by display-name pattern matching on
+group membership. The corrected detector uses the `@odata.type` discriminator in
+`/memberOf` responses as its primary signal, which reliably distinguishes directory
+roles from groups. If newly-detected privileged users have no MFA registered, each
+such account adds a critical toxic-combo penalty (−10 per occurrence, capped at
+−15 across all critical combos).
+
+A score decrease on a re-scan means a gap that existed in your tenant before is now
+correctly detected — not that your tenant got worse. Re-scan after addressing each
+gap to track your real progress.
+
 ---
 
 ## Passkey Technology
