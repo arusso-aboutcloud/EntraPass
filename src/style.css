@@ -216,35 +216,48 @@ a:hover { text-decoration: underline; }
 }
 
 .auth-features {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.55rem;
 }
 .auth-feature-item {
   display: flex;
   align-items: center;
-  gap: 0.625rem;
-  font-size: 0.96rem;
-  color: rgba(255,255,255,0.72);
+  gap: 0.75rem;
+  padding: 0.8rem 0.9rem;
+  background: rgba(255,255,255,0.032);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 10px;
+  font-size: 0.8rem;
+  color: rgba(255,255,255,0.55);
+  transition: background 0.15s, border-color 0.15s;
 }
-.auth-feature-item strong { color: rgba(255,255,255,0.9); }
+.auth-feature-item:hover {
+  background: rgba(255,255,255,0.065);
+  border-color: rgba(255,255,255,0.13);
+}
+.auth-feature-item strong {
+  color: rgba(255,255,255,0.9);
+  font-weight: 600;
+}
 
 .afeat-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
   flex-shrink: 0;
 }
-.afeat-green  { background: #34d399; }
-.afeat-blue   { background: #60a5fa; }
-.afeat-orange { background: #fb923c; }
-.afeat-purple { background: #a78bfa; }
+.afeat-green  { background: rgba(52,211,153,0.14);  box-shadow: 0 0 0 1px rgba(52,211,153,0.28);  }
+.afeat-blue   { background: rgba(96,165,250,0.14);  box-shadow: 0 0 0 1px rgba(96,165,250,0.28);  }
+.afeat-orange { background: rgba(251,146,60,0.14);  box-shadow: 0 0 0 1px rgba(251,146,60,0.28);  }
+.afeat-purple { background: rgba(167,139,250,0.14); box-shadow: 0 0 0 1px rgba(167,139,250,0.28); }
 
 .auth-nav {
   position: absolute;
   top: 0; left: 0; right: 0;
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 0.75rem;
   padding: 0.75rem 2rem;
   border-bottom: 1px solid rgba(255,255,255,0.06);
