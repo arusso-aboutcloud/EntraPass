@@ -610,15 +610,22 @@ async function getAiAnswer(question, results, history = [], onChunk = () => {}) 
 
 // Escapes the model output first, then applies a safe markdown subset.
 // Escaping MUST happen before formatting so model output cannot inject markup.
-// Links are only rendered for known-safe domains (learn.microsoft.com, github.com).
+// Links are only rendered for known-safe domains (learn.microsoft.com, github.com, aboutcloud.io).
+const TRUSTED_LINK_DOMAINS = 'learn\\.microsoft\\.com|docs\\.microsoft\\.com|github\\.com|entrapass\\.aboutcloud\\.io|aboutcloud\\.io';
+const BARE_URL_RE = new RegExp(
+  '(?<!href=")(https?:\\/\\/(?:' + TRUSTED_LINK_DOMAINS + ')[^\\s<>"]{0,400})',
+  'g',
+);
+const MD_LINK_RE = new RegExp(
+  '\\[([^\\]]{1,120})\\]\\((https?:\\/\\/(?:' + TRUSTED_LINK_DOMAINS + ')[^\\s)]{0,400})\\)',
+  'g',
+);
 function formatAiAnswer(text) {
   return escapeHtml(text)
     .replace(/\n/g, '<br>')
     .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-    .replace(
-      /\[([^\]]{1,120})\]\((https?:\/\/(?:learn\.microsoft\.com|github\.com|docs\.microsoft\.com)[^\s)]{0,400})\)/g,
-      (_, label, url) => `<a href="${url}" target="_blank" rel="noopener noreferrer">${label}</a>`,
-    );
+    .replace(MD_LINK_RE, (_, label, url) => `<a href="${url}" target="_blank" rel="noopener noreferrer">${label}</a>`)
+    .replace(BARE_URL_RE, url => `<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`);
 }
 
 // ============================================
