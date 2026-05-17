@@ -238,17 +238,33 @@ Severity colors:
 
 ### CA Policies tab
 
-All **Conditional Access policies** and whether they block passkey registration.
+All **Conditional Access policies** in your tenant, evaluated by their role in your
+passkey deployment.
 
 | Column | Description |
 |---|---|
 | **Policy** | Policy name |
-| **Blocks Passkeys?** | Yes / No |
+| **Blocks Passkeys?** | Yes — the policy requires `password` as a grant control |
 | **Action** | Fix recommendation if the policy blocks passkeys |
 
-A policy is flagged as blocking when it is enabled and requires "password" as a
-grant control — that prevents passkey-only authentication. The recommended fix is
-to use **FIDO2 authentication strength** as the grant control instead.
+EntraPass categorises each policy by what it does:
+
+| Role | Criteria |
+|---|---|
+| **Blocks passkeys** | Enabled; requires `password` grant control — prevents passkey-only auth |
+| **Enforces passkeys** | Auth strength requires ALL combinations to be phishing-resistant (`fido2`, `windowsHelloForBusiness`, `x509CertificateMultiFactor`) |
+| **Protects registration** | Targets the "Register security information" user action |
+| **Blocks legacy auth** | Targets Exchange ActiveSync + Other clients with a Block control |
+| **Risk-based** | Uses sign-in or user risk conditions |
+
+A policy is credited as enforcing passkeys only when **every** entry in its authentication
+strength's allowed combinations is phishing-resistant. The built-in **Passwordless MFA**
+strength (which also allows `microsoftAuthenticatorPush` and `deviceBasedPush`) does not
+qualify. Only the built-in **Phishing-resistant MFA** strength — or a custom strength
+containing exclusively phishing-resistant combinations — is credited.
+
+The recommended fix for a blocking policy is to replace the `password` grant control with
+**Phishing-resistant MFA** authentication strength.
 
 ### AI Assistant tab (opt-in)
 

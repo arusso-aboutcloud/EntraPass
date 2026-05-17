@@ -319,6 +319,29 @@ Certificate credentials (`keyCredentials`) follow the same `expired` / `expiring
 
 Date arithmetic uses `new Date(isoString)` which correctly parses ISO-8601 strings with UTC offsets. No division by zero is possible.
 
+#### CA policy passkey-enforcement detection
+
+`enrichPolicy()` classifies each CA policy by its role in the passkey deployment:
+
+| Type | Trigger |
+|---|---|
+| `blocks-passkey` | Enabled; requires `password` as a grant control |
+| `enforces-passkey` | Auth strength non-empty; every combination is phishing-resistant |
+| `protects-registration` | Targets the `urn:user:registerSecurityInfo` user action |
+| `legacy-block` | Targets Exchange ActiveSync + Other clients with a `block` grant |
+| `risk-based` | Conditions include sign-in or user risk levels |
+| `other` | Everything else |
+
+A policy is classified as `enforces-passkey` when `authenticationStrength.allowedCombinations` is non-empty and **every** entry is in the phishing-resistant set `{fido2, windowsHelloForBusiness, x509CertificateMultiFactor}`.
+
+**Why `every()` not `some()`:** The built-in Passwordless MFA strength lists `fido2`, `windowsHelloForBusiness`, `x509CertificateMultiFactor`, `microsoftAuthenticatorPush`, and `deviceBasedPush` as allowed combinations. Because `fido2` is present, a `some()` check incorrectly credits Passwordless MFA policies as phishing-resistant. The `every()` check rejects any strength that permits non-phishing-resistant methods alongside phishing-resistant ones.
+
+**`isEnabled` excluded from `enforcesPasskey`:** The flag describes authentication requirements (configuration), not enforcement state. `detectPolicyGaps()` filters to the `enabled` subset independently — mixing state into the configuration flag creates entangled logic.
+
+The `enforcesPasskey` flag feeds two gap checks in `detectPolicyGaps()`:
+- `gap-enforce-phishing-resistant` (critical, −8): fires when no enabled policy has `enforcesPasskey = true` covering all users.
+- `gap-privileged-roles` (high, −2): fires when no enabled `enforcesPasskey` policy targets directory roles (`p.includeRoles`).
+
 ### 3.5 `functions/ai/ask.js` — AI Assistant Pages Function
 
 A Cloudflare Pages Function that provides the optional AI Assistant backend. It:

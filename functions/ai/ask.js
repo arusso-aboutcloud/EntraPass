@@ -179,6 +179,28 @@ CA policies blocking passkey registration.
 - When all scanned users are exempt or have no registration data, the score ring \
 shows '—' instead of a number ('No scorable users').
 
+## CA Policy Analysis
+EntraPass classifies each enabled CA policy by its role in passkey deployment:
+- Blocks passkeys — requires the "password" grant control; prevents passkey-only auth. \
+Fix: replace with Phishing-resistant MFA authentication strength.
+- Enforces passkeys — auth strength allows ONLY phishing-resistant combinations (fido2, \
+windowsHelloForBusiness, x509CertificateMultiFactor). The built-in Passwordless MFA \
+strength also allows deviceBasedPush — that does NOT qualify.
+- Protects registration — targets the "Register security information" user action.
+- Blocks legacy auth — blocks Exchange ActiveSync and Other legacy clients.
+- Risk-based — uses sign-in or user risk conditions.
+
+Score penalties from CA gaps: no phishing-resistant enforcement −8 (critical gap); no \
+phishing-resistant policy for privileged roles −2 (high gap); each blocking policy −4 \
+(capped at −5 total). FIDO2 disabled: −20 direct plus up to −8 via critical gap \
+(double-count by design). TAP disabled: −8 direct plus up to −2 via high gap.
+
+Score drop without tenant changes: the enforcement detector was tightened — Passwordless \
+MFA strength no longer qualifies as phishing-resistant, adding up to −10 pts. Privileged \
+user detection also improved (now uses @odata.type from /memberOf as primary signal); a \
+newly-detected privileged admin with no MFA adds a critical toxic-combo penalty \
+(−10 per occurrence, capped at −15 total).
+
 ## Scope
 Answer questions about: passkey migration, FIDO2, Conditional Access, authentication \
 methods, Entra ID user/device/app management, EntraPass usage, scan result \

@@ -216,6 +216,30 @@ Each user card shows one specific recommended next step:
 - **Register a modern device** — no compatible device registered yet.
 - **Review CA policy** — a specific CA policy is blocking registration.
 
+### Which CA policy configurations does EntraPass count as "enforcing passkeys"?
+
+EntraPass credits a CA policy as enforcing passkeys only when **every** entry in its
+`authenticationStrength.allowedCombinations` list is phishing-resistant:
+
+| Phishing-resistant | Not phishing-resistant |
+|---|---|
+| `fido2` | `microsoftAuthenticatorPush` |
+| `windowsHelloForBusiness` | `deviceBasedPush` |
+| `x509CertificateMultiFactor` | `sms`, `voice`, `softwareOath`, … |
+
+The built-in **Passwordless MFA** strength includes `deviceBasedPush` and
+`microsoftAuthenticatorPush` alongside the phishing-resistant methods. Because those
+non-phishing-resistant combinations are present, a Passwordless MFA policy does not
+qualify — only the built-in **Phishing-resistant MFA** strength (or a custom strength
+containing exclusively phishing-resistant combinations) is credited.
+
+This classification feeds two score signals:
+
+- A critical gap (−8) is raised if no enabled policy enforces phishing-resistant auth
+  for all users.
+- A high gap (−2) is raised if no enabled phishing-resistant policy targets privileged
+  directory roles.
+
 ---
 
 ## Readiness Score

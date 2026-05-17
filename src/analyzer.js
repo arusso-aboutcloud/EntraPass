@@ -621,12 +621,12 @@ export class Analyzer {
     // --- What does the policy do? ---
     const blocksPasskeyRegistration = this.policyBlocksPasskeyRegistration(policy);
 
-    // Enforces passkey: grant requires an auth strength containing FIDO2 or WHfB
-    const enforcesPasskey = isEnabled && !!(
-      authStr?.allowedCombinations?.some(c =>
-        c === 'fido2' || c === 'windowsHelloForBusiness' || c === 'deviceBasedPush'
-      )
-    );
+    // Strict: ALL allowed combinations must be phishing-resistant (fido2 / WHfB / x509MFA).
+    // Passwordless MFA strength (adds deviceBasedPush) intentionally does not qualify.
+    // isEnabled excluded — this describes configuration; detectPolicyGaps() handles state.
+    const PHISHING_RESISTANT = new Set(['fido2', 'windowsHelloForBusiness', 'x509CertificateMultiFactor']);
+    const authCombos = authStr?.allowedCombinations || [];
+    const enforcesPasskey = authCombos.length > 0 && authCombos.every(c => PHISHING_RESISTANT.has(c));
 
     // Protects registration: targets the registerSecurityInfo user action
     const protectsRegistration = isEnabled && (
@@ -774,10 +774,13 @@ export class Analyzer {
     }
 
     // ── GAP 4: Privileged accounts not covered ────────────────────────────────
-    const privilegedUsers = users.filter(u => {
-      const groups = (u.groups || []).map(g => (g.displayName || '').toLowerCase());
-      return groups.some(g => g.includes('admin') || g.includes('global') || g.includes('privileged') || g.includes('exchange administrator'));
-    });
+    const privilegedUsers = users.filter(u =>
+      (u.groups || []).some(g => {
+        if ((g['@odata.type'] || '').includes('directoryRole')) return true;
+        const n = (g.displayName || '').toLowerCase();
+        return n.includes('admin') || n.includes('global') || n.includes('privileged') || n.includes('exchange');
+      })
+    );
     const hasPrivilegedPolicy = enabled.some(p => p.enforcesPasskey && p.includeRoles);
     if (privilegedUsers.length > 0 && !hasPrivilegedPolicy) {
       gaps.push({
