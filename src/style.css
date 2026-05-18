@@ -621,6 +621,30 @@ main { padding: 2rem; max-width: 1200px; margin: 0 auto; }
 }
 @media (max-width: 640px) { .overview-hero { grid-template-columns: 1fr; } }
 
+@keyframes ring-card-pulse {
+  0%, 100% { box-shadow: 0 0 0 1px rgba(91,158,249,0.0), 0 0 18px rgba(91,158,249,0.18); }
+  50%       { box-shadow: 0 0 0 1px rgba(91,158,249,0.2), 0 0 6px  rgba(91,158,249,0.05); }
+}
+@keyframes tile-glow-total {
+  0%, 100% { box-shadow: 0 0 12px rgba(91,158,249,0.25); }
+  50%       { box-shadow: 0 0 2px  rgba(91,158,249,0.05); }
+}
+@keyframes tile-glow-good {
+  0%, 100% { box-shadow: 0 0 12px rgba(52,211,153,0.28); }
+  50%       { box-shadow: 0 0 2px  rgba(52,211,153,0.05); }
+}
+@keyframes tile-glow-capable {
+  0%, 100% { box-shadow: 0 0 12px rgba(96,165,250,0.28); }
+  50%       { box-shadow: 0 0 2px  rgba(96,165,250,0.05); }
+}
+@keyframes tile-glow-warn {
+  0%, 100% { box-shadow: 0 0 12px rgba(251,146,60,0.28); }
+  50%       { box-shadow: 0 0 2px  rgba(251,146,60,0.05); }
+}
+@keyframes tile-glow-danger {
+  0%, 100% { box-shadow: 0 0 12px rgba(248,113,113,0.28); }
+  50%       { box-shadow: 0 0 2px  rgba(248,113,113,0.05); }
+}
 .score-ring-card {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -630,9 +654,9 @@ main { padding: 2rem; max-width: 1200px; margin: 0 auto; }
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  box-shadow: var(--shadow-sm);
   text-align: center;
   gap: 0.75rem;
+  animation: ring-card-pulse 3.5s ease-in-out infinite;
 }
 
 /* Aboutcloud brand row inside ring card */
@@ -764,18 +788,17 @@ main { padding: 2rem; max-width: 1200px; margin: 0 auto; }
   border-top-width: 3px;
   border-radius: var(--r-md);
   padding: 1.1rem 1rem;
-  box-shadow: var(--shadow-xs);
   display: flex;
   flex-direction: column;
   gap: 0.2rem;
-  transition: box-shadow 0.15s, background 0.15s;
+  transition: background 0.15s;
 }
-.stat-tile:hover { background: var(--surface-2); box-shadow: var(--shadow-sm); }
-.stat-tile.total   { border-top-color: var(--primary);      }
-.stat-tile.good    { border-top-color: var(--good);         }
-.stat-tile.capable { border-top-color: #60a5fa;             }
-.stat-tile.warn    { border-top-color: var(--accent);       }
-.stat-tile.danger  { border-top-color: var(--danger);       }
+.stat-tile:hover { background: var(--surface-2); }
+.stat-tile.total   { border-top-color: var(--primary);       animation: tile-glow-total   3.5s ease-in-out infinite 0s;    }
+.stat-tile.good    { border-top-color: var(--good);          animation: tile-glow-good    3.5s ease-in-out infinite 0.5s;  }
+.stat-tile.capable { border-top-color: #60a5fa;              animation: tile-glow-capable 3.5s ease-in-out infinite 1.0s;  }
+.stat-tile.warn    { border-top-color: var(--accent);        animation: tile-glow-warn    3.5s ease-in-out infinite 1.5s;  }
+.stat-tile.danger  { border-top-color: var(--danger);        animation: tile-glow-danger  3.5s ease-in-out infinite 2.0s;  }
 .stat-tile.exempt  { border-top-color: var(--text-tertiary); opacity: 0.75; }
 
 .stat-tile-value {
