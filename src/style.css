@@ -161,6 +161,10 @@ a:hover { text-decoration: underline; }
   color: #fff;
   letter-spacing: -2px;
   line-height: 1;
+  text-shadow:
+    0 0 8px rgba(255,255,255,0.9),
+    0 0 20px rgba(255,255,255,0.6),
+    0 0 45px rgba(255,255,255,0.3);
 }
 .auth-subtitle {
   font-size: 1.1rem;
