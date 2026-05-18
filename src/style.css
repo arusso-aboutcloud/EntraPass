@@ -196,7 +196,7 @@ a:hover { text-decoration: underline; }
   overflow: hidden;
   border: 1px solid rgba(91,158,249,0.25);
   box-shadow: 0 4px 24px rgba(0,0,0,0.5), 0 0 0 1px rgba(91,158,249,0.1);
-  max-height: 420px;
+  max-height: 540px;
   display: flex;
   align-items: flex-start;
 }
@@ -288,6 +288,14 @@ a:hover { text-decoration: underline; }
 .afeat-blue   { background: rgba(96,165,250,0.14);  animation: glow-blue   3s ease-in-out infinite; animation-delay: 0.75s; }
 .afeat-orange { background: rgba(251,146,60,0.14);  animation: glow-orange 3s ease-in-out infinite; animation-delay: 1.5s; }
 .afeat-purple { background: rgba(167,139,250,0.14); animation: glow-purple 3s ease-in-out infinite; animation-delay: 2.25s; }
+@keyframes card-glow-green  { 0%,100% { box-shadow: 0 0 0 1px rgba(52,211,153,0.5),  0 0 18px rgba(52,211,153,0.25),  0 0 35px rgba(52,211,153,0.1);  border-color: rgba(52,211,153,0.45); }  50% { box-shadow: none; border-color: rgba(255,255,255,0.07); } }
+@keyframes card-glow-blue   { 0%,100% { box-shadow: 0 0 0 1px rgba(96,165,250,0.5),  0 0 18px rgba(96,165,250,0.25),  0 0 35px rgba(96,165,250,0.1);  border-color: rgba(96,165,250,0.45); }  50% { box-shadow: none; border-color: rgba(255,255,255,0.07); } }
+@keyframes card-glow-orange { 0%,100% { box-shadow: 0 0 0 1px rgba(251,146,60,0.5),  0 0 18px rgba(251,146,60,0.25),  0 0 35px rgba(251,146,60,0.1);  border-color: rgba(251,146,60,0.45); }  50% { box-shadow: none; border-color: rgba(255,255,255,0.07); } }
+@keyframes card-glow-purple { 0%,100% { box-shadow: 0 0 0 1px rgba(167,139,250,0.5), 0 0 18px rgba(167,139,250,0.25), 0 0 35px rgba(167,139,250,0.1); border-color: rgba(167,139,250,0.45); } 50% { box-shadow: none; border-color: rgba(255,255,255,0.07); } }
+.auth-feature-item:has(.afeat-green)  { animation: card-glow-green  3s ease-in-out infinite; }
+.auth-feature-item:has(.afeat-blue)   { animation: card-glow-blue   3s ease-in-out infinite 0.75s; }
+.auth-feature-item:has(.afeat-orange) { animation: card-glow-orange 3s ease-in-out infinite 1.5s; }
+.auth-feature-item:has(.afeat-purple) { animation: card-glow-purple 3s ease-in-out infinite 2.25s; }
 
 .auth-nav {
   position: absolute;
