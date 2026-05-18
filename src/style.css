@@ -622,28 +622,28 @@ main { padding: 2rem; max-width: 1200px; margin: 0 auto; }
 @media (max-width: 640px) { .overview-hero { grid-template-columns: 1fr; } }
 
 @keyframes ring-card-pulse {
-  0%, 100% { box-shadow: 0 0 0 1px rgba(91,158,249,0.0), 0 0 18px rgba(91,158,249,0.18); }
-  50%       { box-shadow: 0 0 0 1px rgba(91,158,249,0.2), 0 0 6px  rgba(91,158,249,0.05); }
+  0%, 100% { box-shadow: 0 0 0 1px rgba(91,158,249,0.35), 0 0 28px rgba(91,158,249,0.35); }
+  50%       { box-shadow: 0 0 0 1px rgba(91,158,249,0.05), 0 0 6px  rgba(91,158,249,0.05); }
 }
 @keyframes tile-glow-total {
-  0%, 100% { box-shadow: 0 0 12px rgba(91,158,249,0.25); }
-  50%       { box-shadow: 0 0 2px  rgba(91,158,249,0.05); }
+  0%, 100% { box-shadow: 0 0 18px rgba(91,158,249,0.55),  0 0 6px rgba(91,158,249,0.3); }
+  50%       { box-shadow: 0 0 4px  rgba(91,158,249,0.08), 0 0 0px rgba(91,158,249,0);   }
 }
 @keyframes tile-glow-good {
-  0%, 100% { box-shadow: 0 0 12px rgba(52,211,153,0.28); }
-  50%       { box-shadow: 0 0 2px  rgba(52,211,153,0.05); }
+  0%, 100% { box-shadow: 0 0 18px rgba(52,211,153,0.55),  0 0 6px rgba(52,211,153,0.3); }
+  50%       { box-shadow: 0 0 4px  rgba(52,211,153,0.08), 0 0 0px rgba(52,211,153,0);   }
 }
 @keyframes tile-glow-capable {
-  0%, 100% { box-shadow: 0 0 12px rgba(96,165,250,0.28); }
-  50%       { box-shadow: 0 0 2px  rgba(96,165,250,0.05); }
+  0%, 100% { box-shadow: 0 0 18px rgba(96,165,250,0.55),  0 0 6px rgba(96,165,250,0.3); }
+  50%       { box-shadow: 0 0 4px  rgba(96,165,250,0.08), 0 0 0px rgba(96,165,250,0);   }
 }
 @keyframes tile-glow-warn {
-  0%, 100% { box-shadow: 0 0 12px rgba(251,146,60,0.28); }
-  50%       { box-shadow: 0 0 2px  rgba(251,146,60,0.05); }
+  0%, 100% { box-shadow: 0 0 18px rgba(251,146,60,0.55),  0 0 6px rgba(251,146,60,0.3); }
+  50%       { box-shadow: 0 0 4px  rgba(251,146,60,0.08), 0 0 0px rgba(251,146,60,0);   }
 }
 @keyframes tile-glow-danger {
-  0%, 100% { box-shadow: 0 0 12px rgba(248,113,113,0.28); }
-  50%       { box-shadow: 0 0 2px  rgba(248,113,113,0.05); }
+  0%, 100% { box-shadow: 0 0 18px rgba(248,113,113,0.55), 0 0 6px rgba(248,113,113,0.3); }
+  50%       { box-shadow: 0 0 4px  rgba(248,113,113,0.08),0 0 0px rgba(248,113,113,0);   }
 }
 .score-ring-card {
   background: var(--surface);
