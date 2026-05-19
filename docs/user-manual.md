@@ -219,36 +219,34 @@ Summary, Groups, Last Sign-In.
 
 ### App Identities tab
 
-Analysis of **app registrations and service principals** in your tenant, split into
-custom apps and Microsoft-managed apps.
+Analysis of **app registrations and service principals** relevant to passkey migration.
+Microsoft first-party substrate service principals (Graph Explorer, Teams, Exchange,
+Azure services, and other Microsoft-owned SPs) are excluded — they cannot be modified
+by tenant admins and are not relevant to migration planning.
 
-**Stat tiles** (three guaranteed, one conditional):
+**Stat tiles:**
 
 | Tile | What it counts |
 |---|---|
-| **Custom apps scanned** | Your tenant's own app registrations plus third-party service principals |
-| **Need attention** | Custom apps with one or more findings |
-| **Microsoft-managed** | Microsoft first-party service principals (Graph Explorer, Teams, Exchange, etc.) |
-| **Expiring credentials** | Custom apps with credentials expiring imminently (conditional — shown only when > 0) |
+| **Apps scanned** | All analyzed app registrations and non-Microsoft service principals |
+| **Need attention** | Apps with one or more findings |
+| **Clean** | Apps with no findings |
+| **Expiring credentials** | Apps with credentials expiring imminently (conditional — shown only when > 0) |
 
 **Filter pills** — click to narrow the list:
-`All` | `Needs Attention` | `Clean` | `Microsoft-managed`
+`All` | `Needs Attention` | `Clean`
 
-Default pill when the tab opens: **Needs Attention** if any custom apps have findings;
+Default pill when the tab opens: **Needs Attention** if any apps have findings;
 otherwise **All**.
 
-**Three list sections:**
+**List sections:**
 
 | Section | Expand default | Contents |
 |---|---|---|
-| **Needs Attention** | Always expanded | Custom apps with findings, sorted by severity |
-| **Clean** | Expanded when ≤ 10 apps; collapsed otherwise | Custom apps with no findings |
-| **Microsoft-managed** | Always collapsed | Microsoft-owned service principals — click the header to expand |
+| **Needs Attention** | Always expanded | Apps with findings, sorted by severity |
+| **Clean** | Expanded when ≤ 10 apps; collapsed otherwise | Apps with no findings |
 
-Selecting a pill hides the other two sections and expands the selected section.
-Return to **All** to see all three sections simultaneously.
-
-**Severity levels (custom apps):**
+**Severity levels:**
 
 | Severity | Meaning |
 |---|---|
@@ -256,16 +254,11 @@ Return to **All** to see all three sections simultaneously.
 | **Medium** | No delegated permissions on a user-facing app (may fall back to password), multi-tenant sign-in audience, or orphaned app with no owner |
 | **Low** | Certificate credentials — more secure than secrets but still non-interactive |
 | **Good** | No issues |
-| **Info** | Microsoft-managed app — surfaced for inventory completeness; no actionable findings |
-
-> Microsoft-managed apps are always **info** severity and never count under "Need attention."
-> They appear in the Microsoft-managed section so your inventory is complete, but tenant
-> admins cannot modify or remediate them — they are owned and operated by Microsoft.
 
 **Scanning app badge** — when the EntraPass scanner app itself appears in the list, it
 displays a **Scanning app** badge for identification. Normal issue detection still applies.
 
-**CSV export** — exports all apps (custom and Microsoft-managed) as a 16-column file:
+**CSV export** — exports all scanned apps as a 15-column file:
 
 | # | Column | Notes |
 |---|---|---|
@@ -274,7 +267,7 @@ displays a **Scanning app** badge for identification. Normal issue detection sti
 | 3 | App Type | spa / web / native / daemon / api |
 | 4 | Sign-in Audience | AzureADMyOrg, AzureADMultipleOrgs, etc. |
 | 5 | Compatible | Yes / No |
-| 6 | Severity | critical / high / medium / low / info / good |
+| 6 | Severity | critical / high / medium / low / good |
 | 7 | Issues | Semicolon-separated list |
 | 8 | Secrets | Count of client secrets |
 | 9 | Certs | Count of certificate credentials |
@@ -284,7 +277,6 @@ displays a **Scanning app** badge for identification. Normal issue detection sti
 | 13 | Multi-tenant | Yes / No |
 | 14 | Created | ISO date of app creation |
 | 15 | Fix Guide | Recommended remediation text |
-| 16 | **Category** | **Custom** or **Microsoft-managed** — filter by this column in Excel / Sheets for a custom-apps-only view |
 
 A second block appended below the main rows lists per-credential expiry detail (App,
 Credential label, Type, Severity, Expiry Date, Days Left, Age).

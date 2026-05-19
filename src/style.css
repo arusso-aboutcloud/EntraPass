@@ -1754,16 +1754,9 @@ footer {
   height: 3px;
   background: rgba(255,255,255,0.05);
 }
-.policy-stat-item.good::after      { background: var(--good);   }
-.policy-stat-item.warn::after      { background: var(--warn);   }
-.policy-stat-item.danger::after    { background: var(--danger); }
-.policy-stat-item.ms-managed::after { background: var(--border); }
-.policy-stat-item.ms-managed .psi-value { color: var(--text-secondary); }
-.policy-stat-item[role="button"].active.ms-managed {
-  border-color: var(--border);
-  background: linear-gradient(135deg, var(--surface-2), rgba(255,255,255,0.02));
-  box-shadow: 0 0 0 1px var(--border), 0 4px 12px rgba(255,255,255,0.03);
-}
+.policy-stat-item.good::after   { background: var(--good);   }
+.policy-stat-item.warn::after   { background: var(--warn);   }
+.policy-stat-item.danger::after { background: var(--danger); }
 
 /* Clickable tiles */
 .policy-stat-item[role="button"] { cursor: pointer; user-select: none; }

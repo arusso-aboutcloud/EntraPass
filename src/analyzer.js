@@ -383,7 +383,8 @@ export class Analyzer {
     // Merge: app registrations first (always tenant-owned), then SPs not already seen.
     // Microsoft-owned SPs are INCLUDED but tagged — not excluded — so users see their
     // full app inventory. Actionable flags (multi-tenant, orphaned) are suppressed on
-    // Microsoft-managed apps because tenant admins cannot remediate them.
+    // Microsoft-managed substrate SPs are excluded — they are not relevant to passkey
+    // migration and cannot be modified by tenant admins.
     const seen = new Set();
     const merged = [];
 
@@ -395,8 +396,9 @@ export class Analyzer {
 
     (servicePrincipals || []).forEach(sp => {
       if (!sp.appId || seen.has(sp.appId)) return;
+      if (isMicrosoftOwned(sp)) return;
       seen.add(sp.appId);
-      merged.push({ ...sp, _source: 'servicePrincipal', _isMicrosoftOwned: isMicrosoftOwned(sp) });
+      merged.push({ ...sp, _source: 'servicePrincipal', _isMicrosoftOwned: false });
     });
 
     const now = new Date();

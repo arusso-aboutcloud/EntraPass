@@ -380,27 +380,6 @@ EntraPass analyzes per-user detail for the first 50 users returned by the Graph 
 (`GET /users?$top=999`). If a specific user is not appearing, they may have been
 outside the first 50 results. This limit is a performance optimization.
 
-### Why do I see Microsoft apps (Graph Explorer, Teams, Exchange) in the App Identities tab?
-
-EntraPass shows your **full app inventory** — every app registration and service
-principal in your tenant, including Microsoft first-party service principals that
-Microsoft provisions automatically (Graph Explorer, Microsoft Graph CLI Tools, Teams,
-Exchange Online, Azure Maps, and many others).
-
-These are surfaced for two reasons:
-
-1. **Inventory completeness** — you should know exactly what identities exist in your
-   tenant, including ones you did not create.
-2. **Transparency** — hidden apps cannot be reviewed; visible apps can.
-
-Microsoft-managed apps appear in their own **collapsed section** at the bottom of the
-App Identities tab, separate from your custom apps. They are assigned **info** severity
-and never count under "Need attention" because tenant admins cannot modify or
-remediate Microsoft-owned apps — they are owned and operated by Microsoft.
-
-To see only your own apps, use the **Needs Attention** or **Clean** filter pills, or
-filter the exported CSV by `Category = Custom`.
-
 ### How does the AI Assistant decide which Microsoft documentation to link to?
 
 The AI Assistant ends relevant responses with 1 to 3 `learn.microsoft.com` links

@@ -699,7 +699,6 @@ function exportAppsCsv() {
       a.multiTenant ? 'Yes' : 'No',
       a.createdDateTime ? a.createdDateTime.slice(0, 10) : '',
       a.fixGuide || '',
-      a.isMicrosoftOwned ? 'Microsoft-managed' : 'Custom',
     ];
   });
   // Append expiry-sorted credential alerts as a separate block
@@ -717,7 +716,7 @@ function exportAppsCsv() {
   }
   downloadCsv(
     `entrapass-apps-${ts}.csv`,
-    ['App Name', 'Source', 'App Type', 'Sign-in Audience', 'Compatible', 'Severity', 'Issues', 'Secrets', 'Certs', 'Earliest Expiry', 'Owner Count', 'Orphaned', 'Multi-tenant', 'Created', 'Fix Guide', 'Category'],
+    ['App Name', 'Source', 'App Type', 'Sign-in Audience', 'Compatible', 'Severity', 'Issues', 'Secrets', 'Certs', 'Earliest Expiry', 'Owner Count', 'Orphaned', 'Multi-tenant', 'Created', 'Fix Guide'],
     rows,
   );
 }
@@ -1376,21 +1375,15 @@ function renderApps(r) {
 
   const sevOrder = { critical: 0, high: 1, medium: 2, low: 3, info: 4, good: 5 };
 
-  // Explicit predicates — correctness by design, not coincidence.
-  // customFlagged guards !isMicrosoftOwned so a future MS-managed SP that somehow
-  // fails a check stays in Section 3 rather than appearing in "Need attention".
-  const customApps    = apps.filter(a => !a.isMicrosoftOwned);
-  const msApps        = apps.filter(a =>  a.isMicrosoftOwned);
-  const customFlagged = [...apps.filter(a => !a.passkeyCompatible && !a.isMicrosoftOwned)]
+  // Microsoft-managed substrate SPs excluded at analyzer level — apps is custom only.
+  const flagged  = [...apps].filter(a => !a.passkeyCompatible)
     .sort((a, b) => (sevOrder[a.severity] ?? 6) - (sevOrder[b.severity] ?? 6));
-  const customClean   = customApps.filter(a => a.passkeyCompatible);
+  const clean    = apps.filter(a => a.passkeyCompatible);
 
-  const critCount          = customFlagged.filter(a => a.severity === 'critical').length;
-  const expiringCustomCount = customApps
-    .filter(a => (a.credentialAlerts || []).some(c => c.severity === 'critical'))
-    .length;
+  const critCount  = flagged.filter(a => a.severity === 'critical').length;
+  const credExpiry = apps.filter(a => (a.credentialAlerts || []).some(c => c.severity === 'critical')).length;
 
-  const defaultFilter = customFlagged.length > 0 ? 'flagged' : 'all';
+  const defaultFilter = flagged.length > 0 ? 'flagged' : 'all';
 
   // ── Narrative ──────────────────────────────────────────────────────────────
   let h = `<div class="app-identity-narrative">
@@ -1401,90 +1394,65 @@ function renderApps(r) {
       When an app uses a <strong>client secret or certificate credential</strong>, it authenticates via the OAuth 2.0 client credentials flow,
       which <strong>bypasses Conditional Access, MFA, and passkey enforcement entirely</strong> — those controls only apply to interactive user sign-ins.
       A leaked app secret is a separate, persistent attack vector that passkeys alone cannot close.
-      <span class="app-narrative-tip">Microsoft-managed apps are surfaced in their own section for inventory completeness — they carry no actionable findings because tenant admins cannot modify them.</span>
     </div>
   </div>`;
 
-  // ── Summary strip — 3 guaranteed tiles + 1 conditional ────────────────────
+  // ── Summary strip ─────────────────────────────────────────────────────────
   h += `<div class="policy-summary app-summary">
     <div class="policy-stat-item" role="button" tabindex="0" data-filter="all" title="Show all apps">
-      <span class="psi-value">${customApps.length}</span>
-      <span class="psi-label">Custom apps scanned</span>
+      <span class="psi-value">${apps.length}</span>
+      <span class="psi-label">Apps scanned</span>
     </div>
-    <div class="policy-stat-item ${customFlagged.length > 0 ? (critCount > 0 ? 'danger' : 'warn') : 'good'}" role="button" tabindex="0" data-filter="flagged" title="Filter: Need attention">
-      <span class="psi-value">${customFlagged.length}</span>
+    <div class="policy-stat-item ${flagged.length > 0 ? (critCount > 0 ? 'danger' : 'warn') : 'good'}" role="button" tabindex="0" data-filter="flagged" title="Filter: Need attention">
+      <span class="psi-value">${flagged.length}</span>
       <span class="psi-label">Need attention</span>
     </div>
-    <div class="policy-stat-item ms-managed" role="button" tabindex="0" data-filter="ms" title="Filter: Microsoft-managed apps">
-      <span class="psi-value">${msApps.length}</span>
-      <span class="psi-label">Microsoft-managed</span>
-    </div>
-    ${expiringCustomCount > 0 ? `<div class="policy-stat-item danger" role="button" tabindex="0" data-filter="flagged" title="Filter: Expiring credentials (in Need attention)">
-      <span class="psi-value">${expiringCustomCount}</span>
+    ${credExpiry > 0 ? `<div class="policy-stat-item danger" role="button" tabindex="0" data-filter="flagged" title="Filter: Expiring credentials (in Need attention)">
+      <span class="psi-value">${credExpiry}</span>
       <span class="psi-label">Expiring credentials</span>
     </div>` : ''}
+    <div class="policy-stat-item good" role="button" tabindex="0" data-filter="clean" title="Filter: Clean apps">
+      <span class="psi-value">${clean.length}</span>
+      <span class="psi-label">Clean</span>
+    </div>
   </div>`;
 
-  // ── Filter pills — 4 pills ─────────────────────────────────────────────────
+  // ── Filter pills ───────────────────────────────────────────────────────────
   h += `<div class="app-filter-bar">
     <button class="app-filter-pill${defaultFilter === 'all' ? ' active' : ''}" data-filter="all">All (${apps.length})</button>
-    <button class="app-filter-pill${defaultFilter === 'flagged' ? ' active' : ''}" data-filter="flagged">Needs Attention (${customFlagged.length})</button>
-    <button class="app-filter-pill" data-filter="clean">Clean (${customClean.length})</button>
-    <button class="app-filter-pill" data-filter="ms">Microsoft-managed (${msApps.length})</button>
+    <button class="app-filter-pill${defaultFilter === 'flagged' ? ' active' : ''}" data-filter="flagged">Needs Attention (${flagged.length})</button>
+    <button class="app-filter-pill" data-filter="clean">Clean (${clean.length})</button>
   </div>`;
 
-  // ── Section 1 — Needs Attention (always expanded, no toggle) ──────────────
+  // ── Needs Attention section (always expanded, no toggle) ───────────────────
   h += `<div id="apps-flagged"${defaultFilter === 'flagged' ? '' : ' class="hidden"'}>`;
-  if (customFlagged.length === 0) {
-    h += `<div class="app-empty-state">✅ No issues found across your custom apps. App credential risk is not blocking your passkey rollout.</div>`;
+  if (flagged.length === 0) {
+    h += `<div class="app-empty-state">✅ No issues found across your app registrations. App credential risk is not blocking your passkey rollout.</div>`;
   } else {
-    customFlagged.forEach(app => { h += renderAppCard(app); });
+    flagged.forEach(app => { h += renderAppCard(app); });
   }
   h += `</div>`;
 
-  // ── Section 2 — Clean custom apps ─────────────────────────────────────────
-  const cleanCollapsed = customClean.length > 10;
+  // ── Clean section (collapsible) ────────────────────────────────────────────
+  const cleanCollapsed = clean.length > 10;
   h += `<div id="apps-clean"${defaultFilter === 'flagged' ? ' class="hidden"' : ''}>`;
-  if (customClean.length === 0 && customApps.length > 0) {
-    h += `<div class="app-empty-state">All your custom apps have findings — see Needs Attention above.</div>`;
-  } else if (customClean.length > 0) {
+  if (clean.length === 0 && apps.length > 0) {
+    h += `<div class="app-empty-state">All scanned apps have findings — see Needs Attention above.</div>`;
+  } else if (clean.length > 0) {
     h += `<div class="apps-section-header">
       <button class="apps-section-toggle" data-target="apps-clean-body" aria-expanded="${cleanCollapsed ? 'false' : 'true'}">
-        <span>✅ Clean (${customClean.length})</span>
+        <span>✅ Clean (${clean.length})</span>
         <span class="apps-section-sub">No credential or compatibility issues detected</span>
         <span class="apps-section-chevron">▾</span>
       </button>
     </div>
     <div class="app-clean-list${cleanCollapsed ? ' hidden' : ''}" id="apps-clean-body">`;
-    customClean.forEach(app => {
+    clean.forEach(app => {
       h += `<div class="app-clean-row">
         <span class="app-clean-name">${escapeHtml(app.displayName)}</span>
         ${renderAppTypeBadge(app.appType)}
         ${app.multiTenant ? `<span class="app-audience-badge multi">Multi-tenant</span>` : ''}
         ${app.isScanningApp ? `<span class="app-scanning-badge">Scanning app</span>` : ''}
-        <span class="app-clean-source">${app.source === 'registration' ? 'App reg' : 'Service principal'}</span>
-      </div>`;
-    });
-    h += `</div>`;
-  }
-  h += `</div>`;
-
-  // ── Section 3 — Microsoft-managed (always collapsed by default) ────────────
-  h += `<div id="apps-ms"${defaultFilter === 'flagged' ? ' class="hidden"' : ''}>`;
-  if (msApps.length > 0) {
-    const msSorted = [...msApps].sort((a, b) => a.displayName.localeCompare(b.displayName));
-    h += `<div class="apps-section-header">
-      <button class="apps-section-toggle" data-target="apps-ms-body" aria-expanded="false">
-        <span>Microsoft-managed (${msApps.length})</span>
-        <span class="apps-section-sub">Provisioned by Microsoft — surfaced for inventory completeness, no actionable findings for tenant admins</span>
-        <span class="apps-section-chevron">▾</span>
-      </button>
-    </div>
-    <div class="app-clean-list hidden" id="apps-ms-body">`;
-    msSorted.forEach(app => {
-      h += `<div class="app-clean-row">
-        <span class="app-clean-name">${escapeHtml(app.displayName)}</span>
-        ${renderAppTypeBadge(app.appType)}
         <span class="app-clean-source">${app.source === 'registration' ? 'App reg' : 'Service principal'}</span>
       </div>`;
     });
@@ -1516,23 +1484,18 @@ function renderApps(r) {
   // ── Wire filter pills ──────────────────────────────────────────────────────
   const appPills = document.querySelectorAll('.app-filter-pill');
 
-  function forceExpand(bodyId) {
-    const body = document.getElementById(bodyId);
-    const tog  = document.querySelector(`.apps-section-toggle[data-target="${bodyId}"]`);
-    if (body) body.classList.remove('hidden');
-    if (tog)  tog.setAttribute('aria-expanded', 'true');
-  }
-
   function applyAppFilter(f) {
     appPills.forEach(p => p.classList.toggle('active', p.dataset.filter === f));
     const flaggedEl = document.getElementById('apps-flagged');
     const cleanEl   = document.getElementById('apps-clean');
-    const msEl      = document.getElementById('apps-ms');
-    flaggedEl?.classList.toggle('hidden', f !== 'all' && f !== 'flagged');
-    cleanEl?.classList.toggle('hidden',   f !== 'all' && f !== 'clean');
-    msEl?.classList.toggle('hidden',      f !== 'all' && f !== 'ms');
-    if (f === 'clean') forceExpand('apps-clean-body');
-    if (f === 'ms')    forceExpand('apps-ms-body');
+    if (flaggedEl) flaggedEl.classList.toggle('hidden', f === 'clean');
+    if (cleanEl)   cleanEl.classList.toggle('hidden',   f === 'flagged');
+    if (f === 'clean') {
+      const body = document.getElementById('apps-clean-body');
+      const tog  = document.querySelector('.apps-section-toggle[data-target="apps-clean-body"]');
+      if (body) body.classList.remove('hidden');
+      if (tog)  tog.setAttribute('aria-expanded', 'true');
+    }
   }
 
   appPills.forEach(pill => {
