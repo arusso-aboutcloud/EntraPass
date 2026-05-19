@@ -84,6 +84,40 @@ Understanding the architecture helps scope valid reports.
 
 ---
 
+## AI Assistant Guardrails
+
+The optional AI Assistant (`functions/ai/ask.js`) enforces the following controls to
+prevent misuse and information leakage:
+
+**No-invented-URLs rule (security control)**
+The SYSTEM_PROMPT contains a fixed list of 22 verified `learn.microsoft.com` URLs.
+The model is instructed that it must not include any URL not in that list and must
+never invent or modify URLs. This prevents the model from hallucinating plausible-looking
+but incorrect or malicious links that could be presented as official Microsoft
+documentation.
+
+Enforcement:
+- Only `learn.microsoft.com` canonical URLs are permitted (no `aka.ms` shortlinks,
+  which can silently redirect to different destinations after deployment).
+- Every URL in the list was fetched and confirmed to return HTTP 200 with the
+  expected Microsoft Learn page title before it was added to the list.
+- The list is embedded in source code and can only be changed via a repository commit
+  — the model cannot modify or extend it at runtime.
+
+**Prompt injection and off-topic filters**
+Requests containing prompt-injection patterns or destructive-intent keywords are
+rejected before reaching the model.
+
+**Payload size and rate limiting**
+Requests larger than 512 KB or exceeding 20 requests per minute per IP are rejected.
+
+**Count-only data policy**
+When the AI Assistant is used in Cloudflare Free AI mode, only aggregate counts
+(users by tier, app counts, policy counts) are included in the model context — no
+UPNs, no display names, no tenant IDs, no credentials.
+
+---
+
 ## In-Scope Vulnerabilities
 
 The following are considered valid security reports:

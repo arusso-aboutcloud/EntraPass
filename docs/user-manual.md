@@ -379,6 +379,19 @@ The AI Assistant is **opt-in and off by default**.
 - "What does the readiness score mean?"
 - "What is Temporary Access Pass and why does it matter?"
 
+### Microsoft Learn references
+
+When relevant, the AI Assistant ends each response with **1 to 3 Microsoft Learn
+links** selected from a fixed, curated list embedded in the system prompt:
+
+- A narrow single-topic question gets 1 link.
+- A question spanning multiple topics (for example, CA policies + authentication
+  strengths + passkey enrollment) gets 2 or 3 links.
+
+All referenced URLs are verified `learn.microsoft.com` pages — no `aka.ms`
+shortlinks, no invented URLs. The list is fixed in the source code and can only
+be changed via a repository commit.
+
 ### Privacy
 
 | Mode | Where your scan data goes |

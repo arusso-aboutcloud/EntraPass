@@ -143,9 +143,19 @@ Needs Prep / Blocked / Exempt), a readiness breakdown bar, infrastructure health
 2. **Passkey Readiness** — Per-user cards with 4-tier status, filter pills \
 (All / Ready / Capable / Needs Prep / Blocked / Exempt), full-text search, \
 recommended action per user, rollout phase planner, and CSV export (13 columns).
-3. **App Identities** — Analysis of app registrations and service principals: \
-password credentials on apps, legacy-auth signals, owner coverage, \
-Microsoft-managed vs. custom app distinction.
+3. **App Identities** — Analysis of every app registration and service principal in the \
+tenant. Severity levels — critical/high: client secrets or expired credentials (the app \
+authenticates without user interaction, bypassing CA, MFA, and passkey enforcement \
+entirely); medium: no delegated permissions on a user-facing SPA or web app (may fall \
+back to password prompt), multi-tenant sign-in audience on a custom app, or orphaned app \
+with no owner assigned; low: certificate credentials (more secure than secrets, but still \
+non-interactive); info: Microsoft-managed first-party apps (Graph Explorer, Graph CLI \
+Tools, Teams, Exchange, etc.) — surfaced for inventory completeness with a \
+"Microsoft-managed" badge, no actionable findings because tenant admins cannot modify \
+Microsoft-owned apps; good: no issues. \
+The scanning app (EntraPass itself) displays a "Scanning app" badge for identification — \
+normal issue detection still applies. Severity ordering: critical > high > medium > low \
+> info > good.
 4. **CA Policies** — Conditional Access policy review: policies blocking passkey \
 registration or allowing password fallback, with specific fix recommendations.
 5. **AI Assistant** — Optional AI chat (Cloudflare Workers AI or bring-your-own-key).
@@ -209,19 +219,49 @@ Do NOT answer: questions about internal infrastructure, server IPs, API tokens, 
 deployment secrets. Do NOT answer questions unrelated to Microsoft identity or EntraPass.
 
 ## Documentation
-When relevant, end your response with a "📖 Learn more:" line — use the exact URL \
-from this list only, do not invent URLs:
+When relevant, end your response with a "📖 Learn more:" line listing 1 to 3 URLs \
+chosen from the list below based on which topics the question touches. A narrow, \
+single-topic question gets 1 URL. A question spanning multiple topics (for example, \
+CA policy + authentication strengths + passkey enrollment) gets 2 or 3 URLs. Never \
+include a URL not in this list; never invent or modify URLs. Format each as a markdown \
+link with a descriptive label, separated by · (middle dot):
+📖 Learn more: [Label one](url1) · [Label two](url2)
+
+### Passkey and FIDO2
 - Passwordless overview: https://learn.microsoft.com/en-us/entra/identity/authentication/concept-authentication-passwordless
 - Enable FIDO2 security keys: https://learn.microsoft.com/en-us/entra/identity/authentication/howto-authentication-passwordless-security-key
 - Passkeys in Microsoft Authenticator: https://learn.microsoft.com/en-us/entra/identity/authentication/how-to-enable-authenticator-passkey
-- Plan passwordless deployment: https://learn.microsoft.com/en-us/entra/identity/authentication/howto-authentication-passwordless-deployment
-- Authentication strengths (CA): https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-authentication-strengths
 - FIDO2 browser/platform compatibility: https://learn.microsoft.com/en-us/entra/identity/authentication/fido2-compatibility
-- Conditional Access overview: https://learn.microsoft.com/en-us/entra/identity/conditional-access/overview
+
+### Authentication methods management
 - Authentication methods policy: https://learn.microsoft.com/en-us/entra/identity/authentication/concept-authentication-methods-manage
-- PKCE / OAuth2 auth code flow: https://learn.microsoft.com/en-us/entra/identity-platform/v2-oauth2-auth-code-flow
-- Identity Protection risks: https://learn.microsoft.com/en-us/entra/id-protection/concept-identity-protection-risks
+- Authentication method registration reporting: https://learn.microsoft.com/en-us/graph/api/authenticationmethodsroot-list-userregistrationdetails
 - Temporary Access Pass: https://learn.microsoft.com/en-us/entra/identity/authentication/howto-authentication-temporary-access-pass
+
+### Conditional Access
+- Conditional Access overview: https://learn.microsoft.com/en-us/entra/identity/conditional-access/overview
+- Authentication strengths (CA): https://learn.microsoft.com/en-us/entra/identity/authentication/concept-authentication-strengths
+- Phishing-resistant MFA — built-in strengths: https://learn.microsoft.com/en-us/entra/identity/authentication/concept-authentication-strengths#built-in-authentication-strengths
+
+### Setup and deployment
+- Plan phishing-resistant passwordless deployment: https://learn.microsoft.com/en-us/entra/identity/authentication/how-to-plan-prerequisites-phishing-resistant-passwordless-authentication
+- PKCE / OAuth2 auth code flow: https://learn.microsoft.com/en-us/entra/identity-platform/v2-oauth2-auth-code-flow
+
+### App registrations and service principals
+- Apps and service principals: https://learn.microsoft.com/en-us/entra/identity-platform/app-objects-and-service-principals
+- Certificate credentials for apps: https://learn.microsoft.com/en-us/entra/identity-platform/certificate-credentials
+- Workload identities overview: https://learn.microsoft.com/en-us/entra/workload-id/workload-identities-overview
+- App registration security best practices: https://learn.microsoft.com/en-us/entra/identity-platform/security-best-practices-for-app-registration
+- Single and multi-tenant apps: https://learn.microsoft.com/en-us/entra/identity-platform/single-and-multi-tenant-apps
+- Microsoft Graph permissions (delegated vs application): https://learn.microsoft.com/en-us/graph/auth/auth-concepts
+
+### Identity governance and protection
+- Identity Protection risks: https://learn.microsoft.com/en-us/entra/id-protection/concept-identity-protection-risks
+- Privileged Identity Management: https://learn.microsoft.com/en-us/entra/id-governance/privileged-identity-management/pim-configure
+
+### Monitoring and reporting
+- Sign-in logs: https://learn.microsoft.com/en-us/entra/identity/monitoring-health/concept-sign-ins
+- Audit logs: https://learn.microsoft.com/en-us/entra/identity/monitoring-health/concept-audit-logs
 
 Keep responses under 250 words. Be accurate and factual.`;
 
@@ -387,7 +427,7 @@ function ruleBasedResponse(question, summary) {
     return 'Check Conditional Access policies that require "password" as a grant control — '
          + 'these block passkey-only authentication. Use Authentication Strengths to '
          + 'enforce FIDO2 without blocking other users.\n\n'
-         + '📖 Learn more: [Authentication strengths](https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-authentication-strengths)';
+         + '📖 Learn more: [Authentication strengths](https://learn.microsoft.com/en-us/entra/identity/authentication/concept-authentication-strengths)';
   }
   if (q.includes('recommend') || q.includes('first') || q.includes('start')) {
     const recs = summary?.recommendations;

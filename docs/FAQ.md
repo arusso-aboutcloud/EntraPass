@@ -380,6 +380,21 @@ EntraPass analyzes per-user detail for the first 50 users returned by the Graph 
 (`GET /users?$top=999`). If a specific user is not appearing, they may have been
 outside the first 50 results. This limit is a performance optimization.
 
+### How does the AI Assistant decide which Microsoft documentation to link to?
+
+The AI Assistant ends relevant responses with 1 to 3 `learn.microsoft.com` links
+chosen from a fixed list of 22 curated URLs embedded in the system prompt. Selection
+is based on which topics the question touches — a narrow single-topic question gets
+1 link; a question spanning CA policies, authentication strengths, and passkey
+enrollment gets 2 or 3.
+
+Every URL in the list was verified to return a `200` response from
+`learn.microsoft.com` before it was added. The list contains no `aka.ms` shortlinks
+(those can silently change destinations) and no deprecated Azure AD content. The
+model cannot invent or modify URLs — it can only choose from the fixed list. The
+list itself lives in the `functions/ai/ask.js` source file and can only be updated
+via a repository commit.
+
 ### AI Assistant is not responding
 
 - In **Cloudflare Free AI** mode: the free tier has a daily usage limit. Switch to

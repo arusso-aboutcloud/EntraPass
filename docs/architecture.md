@@ -354,6 +354,29 @@ A Cloudflare Pages Function that provides the optional AI Assistant backend. It:
 - Falls back to a rule-based response if the AI binding is unavailable.
 - Streams the response as Server-Sent Events (SSE).
 
+**Microsoft Learn citation behavior**
+
+The SYSTEM_PROMPT instructs the model to end relevant responses with 1 to 3 Microsoft
+Learn reference links chosen from a fixed, curated list embedded in the prompt:
+
+- A narrow single-topic question gets 1 URL; a multi-topic question gets 2 or 3.
+- The model must not include any URL not in the list; invented or modified URLs are
+  prohibited.
+- URLs are formatted as `📖 Learn more: [Label](url) · [Label](url)`.
+
+**URL list curation criteria**
+
+All URLs in the list must satisfy:
+1. Confirmed 200 response from `learn.microsoft.com` at the time of addition.
+2. No `aka.ms` shortlinks (these can silently redirect to different destinations
+   after the prompt is deployed).
+3. No deprecated Azure AD content — only current Entra ID / Microsoft Entra
+   documentation.
+
+The URL list is maintained in the `## Documentation` section of the SYSTEM_PROMPT
+constant in `functions/ai/ask.js`. Updates require a code commit and new deployment;
+the model cannot modify or extend the list at runtime.
+
 ### 3.6 `infra/` — deployment templates
 
 | File | Type | Purpose |
