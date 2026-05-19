@@ -365,10 +365,14 @@ async function startScan() {
 
     showLoading('Enriching app registration data...');
 
-    // Phase 1b: app registration owner enrichment (capped at 50 for performance)
-    const appSample50 = apps.slice(0, 50);
+    // Phase 1b: owner enrichment — capped at 50 to avoid rate-limit thrashing
+    // (one Graph call per app). ALL registrations are analyzed regardless; apps
+    // beyond the cap receive owners:undefined so the orphaned-app check is skipped
+    // for them rather than producing a false positive.
+    const OWNER_ENRICH_CAP = 50;
     const appsEnriched = await Promise.all(
-      appSample50.map(async (app) => {
+      apps.map(async (app, i) => {
+        if (i >= OWNER_ENRICH_CAP) return { ...app, owners: undefined };
         const owners = await graphApi.getApplicationOwners(app.id).catch(() => []);
         return { ...app, owners };
       })
@@ -417,6 +421,7 @@ async function startScan() {
 
     showLoading('Running analysis...');
 
+    const config = loadConfig();
     scanResults = analyzer.analyzeAll({
       users: userDetails,
       devices: deviceDetails,
@@ -426,6 +431,7 @@ async function startScan() {
       servicePrincipals: sps,
       authorizationPolicy: authPolicy,
       authMethodsConfig,
+      scanningClientId: config?.clientId || null,
     });
 
     // Record sampling + fetch errors so the UI can be honest about coverage.
@@ -434,6 +440,8 @@ async function startScan() {
       usersAnalyzed:                userDetails.length,
       devicesFound:                 devices.length,
       devicesAnalyzed:              deviceDetails.length,
+      appsFound:                    apps.length,
+      appsNotOwnerEnriched:         Math.max(0, apps.length - OWNER_ENRICH_CAP),
       registrationReportAvailable:  regReport.available,
       registrationReportReason:     regReport.reason,
       partialDataCount:             scanResults.passkeyReadiness?.partialDataCount ?? 0,
@@ -1343,14 +1351,14 @@ function renderAppCard(app) {
     metaParts.push(`Created ${d.toLocaleDateString('en-GB', { year: 'numeric', month: 'short' })}`);
   }
 
-  const multiTag = app.multiTenant
-    ? `<span class="app-audience-badge multi">Multi-tenant</span>` : '';
+  const multiTag    = app.multiTenant  ? `<span class="app-audience-badge multi">Multi-tenant</span>` : '';
+  const scanningTag = app.isScanningApp ? `<span class="app-scanning-badge">Scanning app</span>` : '';
 
   return `<div class="app-card ${escapeHtml(app.severity)}">
     <div class="app-card-header">
       <div class="app-card-title">
         <span class="app-card-name">${escapeHtml(app.displayName)}</span>
-        ${renderAppTypeBadge(app.appType)}${multiTag}
+        ${renderAppTypeBadge(app.appType)}${multiTag}${scanningTag}
       </div>
       <span class="app-sev-badge ${escapeHtml(app.severity)}">${escapeHtml(app.severity.toUpperCase())}</span>
     </div>
@@ -1363,12 +1371,11 @@ function renderAppCard(app) {
 }
 
 function renderApps(r) {
-  const apps     = r.apps || [];
-  const excluded = r.appsExcludedCount || 0;
+  const apps = r.apps || [];
 
-  const sevOrder = { critical: 0, high: 1, medium: 2, low: 3, good: 4 };
+  const sevOrder = { critical: 0, high: 1, medium: 2, low: 3, info: 4, good: 5 };
   const flagged  = [...apps].filter(a => !a.passkeyCompatible)
-    .sort((a, b) => (sevOrder[a.severity] ?? 5) - (sevOrder[b.severity] ?? 5));
+    .sort((a, b) => (sevOrder[a.severity] ?? 6) - (sevOrder[b.severity] ?? 6));
   const clean    = apps.filter(a => a.passkeyCompatible);
 
   const critCount   = flagged.filter(a => a.severity === 'critical').length;
@@ -1384,7 +1391,7 @@ function renderApps(r) {
       When an app uses a <strong>client secret or certificate credential</strong>, it authenticates via the OAuth 2.0 client credentials flow,
       which <strong>bypasses Conditional Access, MFA, and passkey enforcement entirely</strong> — those controls only apply to interactive user sign-ins.
       A leaked app secret is a separate, persistent attack vector that passkeys alone cannot close.
-      <span class="app-narrative-tip">This scan covers only custom and third-party apps. Microsoft platform service principals are excluded — they are managed by Microsoft.</span>
+      <span class="app-narrative-tip">Microsoft-managed apps are included for inventory completeness and shown with an <strong>info</strong> badge — they carry no actionable findings because tenant admins cannot modify them.</span>
     </div>
   </div>`;
 
@@ -1437,6 +1444,8 @@ function renderApps(r) {
         <span class="app-clean-name">${escapeHtml(app.displayName)}</span>
         ${renderAppTypeBadge(app.appType)}
         ${app.multiTenant ? `<span class="app-audience-badge multi">Multi-tenant</span>` : ''}
+        ${app.isMicrosoftOwned ? `<span class="app-ms-badge">Microsoft-managed</span>` : ''}
+        ${app.isScanningApp    ? `<span class="app-scanning-badge">Scanning app</span>`  : ''}
         <span class="app-clean-source">${app.source === 'registration' ? 'App reg' : 'Service principal'}</span>
       </div>`;
     });
@@ -1446,10 +1455,12 @@ function renderApps(r) {
   }
   h += `</div>`;
 
-  // ── Excluded footnote ──────────────────────────────────────────────────────
-  if (excluded > 0) {
+  // ── Owner-enrichment coverage note ────────────────────────────────────────
+  const notEnriched = r.meta?.appsNotOwnerEnriched || 0;
+  if (notEnriched > 0) {
+    const enriched = (r.meta?.appsFound || 0) - notEnriched;
     h += `<div class="app-excluded-note">
-      📌 ${excluded} Microsoft platform service principal${excluded !== 1 ? 's' : ''} excluded — managed by Microsoft, not configurable by tenant admins.
+      📌 Owner data fetched for the first ${enriched} app registrations — orphaned-app check skipped for the remaining ${notEnriched}.
     </div>`;
   }
 

@@ -163,7 +163,7 @@ index.html
 6. analyzer.analyzeAll({ users, devices, policies, apps, ... })
    ├── classifyAccountType()      → member / guest / personal / breakglass
    ├── analyzePasskeyReadiness()  → 5-tier per-user status (ready/capable/needsPrep/blocked/exempt/unknown)
-   ├── analyzeAppCompatibility()  → per-app compatibility (App Identities tab)
+   ├── analyzeAppCompatibility()  → per-app compatibility (App Identities tab); Microsoft-managed SPs tagged info, not excluded; all registrations analyzed regardless of size
    ├── analyzePolicies()          → per-policy analysis
    ├── findToxicCombinations()    → critical/high security risks
    ├── generateRecommendations()  → prioritized actions

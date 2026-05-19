@@ -193,7 +193,7 @@ export class GraphAPI {
   async getServicePrincipals() {
     try {
       return await this.fetchAll(
-        '/servicePrincipals?$select=id,appId,displayName,appOwnerOrganizationId,passwordCredentials,keyCredentials,servicePrincipalType,publisherName,signInAudience,createdDateTime&$top=999'
+        '/servicePrincipals?$select=id,appId,displayName,appOwnerOrganizationId,verifiedPublisher,passwordCredentials,keyCredentials,servicePrincipalType,signInAudience,createdDateTime&$top=999'
       );
     } catch {
       return [];

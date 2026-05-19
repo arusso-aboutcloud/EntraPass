@@ -11,7 +11,6 @@ export class Analyzer {
       readinessScore,
       passkeyReadiness,
       apps:              appResult.apps,
-      appsExcludedCount: appResult.excludedCount,
       policies:          policyResult.policies,
       policyGaps:        policyResult.gaps,
       policySummary:     policyResult.summary,
@@ -364,48 +363,48 @@ export class Analyzer {
     return result;
   }
 
-  analyzeAppCompatibility({ apps, servicePrincipals, org }) {
+  analyzeAppCompatibility({ apps, servicePrincipals, org, scanningClientId }) {
     const tenantId = (org?.id || '').toLowerCase();
+
+    // Two documented Microsoft first-party tenant IDs (commercial cloud).
+    // verifiedPublisher.displayName provides defense-in-depth for any SP where
+    // appOwnerOrganizationId is absent or unexpected.
     const MS_TENANT_IDS = new Set([
-      'f8cdef31-a31e-4b4a-93e4-5f571e91255a',
-      '72f988bf-86f1-41af-91ab-2d7cd011db47',
+      'f8cdef31-a31e-4b4a-93e4-5f571e91255a', // Microsoft Services (primary first-party)
+      '72f988bf-86f1-41af-91ab-2d7cd011db47', // Microsoft (internal employee tenant)
     ]);
-    const MS_DOMAINS = [
-      'microsoft.com', 'microsoftonline.com', 'windows.net', 'sharepoint.com',
-      'skype.com', 'office.com', 'live.com', 'azure.com', 'graph.microsoft.com',
-    ];
 
     const isMicrosoftOwned = (item) => {
       const orgId = (item.appOwnerOrganizationId || '').toLowerCase();
-      const domain = (item.publisherDomain || item.publisherName || '').toLowerCase();
-      return MS_TENANT_IDS.has(orgId) || MS_DOMAINS.some(d => domain.includes(d));
+      const pub   = (item.verifiedPublisher?.displayName || '').toLowerCase();
+      return MS_TENANT_IDS.has(orgId) || pub.includes('microsoft');
     };
 
-    // Merge: app registrations (always tenant-owned) first, then non-Microsoft SPs.
-    // Deduplication by appId ensures the same logical app doesn't appear twice.
+    // Merge: app registrations first (always tenant-owned), then SPs not already seen.
+    // Microsoft-owned SPs are INCLUDED but tagged — not excluded — so users see their
+    // full app inventory. Actionable flags (multi-tenant, orphaned) are suppressed on
+    // Microsoft-managed apps because tenant admins cannot remediate them.
     const seen = new Set();
     const merged = [];
-    let excludedCount = 0;
 
     (apps || []).forEach(app => {
       if (!app.appId || seen.has(app.appId)) return;
       seen.add(app.appId);
-      merged.push({ ...app, _source: 'registration' });
+      merged.push({ ...app, _source: 'registration', _isMicrosoftOwned: false });
     });
 
     (servicePrincipals || []).forEach(sp => {
-      if (isMicrosoftOwned(sp)) { excludedCount++; return; }
       if (!sp.appId || seen.has(sp.appId)) return;
       seen.add(sp.appId);
-      merged.push({ ...sp, _source: 'servicePrincipal' });
+      merged.push({ ...sp, _source: 'servicePrincipal', _isMicrosoftOwned: isMicrosoftOwned(sp) });
     });
 
     const now = new Date();
     const analyzedApps = merged
-      .map(app => this.analyzeApp(app, now, tenantId))
+      .map(app => this.analyzeApp(app, now, tenantId, scanningClientId))
       .filter(a => a.displayName !== 'Unnamed');
 
-    return { apps: analyzedApps, excludedCount };
+    return { apps: analyzedApps };
   }
 
   classifyAppType(app) {
@@ -424,7 +423,33 @@ export class Analyzer {
     return 'api';
   }
 
-  analyzeApp(app, now, tenantId) {
+  analyzeApp(app, now, tenantId, scanningClientId) {
+    // Microsoft-managed apps: surface for inventory completeness, no actionable flags.
+    if (app._isMicrosoftOwned) {
+      return {
+        id:               app.id,
+        appId:            app.appId,
+        displayName:      app.displayName || app.appId || 'Unnamed',
+        source:           app._source,
+        appType:          this.classifyAppType(app),
+        signInAudience:   app.signInAudience || 'AzureADMyOrg',
+        passkeyCompatible: true,
+        isMicrosoftOwned: true,
+        isScanningApp:    false,
+        issues:           [],
+        severity:         'info',
+        credentialAlerts: [],
+        ownerCount:       0,
+        isOrphaned:       false,
+        multiTenant:      false,
+        description:      'Microsoft-managed — surfaced for inventory completeness; not a finding.',
+        fixGuide:         null,
+        createdDateTime:  app.createdDateTime || null,
+        secretCount:      0,
+        certCount:        0,
+      };
+    }
+
     const issues = [];
     const severities = [];
     const credentialAlerts = [];
@@ -509,7 +534,17 @@ export class Analyzer {
     // ── App type + delegated permissions gap ─────────────────────────────────
     const appType = this.classifyAppType(app);
     const isUserFacing = appType === 'spa' || appType === 'web' || appType === 'native';
-    if (isUserFacing && !(app.requiredResourceAccess || []).length) {
+    // Check for at least one Scope-typed entry across all declared resource accesses.
+    // A top-level array length check is insufficient: an app with only application
+    // permissions (type 'Role') would pass the old length check but still has no
+    // delegated flow. Service principals lack requiredResourceAccess in our query;
+    // skip the check for them to avoid false positives on unenriched data.
+    const hasDelegatedPerms = app._source === 'registration'
+      ? (app.requiredResourceAccess || []).some(rra =>
+          (rra.resourceAccess || []).some(ra => ra.type === 'Scope')
+        )
+      : true; // cannot determine from SP data; assume present to avoid false positive
+    if (isUserFacing && !hasDelegatedPerms) {
       issues.push('No delegated permissions — may prompt for password');
       severities.push('medium');
       descParts.push(
@@ -535,8 +570,10 @@ export class Analyzer {
     }
 
     // ── No owners (orphaned) ─────────────────────────────────────────────────
+    // owners === undefined means enrichment was skipped for this app (beyond the
+    // owner-fetch cap). Treat as unknown rather than "no owners" to avoid false positives.
     const ownerCount = (app.owners || []).length;
-    const isOrphaned = ownerCount === 0 && app._source === 'registration';
+    const isOrphaned = app.owners !== undefined && ownerCount === 0 && app._source === 'registration';
     if (isOrphaned) {
       issues.push('No owner — orphaned app');
       severities.push('medium');
@@ -553,6 +590,8 @@ export class Analyzer {
       : severities.includes('low')    ? 'low'
       : 'good';
 
+    const isScanningApp = !!(scanningClientId && app.appId === scanningClientId);
+
     return {
       id:              app.id,
       appId:           app.appId,
@@ -561,6 +600,8 @@ export class Analyzer {
       appType,
       signInAudience:  app.signInAudience || 'AzureADMyOrg',
       passkeyCompatible: issues.length === 0,
+      isMicrosoftOwned: false,
+      isScanningApp,
       issues,
       severity,
       credentialAlerts,

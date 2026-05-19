@@ -1988,6 +1988,7 @@ footer {
 .app-card.high     { border-left-color: var(--warn);   }
 .app-card.medium   { border-left-color: var(--info);   }
 .app-card.low      { border-left-color: var(--text-tertiary); }
+.app-card.info     { border-left-color: var(--border);  opacity: 0.85; }
 
 .app-card-header {
   display: flex;
@@ -2020,6 +2021,7 @@ footer {
 .app-sev-badge.high     { background: var(--warn);   color: #0a0a0a; }
 .app-sev-badge.medium   { background: var(--info);   color: #fff; }
 .app-sev-badge.low      { background: var(--surface-2); color: var(--text-secondary); border: 1px solid var(--border); }
+.app-sev-badge.info     { background: var(--surface-2); color: var(--text-tertiary);  border: 1px solid var(--border); }
 
 /* Issue chips row */
 .app-card-issues { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 0.55rem; }
@@ -2125,6 +2127,16 @@ footer {
 .app-clean-row:last-child { border-bottom: none; }
 .app-clean-name  { font-size: 0.84rem; font-weight: 600; color: var(--text); }
 .app-clean-source { font-size: 0.72rem; color: var(--text-tertiary); margin-left: auto; }
+.app-ms-badge {
+  font-size: 0.65rem; font-weight: 600; padding: 0.15rem 0.45rem;
+  border-radius: 4px; background: var(--surface-2); color: var(--text-tertiary);
+  border: 1px solid var(--border); white-space: nowrap;
+}
+.app-scanning-badge {
+  font-size: 0.65rem; font-weight: 600; padding: 0.15rem 0.45rem;
+  border-radius: 4px; background: rgba(91,158,249,0.12); color: var(--primary);
+  border: 1px solid rgba(91,158,249,0.3); white-space: nowrap;
+}
 
 /* Empty state */
 .app-empty-state {

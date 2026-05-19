@@ -230,11 +230,12 @@ Analysis of **app registrations and service principals** in your tenant.
 
 Severity colors:
 - **Red (high)** — password credentials present (can bypass passkeys for that app)
-- **Orange (medium)** — no delegated permissions (may fall back to password flow)
-- **Gray (info)** — Microsoft-managed app, not directly fixable by you
+- **Orange (medium)** — no delegated permissions (may fall back to password flow), multi-tenant audience, or orphaned app
+- **Gray (info)** — Microsoft-managed app; included for inventory completeness, no actionable findings
 
-> Focus on **custom enterprise apps** first. Microsoft first-party apps are included
-> for completeness but are generally not actionable by your tenant admins.
+> Focus on **custom enterprise apps** first. Microsoft-managed apps are surfaced so your
+> inventory is complete, but carry no findings tenant admins can remediate — they are
+> owned and operated by Microsoft.
 
 ### CA Policies tab
 
