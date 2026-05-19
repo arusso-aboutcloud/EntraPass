@@ -163,7 +163,7 @@ index.html
 6. analyzer.analyzeAll({ users, devices, policies, apps, ... })
    ├── classifyAccountType()      → member / guest / personal / breakglass
    ├── analyzePasskeyReadiness()  → 5-tier per-user status (ready/capable/needsPrep/blocked/exempt/unknown)
-   ├── analyzeAppCompatibility()  → per-app compatibility (App Identities tab); Microsoft-managed SPs tagged info, not excluded; all registrations analyzed regardless of size
+   ├── analyzeAppCompatibility()  → per-app compatibility (App Identities tab); returns flat array; custom apps and Microsoft-managed SPs both included; MS-managed tagged isMicrosoftOwned: true, severity: info; counts derived in renderApps()
    ├── analyzePolicies()          → per-policy analysis
    ├── findToxicCombinations()    → critical/high security risks
    ├── generateRecommendations()  → prioritized actions
@@ -201,6 +201,8 @@ index.html
 | `renderReadiness()` | 5-tier user cards, filter pills, search, phase planner |
 | `renderUserCard()` | Per-user card with status badge, account badge, auth chips, recommended action |
 | `exportReadinessCsv()` | 15-column CSV export of the readiness data |
+| `renderApps()` | App Identities tab — 3 stat tiles + conditional 4th, 4 filter pills, 3 collapsible sections (Needs Attention / Clean / Microsoft-managed) |
+| `exportAppsCsv()` | 16-column CSV export of the app identities data (col 16: Category = Custom \| Microsoft-managed) |
 
 ### 3.3 `src/graph.js` — Graph API client
 

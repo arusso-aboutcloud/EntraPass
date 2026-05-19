@@ -492,7 +492,7 @@ $app = New-MgApplication -DisplayName "entrapass-scanner" -SignInAudience AzureA
                 </div>
                 <div class="guide-tab-card">
                   <div class="guide-tab-label">App Identities</div>
-                  <p>App registrations that carry password credentials — these can bypass passkeys for that app. Focus on custom enterprise apps. Microsoft-managed apps are shown for completeness but are not directly fixable by your tenant admins.</p>
+                  <p>Custom apps with password credentials or other findings that can bypass passkeys. Microsoft-managed apps (Graph, Teams, Exchange, etc.) are surfaced in a separate collapsed section for inventory completeness — they carry no actionable findings.</p>
                 </div>
                 <div class="guide-tab-card">
                   <div class="guide-tab-label">CA Policies</div>

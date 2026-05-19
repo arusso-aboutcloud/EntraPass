@@ -143,19 +143,28 @@ Needs Prep / Blocked / Exempt), a readiness breakdown bar, infrastructure health
 2. **Passkey Readiness** — Per-user cards with 4-tier status, filter pills \
 (All / Ready / Capable / Needs Prep / Blocked / Exempt), full-text search, \
 recommended action per user, rollout phase planner, and CSV export (13 columns).
-3. **App Identities** — Analysis of every app registration and service principal in the \
-tenant. Severity levels — critical/high: client secrets or expired credentials (the app \
+3. **App Identities** — Analysis of every app registration and service principal, \
+split into two categories. \
+**Custom apps** (your tenant's own registrations and non-Microsoft service principals): \
+severity levels — critical/high: client secrets or expired credentials (the app \
 authenticates without user interaction, bypassing CA, MFA, and passkey enforcement \
-entirely); medium: no delegated permissions on a user-facing SPA or web app (may fall \
-back to password prompt), multi-tenant sign-in audience on a custom app, or orphaned app \
-with no owner assigned; low: certificate credentials (more secure than secrets, but still \
-non-interactive); info: Microsoft-managed first-party apps (Graph Explorer, Graph CLI \
-Tools, Teams, Exchange, etc.) — surfaced for inventory completeness with a \
-"Microsoft-managed" badge, no actionable findings because tenant admins cannot modify \
-Microsoft-owned apps; good: no issues. \
-The scanning app (EntraPass itself) displays a "Scanning app" badge for identification — \
-normal issue detection still applies. Severity ordering: critical > high > medium > low \
-> info > good.
+entirely); medium: no delegated permissions on a user-facing app (may fall back to \
+password), multi-tenant sign-in audience on a custom app, or orphaned app with no \
+owner assigned; low: certificate credentials (more secure than secrets, but still \
+non-interactive); good: no issues. \
+**Microsoft-managed apps** (Graph Explorer, Graph CLI Tools, Teams, Exchange, and \
+other Microsoft first-party service principals): surfaced in a separate collapsed \
+section for inventory completeness with an "info" severity badge and a \
+"Microsoft-managed" label — tenant admins cannot modify these apps so they carry no \
+actionable findings and do not count toward "Need attention." \
+The scanning app (EntraPass itself) displays a "Scanning app" badge — normal issue \
+detection still applies. \
+Dashboard layout: three stat tiles (Custom apps scanned / Need attention / \
+Microsoft-managed), plus a conditional "Expiring credentials" tile when custom apps \
+have credentials nearing expiry; four filter pills (All / Needs Attention / Clean / \
+Microsoft-managed); three list sections (Needs Attention expanded by default; Clean \
+collapsed when more than 10 entries; Microsoft-managed always collapsed). \
+Severity ordering: critical > high > medium > low > info > good.
 4. **CA Policies** — Conditional Access policy review: policies blocking passkey \
 registration or allowing password fallback, with specific fix recommendations.
 5. **AI Assistant** — Optional AI chat (Cloudflare Workers AI or bring-your-own-key).
