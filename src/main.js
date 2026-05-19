@@ -195,6 +195,7 @@ function setupEventListeners() {
   // Scan + AI
   on('scan-btn', 'click', startScan);
   on('ai-mode', 'change', toggleAiMode);
+  on('ai-provider-preset', 'change', applyByokPreset);
   on('btn-send-chat', 'click', sendChat);
   on('chat-input', 'keydown', (e) => { if (e.key === 'Enter') sendChat(); });
 }
@@ -476,6 +477,25 @@ function switchTab(tabName) {
 // ============================================
 // AI Assistant
 // ============================================
+const BYOK_PRESETS = {
+  openai:     { ep: 'https://api.openai.com/v1',      model: 'gpt-4o-mini',               keyHint: 'sk-…',            local: false },
+  mistral:    { ep: 'https://api.mistral.ai/v1',      model: 'mistral-small-latest',       keyHint: 'Mistral API key', local: false },
+  groq:       { ep: 'https://api.groq.com/openai/v1', model: 'llama-3.1-8b-instant',       keyHint: 'gsk_…',           local: false },
+  openrouter: { ep: 'https://openrouter.ai/api/v1',   model: 'anthropic/claude-3-5-haiku', keyHint: 'sk-or-…',         local: false },
+  ollama:     { ep: 'http://localhost:11434/v1',       model: 'llama3.2',                   keyHint: '',                local: true  },
+};
+
+function applyByokPreset() {
+  const preset = BYOK_PRESETS[document.getElementById('ai-provider-preset').value];
+  if (!preset) return;
+  document.getElementById('ai-endpoint').value = preset.ep;
+  document.getElementById('ai-model').value    = preset.model;
+  const keyField = document.getElementById('byok-key-field');
+  const keyInput = document.getElementById('ai-key');
+  keyField.classList.toggle('hidden', preset.local);
+  if (!preset.local) keyInput.placeholder = preset.keyHint;
+}
+
 function toggleAiMode() {
   const mode = document.getElementById('ai-mode').value;
   document.getElementById('byok-config').classList.toggle('hidden', mode !== 'byok');
@@ -583,7 +603,8 @@ async function getAiAnswer(question, results, history = [], onChunk = () => {}) 
     const ep    = document.getElementById('ai-endpoint').value.trim().replace(/\/+$/, '');
     const k     = document.getElementById('ai-key').value;
     const model = document.getElementById('ai-model').value;
-    if (!ep || !k) throw new Error('Configure the endpoint and API key in BYOK settings');
+    const isLocal = ep.startsWith('http://localhost') || ep.startsWith('http://127.0.0.1');
+    if (!ep || (!k && !isLocal)) throw new Error('Configure the endpoint and API key in BYOK settings');
     const systemMsg = 'You are the EntraPass AI assistant — an expert in Microsoft Entra ID '
       + 'passkey migration and the EntraPass open-source scanning tool. '
       + 'Answer concisely and factually, under 200 words. '

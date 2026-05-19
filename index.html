@@ -425,10 +425,21 @@ $app = New-MgApplication -DisplayName "entrapass-scanner" -SignInAudience AzureA
               </div>
               <div id="byok-config" class="hidden">
                 <div class="byok-field">
+                  <label class="byok-label" for="ai-provider-preset">Provider</label>
+                  <select id="ai-provider-preset">
+                    <option value="">— select a preset or enter manually —</option>
+                    <option value="openai">OpenAI</option>
+                    <option value="mistral">Mistral AI</option>
+                    <option value="groq">Groq</option>
+                    <option value="openrouter">OpenRouter (Claude, Gemini…)</option>
+                    <option value="ollama">Ollama (local)</option>
+                  </select>
+                </div>
+                <div class="byok-field">
                   <label class="byok-label" for="ai-endpoint">API Endpoint</label>
                   <input type="text" id="ai-endpoint" placeholder="https://api.openai.com/v1" />
                 </div>
-                <div class="byok-field">
+                <div class="byok-field" id="byok-key-field">
                   <label class="byok-label" for="ai-key">API Key</label>
                   <input type="password" id="ai-key" placeholder="sk-…" />
                 </div>
