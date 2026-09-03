@@ -21,13 +21,19 @@ function escapeHtml(value) {
 // ============================================
 // Configuration
 // ============================================
-// Configuration is loaded from sessionStorage (user-supplied via the setup
-// wizard) or from Vite build-time env vars for self-hosted deployments.
+// The App Registration config (client ID, tenant ID, redirect URI — no secrets,
+// no tenant data) lives in sessionStorage, same as the MSAL token cache and the
+// scan results. This is a deliberate privacy choice: nothing EntraPass touches
+// is persisted to disk, and everything is cleared when the browser tab closes.
+// sessionStorage survives the same-tab loginRedirect round trip, so the config
+// is still present when Microsoft redirects back.
+const CONFIG_KEY = 'entrapass_config';
+
 function loadConfig() {
   try {
-    const saved = JSON.parse(sessionStorage.getItem('entrapass_config'));
+    const saved = JSON.parse(sessionStorage.getItem(CONFIG_KEY));
     if (saved && saved.clientId && saved.tenantId) return saved;
-  } catch (e) { /* ignore malformed config */ }
+  } catch (e) { /* ignore malformed / unavailable storage */ }
 
   const envClientId = import.meta.env.VITE_CLIENT_ID;
   const envTenantId = import.meta.env.VITE_TENANT_ID;
@@ -146,23 +152,127 @@ window.addEventListener('DOMContentLoaded', async () => {
   setupEventListeners();
   renderOverviewReferences();
 
+  // A standalone admin-consent grant redirects back with ?admin_consent=... and
+  // no auth code — MSAL cannot turn that into a session, so detect it and guide
+  // the user to sign in. (Generic OAuth errors are left for MSAL to reject below,
+  // so we never strip the response URL out from under handleRedirectPromise.)
+  const consentNotice = readAdminConsentReturn();
+
   const msalConfig = getMsalConfig();
   if (!msalConfig) {
     showAuthScreen('setup-tc');
+    if (consentNotice) showAuthBanner(consentNotice.text, consentNotice.kind);
     return;
   }
   try {
     window.msalInstance = new PublicClientApplication(msalConfig);
     await window.msalInstance.initialize();
-    await window.msalInstance.handleRedirectPromise().catch(() => null);
-    const accounts = window.msalInstance.getAllAccounts();
-    if (accounts.length > 0) await initializeApp(accounts[0]);
-    else showAuthScreen('setup-tc');
+
+    let redirectResult = null;
+    try {
+      redirectResult = await window.msalInstance.handleRedirectPromise();
+    } catch (err) {
+      // Previously swallowed with .catch(() => null), which dumped the user back
+      // to the first setup screen with no explanation. Show the actual AADSTS
+      // code and a targeted hint instead, on the config step with the saved
+      // values pre-filled so the user can correct and retry.
+      console.error('MSAL redirect error:', err);
+      showConfigStep();
+      prefillConfigForm();
+      showAuthBanner(formatMsalError(err), 'error');
+      return;
+    }
+
+    const account = redirectResult?.account
+      || window.msalInstance.getAllAccounts()[0]
+      || null;
+
+    if (account) {
+      await initializeApp(account);
+    } else if (consentNotice) {
+      showConfigStep();
+      prefillConfigForm();
+      showAuthBanner(consentNotice.text, consentNotice.kind);
+    } else {
+      showAuthScreen('setup-tc');
+    }
   } catch (err) {
     console.error('MSAL init failed:', err);
     showAuthScreen('setup-tc');
+    showAuthBanner(formatMsalError(err), 'error');
   }
 });
+
+// Detects a return from the dedicated /adminconsent endpoint (?admin_consent=...
+// with no auth code) and strips the params so a refresh doesn't re-fire the
+// banner. Returns { kind, text } or null. Only touches the URL in this case —
+// a normal ?code= / #code= response is left intact for MSAL.
+function readAdminConsentReturn() {
+  const search = new URLSearchParams(window.location.search);
+  const hash   = new URLSearchParams((window.location.hash || '').replace(/^#/, ''));
+  const get = (k) => search.get(k) || hash.get(k);
+
+  const adminConsent = get('admin_consent');
+  if (!adminConsent || get('code')) return null;
+
+  const granted = String(adminConsent).toLowerCase() === 'true';
+  if (window.history.replaceState) {
+    window.history.replaceState({}, document.title, window.location.pathname);
+  }
+  return granted
+    ? { kind: 'info', text: 'Admin consent recorded for your tenant. Confirm your Client ID and Tenant ID below, then click "Save & Start Scanning" to sign in.' }
+    : { kind: 'error', text: 'Admin consent was not granted. A Global Administrator must approve the 7 read-only Graph permissions before EntraPass can scan this tenant.' };
+}
+
+// Pre-fills the config form from the saved config (sessionStorage / env), used
+// when we land on the config step after a redirect error or consent return.
+function prefillConfigForm() {
+  const cfg = loadConfig();
+  const set = (id, val) => {
+    const el = document.getElementById(id);
+    if (el && val && !el.value) el.value = val;
+  };
+  set('config-client-id', cfg?.clientId);
+  set('config-tenant-id', cfg?.tenantId);
+  set('config-redirect-uri', cfg?.redirectUri || window.location.origin);
+}
+
+// Turns an MSAL/AADSTS error into a one-line message with an actionable hint for
+// the mistakes that actually bounce people back to setup.
+function formatMsalError(err) {
+  const code = err?.errorCode || err?.name || 'unknown_error';
+  const desc = err?.errorMessage || err?.message || String(err || '');
+  const blob = `${code} ${desc}`;
+  let hint = '';
+
+  if (/9002326/.test(blob) || /cross-origin token redemption/i.test(blob)) {
+    hint = ' — Your app registration’s redirect URI is registered as a "Web" platform. '
+         + 'In Azure Portal → App registrations → your app → Authentication, remove it and '
+         + 're-add it under "Single-page application (SPA)".';
+  } else if (/50011/.test(blob) || /redirect uri|reply url/i.test(blob)) {
+    hint = ` — The SPA redirect URI on your app registration must exactly match ${window.location.origin}.`;
+  } else if (/65001|AADSTS65004|consent_required|invalid_grant/i.test(blob)) {
+    hint = ' — Admin consent has not been granted for the 7 delegated Graph permissions. '
+         + 'A Global Administrator must click "Grant admin consent" on the app registration.';
+  } else if (/700016|unauthorized_client/i.test(blob)) {
+    hint = ' — The Client ID is not valid for this tenant. Double-check the Application (client) ID and Directory (tenant) ID.';
+  }
+  return `${code}: ${desc}${hint}`;
+}
+
+// Shows a message on the setup wizard. kind: 'error' | 'info'.
+function showAuthBanner(text, kind = 'error') {
+  const el = document.getElementById('auth-banner');
+  if (!el) return;
+  el.textContent = text;
+  el.className = 'notice ' + (kind === 'info' ? 'notice-info' : 'notice-error');
+  el.classList.remove('hidden');
+}
+
+function clearAuthBanner() {
+  const el = document.getElementById('auth-banner');
+  if (el) el.classList.add('hidden');
+}
 
 // Wires every UI control to its handler. Replaces the previous inline
 // onclick/onchange attributes so the app can run under a strict CSP
@@ -218,7 +328,8 @@ function showDeployStep() {
   // Link to the Azure Portal "Register an application" blade.
   const portalUrl = 'https://portal.azure.com/#view/Microsoft_AAD_RegisteredApps/CreateApplicationBlade';
   document.getElementById('deploy-to-azure-link').href = portalUrl;
-  document.getElementById('current-url-display').textContent = window.location.origin;
+  document.querySelectorAll('.js-portal-url')
+    .forEach((el) => { el.textContent = window.location.origin; });
 }
 
 function showConfigStep() {
@@ -247,11 +358,12 @@ function saveConfiguration() {
     return;
   }
 
+  clearAuthBanner();
   showAuthScreen('setup-loading');
   document.getElementById('setup-loading-text').textContent = 'Validating configuration...';
 
   try {
-    sessionStorage.setItem('entrapass_config', JSON.stringify({ clientId, tenantId, redirectUri }));
+    sessionStorage.setItem(CONFIG_KEY, JSON.stringify({ clientId, tenantId, redirectUri }));
 
     const msalConfig = getMsalConfig();
     window.msalInstance = new PublicClientApplication(msalConfig);
@@ -271,7 +383,7 @@ function saveConfiguration() {
 }
 
 function clearConfiguration() {
-  sessionStorage.removeItem('entrapass_config');
+  sessionStorage.removeItem(CONFIG_KEY);
   sessionStorage.removeItem('entrapass_results');
   location.reload();
 }

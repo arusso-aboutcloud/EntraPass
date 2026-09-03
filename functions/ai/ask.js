@@ -12,6 +12,8 @@
  *   ALLOWED_ORIGIN  — exact origin of the EntraPass site
  *                     (e.g. "https://entrapass.aboutcloud.io")
  *                     Requests from any other origin are rejected.
+ *   AI_MODEL        — (optional) Workers AI model id. Defaults to
+ *                     "@cf/meta/llama-4-scout-17b-16e-instruct".
  */
 
 const MAX_BODY_BYTES   = 512 * 1024;
@@ -363,9 +365,18 @@ export async function onRequest(context) {
     { role: 'user', content: userPrompt },
   ];
 
+  // Workers AI text-generation model. Llama 4 Scout (17B MoE) is a clear quality
+  // step up from the previous llama-3.1-8b-instruct — which Cloudflare has marked
+  // Deprecated (sunset 2026-05-30) and which only had a ~8k-token context window,
+  // too small for this system prompt plus history. Scout has a 128k context and
+  // costs ~the same in Neurons per request (≈24.5k in / 77k out per M tokens vs
+  // ≈25.6k / 75k), so it stays comfortably inside the 10,000 Neurons/day free
+  // allocation. Override with the AI_MODEL environment variable if needed.
+  const AI_MODEL = env.AI_MODEL || '@cf/meta/llama-4-scout-17b-16e-instruct';
+
   try {
     if (!env.AI) throw new Error('AI binding not configured');
-    const aiStream = await env.AI.run('@cf/meta/llama-3.1-8b-instruct', {
+    const aiStream = await env.AI.run(AI_MODEL, {
       messages,
       max_tokens:  600,
       temperature: 0.3,
