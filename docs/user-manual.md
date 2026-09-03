@@ -487,6 +487,7 @@ This removes:
 | **Blank scan results** | Permissions not consented | Azure Portal → App registrations → API permissions → Grant admin consent |
 | **"Graph API error" / access denied** | Insufficient delegated permissions | Ensure all 7 permissions are added and admin consent is granted |
 | **Redirect / reply URL mismatch** | SPA redirect URI doesn't match the portal URL | The redirect URI must match your portal URL exactly |
+| **Consent completes but the wizard reappears** (`AADSTS9002326`, "cross-origin token redemption") | Redirect URI was added under the **Web** platform instead of **SPA** | Azure Portal → App registrations → your app → Authentication → remove the URI and re-add it under **Single-page application**. The wizard now shows the underlying error instead of silently looping. |
 | **Config validation failed** | Invalid GUID format | Client ID and Tenant ID must be in 8-4-4-4-12 hex format |
 | **Session expired mid-scan** | Access token expired (~60 min) | Sign out and sign in again |
 | **All users show as Blocked (status = 0)** | Old cached results in sessionStorage | Click Reset app, then re-scan |

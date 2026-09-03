@@ -187,7 +187,7 @@ npm run preview
 ```
 index.html                 # SPA entry point: setup wizard + dashboard markup
 vite.config.js             # Vite build configuration
-wrangler.toml              # Cloudflare Pages / Workers configuration
+wrangler.toml               # Cloudflare Pages / Workers configuration
 
 src/
   main.js                  # Application orchestration: MSAL, scan, rendering
@@ -281,6 +281,19 @@ npm run dev          # http://localhost:5173
 **Core contract (non-negotiable):** EntraPass is read-only and browser-only. No write operations against Microsoft Graph, no backend, no persistent storage beyond `sessionStorage`. PRs that change this will not be merged.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the full coding guidelines and how to report security vulnerabilities privately.
+
+---
+
+## 🔗 Related aboutcloud.io tools
+
+Other free, open-source Entra ID tools from the same team:
+
+| Tool | What it does |
+|---|---|
+| [Entra RoleLens](https://entrarolelens.aboutcloud.io) ([source](https://github.com/arusso-aboutcloud/Entra-Rolelens)) | Least-privilege Entra ID role finder — task → minimum built-in role |
+| [Entra Tracker](https://entratracker.aboutcloud.io) ([source](https://github.com/arusso-aboutcloud/Entra-Tracker)) | Live tracker for Entra ID retirements, breaking changes, and previews |
+| [AADSTS Entra Errors](https://entraerrors.aboutcloud.io) ([source](https://github.com/arusso-aboutcloud/AADSTS-Entra-Errors)) | Searchable AADSTS error code reference |
+| [CROSSEC](https://crossec.aboutcloud.io) ([source](https://github.com/arusso-aboutcloud/crossed)) | Microsoft Cloud security crossword game |
 
 ---
 
