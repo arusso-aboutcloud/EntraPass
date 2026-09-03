@@ -151,6 +151,9 @@
           </div>
         </div>
 
+        <!-- Sign-in / consent status banner (populated by main.js) -->
+        <div id="auth-banner" class="notice notice-error hidden" role="alert"></div>
+
         <!-- Terms & Conditions -->
         <div id="setup-tc" class="card">
           <h2>Before You Start</h2>
@@ -215,8 +218,18 @@
               In the blade configure:
               <br/>1. <strong>Name</strong>: <code>entrapass-scanner</code>
               <br/>2. <strong>Accounts</strong>: "Only this organizational directory"
-              <br/>3. <strong>Redirect URI</strong>: SPA &rarr; <code id="current-url-display">your-portal-url</code>
+              <br/>3. <strong>Redirect URI</strong>: in the platform dropdown pick
+              <strong>Single-page application (SPA)</strong> &mdash; <em>not</em> "Web" &mdash;
+              then enter <code id="current-url-display" class="js-portal-url">your-portal-url</code>
               <br/>4. Click <strong>Register</strong>, then add Microsoft Graph delegated permissions (7 scopes) and <strong>grant admin consent</strong>
+            </p>
+            <p class="note notice notice-error" style="margin-top:0.6rem;font-size:0.8rem;">
+              ⚠️ The redirect URI <strong>must</strong> be registered under the
+              <strong>Single-page application (SPA)</strong> platform and match
+              <code class="js-portal-url">your-portal-url</code> exactly. If it is added as
+              a "Web" platform, sign-in completes but token exchange fails
+              (<code>AADSTS9002326</code>) and you are returned to this wizard. Fix it under
+              <em>App registrations → your app → Authentication</em>.
             </p>
           </div>
 
