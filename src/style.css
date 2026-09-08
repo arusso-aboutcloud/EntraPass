@@ -117,13 +117,65 @@ a:hover { text-decoration: underline; }
   align-items: center;
   gap: 0.75rem;
 }
-.auth-brand-logo {
-  width: 48px;
-  height: 48px;
-  object-fit: contain;
-  opacity: 0.95;
+
+/* AboutCloud brand mark -- same glowing/rotating chip treatment shipped
+   on Entra RoleLens, Entra Tracker and AADSTS Entra Errors (source of
+   truth: aboutcloud.io, same verified icon asset all four sites use).
+   Replaces the old flat /aboutcloud_logo.png image. Sized to this
+   sidebar's existing 48px logo slot rather than the other sites' 56px
+   full-width header. */
+.auth-brand-chip {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  border-radius: 11px;
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--primary-light);
+  box-shadow: 0 0 20px rgba(91,158,249,0.28), inset 0 0 12px rgba(91,158,249,0.14);
 }
+.auth-brand-chip img {
+  position: relative;
+  z-index: 1;
+  width: 27px;
+  height: auto;
+}
+.auth-brand-ring {
+  position: absolute;
+  inset: -3px;
+  border-radius: 14px;
+  padding: 3px;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+}
+.auth-brand-ring-cw {
+  background: conic-gradient(from 0deg, #00d4ff, transparent 70%, #00d4ff);
+  animation: auth-brand-spin-cw 3.8s linear infinite;
+}
+.auth-brand-ring-ccw {
+  background: conic-gradient(from 0deg, #7fe3ff, transparent 70%, #7fe3ff);
+  opacity: 0.8;
+  animation: auth-brand-spin-ccw 5.2s linear infinite;
+}
+@keyframes auth-brand-spin-cw  { to { transform: rotate(360deg); } }
+@keyframes auth-brand-spin-ccw { to { transform: rotate(-360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .auth-brand-ring-cw  { animation: none; transform: rotate(20deg); }
+  .auth-brand-ring-ccw { animation: none; transform: rotate(-20deg); }
+}
+/* Continuous conic-gradient rotation forces a repaint every frame --
+   fine on desktop, measurably not on mid/low-tier mobile GPUs (same
+   reasoning already applied to this same chip on the sibling sites).
+   Freeze at a static angle on touch devices instead of animating. */
+@media (pointer: coarse) {
+  .auth-brand-ring-cw  { animation: none; transform: rotate(20deg); }
+  .auth-brand-ring-ccw { animation: none; transform: rotate(-20deg); }
+}
+
 .auth-brand-info {
   display: flex;
   flex-direction: column;

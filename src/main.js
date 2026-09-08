@@ -987,7 +987,7 @@ function renderOverviewHero(r) {
   hero.innerHTML = `
     <div class="score-ring-card">
       <div class="ring-brand">
-        <img src="/aboutcloud_logo.png" alt="Aboutcloud" class="ring-brand-logo">
+        <img src="/logo-icon-dark-theme.png" alt="Aboutcloud" class="ring-brand-logo">
         <span class="ring-brand-name">Aboutcloud EntraPass</span>
       </div>
       <div class="ring-label">${(sampled && !noScore) ? 'Sample Readiness Score' : 'Readiness Score'}</div>
