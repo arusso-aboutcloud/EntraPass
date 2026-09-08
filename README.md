@@ -1,6 +1,6 @@
 <p align="center">
   <a href="https://entrapass.aboutcloud.io">
-    <img src="docs/entrapass_logo.png" alt="EntraPass — Passkey Migration Assistant" width="800"/>
+    <img src="docs/entrapass_logo.png" alt="EntraPass: Passkey Migration Assistant" width="800"/>
   </a>
 </p>
 
@@ -28,7 +28,7 @@ answers questions like:
 - Which app identities expose credentials that could bypass passkeys?
 
 It runs entirely in your browser. The only network calls it makes are to the
-Microsoft Graph API — there is no EntraPass backend, no database, and no telemetry.
+Microsoft Graph API: there is no EntraPass backend, no database, and no telemetry.
 
 ---
 
@@ -36,24 +36,24 @@ Microsoft Graph API — there is no EntraPass backend, no database, and no telem
 
 | Feature | Description |
 |---|---|
-| **4-Tier Passkey Readiness** | Classifies every user as Ready / Capable / Needs Prep / Blocked / Exempt — a precise picture of where each person stands (first 50 users on large tenants) |
+| **4-Tier Passkey Readiness** | Classifies every user as Ready / Capable / Needs Prep / Blocked / Exempt: a precise picture of where each person stands (first 50 users on large tenants) |
 | **Readiness Score (0–100)** | Composite score weighted by user tiers, FIDO2 policy state, TAP availability, CA gaps, and critical risk combinations (labelled as a sample score on tenants with more than 50 users) |
 | **Rollout Phase Planner** | Automatically groups users into actionable deployment phases based on their tier (based on 50-user sample on large tenants) |
-| **Per-User Recommended Actions** | Specific next step for each user — register passkey, enable MFA, update device OS, resolve CA blocker |
+| **Per-User Recommended Actions** | Specific next step for each user: register passkey, enable MFA, update device OS, resolve CA blocker |
 | **Device Compatibility** | Checks OS versions (Windows 10+, iOS 16+, Android 14+, macOS 13+) |
 | **CA Policy Advisor** | Identifies Conditional Access policies blocking passkey registration |
 | **Toxic Combination Detector** | Flags privileged users without MFA or passkey, and policies that allow password fallback |
-| **App Identities** | Analysis of app registrations and service principals — password credentials, owner coverage, legacy-auth signals |
+| **App Identities** | Analysis of app registrations and service principals: password credentials, owner coverage, legacy-auth signals |
 | **AI Assistant** | Optional AI chat (Cloudflare Workers AI or bring-your-own-key) to interpret results |
 | **Executive Summary** | Prioritized recommendations plus infrastructure health chips |
 | **Security First** | PKCE auth, your own app registration, browser-only data |
 
 ### What it does **not** do
 
-- **No write access** — read-only Microsoft Graph scopes only
-- **No data storage** — everything stays in your browser's `sessionStorage`
-- **No scan-data egress** — tenant data, scan results, UPNs, group names, and Conditional Access policy contents never leave the browser (the only exception is the optional AI Assistant). The site uses self-hosted Umami for anonymous page-visit counts only; Umami never sees any Microsoft Graph response
-- **No server** — zero backend, just static files on a CDN
+- **No write access**: read-only Microsoft Graph scopes only
+- **No data storage**: everything stays in your browser's `sessionStorage`
+- **No scan-data egress**: tenant data, scan results, UPNs, group names, and Conditional Access policy contents never leave the browser (the only exception is the optional AI Assistant). The site uses self-hosted Umami for anonymous page-visit counts only; Umami never sees any Microsoft Graph response
+- **No server**: zero backend, just static files on a CDN
 
 ---
 
@@ -78,7 +78,7 @@ Go to **[entrapass.aboutcloud.io](https://entrapass.aboutcloud.io)** (or your se
 
 ### 2. Accept the Terms & Conditions
 
-Read and acknowledge the T&C — this is required before proceeding.
+Read and acknowledge the T&C: this is required before proceeding.
 
 ### 3. Create an App Registration in **your** tenant
 
@@ -87,15 +87,15 @@ your Microsoft Entra ID tenant. The setup wizard offers three ways to create it:
 
 | Method | Best for |
 |---|---|
-| **Azure Portal blade** (recommended) | Most users — the wizard links straight to the registration blade |
-| **Azure Cloud Shell script** | Fastest — one command creates the app and all 7 permissions |
+| **Azure Portal blade** (recommended) | Most users: the wizard links straight to the registration blade |
+| **Azure Cloud Shell script** | Fastest: one command creates the app and all 7 permissions |
 | **Manual PowerShell** | Advanced users who want full control |
 
 See the [Installation Guide](docs/installation.md) for step-by-step instructions
 for each method.
 
 > **Note:** The Bicep template (`infra/app-registration.bicep`) is kept for
-> reference only — `Microsoft.Graph/applications` Bicep deployment is not
+> reference only: `Microsoft.Graph/applications` Bicep deployment is not
 > reliably supported, so use one of the three methods above instead.
 
 ### 4. Configure & sign in
@@ -105,7 +105,7 @@ Microsoft and consent to the requested permissions.
 
 ### 5. Scan your tenant
 
-Click **Scan Tenant Now** — all analysis happens in your browser.
+Click **Scan Tenant Now**: all analysis happens in your browser.
 
 ### 6. Review & act
 
@@ -113,7 +113,7 @@ Click **Scan Tenant Now** — all analysis happens in your browser.
 |---|---|
 | **Overview** | Animated readiness score, stat tiles, infrastructure health, executive summary |
 | **Passkey Readiness** | Per-user cards with 4-tier status, filter pills, phase planner |
-| **App Identities** | App registration risks — password credentials, owner gaps, legacy signals |
+| **App Identities** | App registration risks: password credentials, owner gaps, legacy signals |
 | **CA Policies** | Conditional Access policies blocking passkeys |
 | **AI Assistant** | Ask questions about your results (opt-in) |
 
@@ -144,8 +144,8 @@ The repository runs automated security scanning on every push and weekly:
 
 | Scan | What it checks | Trigger |
 |---|---|---|
-| **Trivy — filesystem** | Vulnerabilities, secrets, misconfigurations | Push, PR, weekly |
-| **Trivy — npm dependencies** | CRITICAL & HIGH vulnerabilities | Push, PR, weekly |
+| **Trivy: filesystem** | Vulnerabilities, secrets, misconfigurations | Push, PR, weekly |
+| **Trivy: npm dependencies** | CRITICAL & HIGH vulnerabilities | Push, PR, weekly |
 | **Dependabot** | Supply-chain vulnerabilities | Weekly (npm) + monthly (GitHub Actions) |
 
 Trivy results are uploaded as SARIF to the **GitHub Security → Code scanning** tab.
@@ -200,7 +200,7 @@ functions/
     ask.js                 # Cloudflare Pages Function for the AI Assistant
 
 infra/
-  app-registration.bicep   # Bicep template (reference only — see note above)
+  app-registration.bicep   # Bicep template (reference only: see note above)
   app-registration.json    # ARM JSON template (reference)
   deploy-entrapass.ps1     # Cloud Shell deployment script
   cleanup-entrapass.ps1    # App Registration cleanup script
@@ -216,15 +216,16 @@ docs/
   user-manual.md           # User manual
   FAQ.md                   # Frequently asked questions
   diagrams/
-    architecture.svg       # Architecture diagram (animated SVG)
+    architecture.svg       # Full system architecture diagram
+    high-level-flow.svg    # Browser <-> Graph API request/response flow
 ```
 
 ### Environment variables
 
 | Variable | Required | Description |
 |---|---|---|
-| `VITE_CLIENT_ID` | Optional | Client ID — if set with `VITE_TENANT_ID`, skips the setup wizard |
-| `VITE_TENANT_ID` | Optional | Tenant ID — if set with `VITE_CLIENT_ID`, skips the setup wizard |
+| `VITE_CLIENT_ID` | Optional | Client ID: if set with `VITE_TENANT_ID`, skips the setup wizard |
+| `VITE_TENANT_ID` | Optional | Tenant ID: if set with `VITE_CLIENT_ID`, skips the setup wizard |
 
 Set them in a `.env` file (git-ignored) for local development, or as build-time
 secrets in CI. When both are present the wizard is bypassed and the app goes
@@ -234,14 +235,14 @@ straight to sign-in.
 
 ## 🔐 Security model
 
-- **PKCE (S256)** — authorization code flow with Proof Key for Code Exchange
-- **No client secret** — SPA apps don't need one and can't store one securely
-- **Your own tenant** — the App Registration lives in *your* tenant, not a shared one
-- **Delegated permissions** — the app acts on behalf of the signed-in user
-- **Read-only scopes** — no write operations against Graph
-- **Browser-only data** — no servers, no databases, no scan-data analytics
-- **No cookies** — `sessionStorage` only, cleared when the tab closes
-- **Open source** — full transparency, build verifiable from source
+- **PKCE (S256)**: authorization code flow with Proof Key for Code Exchange
+- **No client secret**: SPA apps don't need one and can't store one securely
+- **Your own tenant**: the App Registration lives in *your* tenant, not a shared one
+- **Delegated permissions**: the app acts on behalf of the signed-in user
+- **Read-only scopes**: no write operations against Graph
+- **Browser-only data**: no servers, no databases, no scan-data analytics
+- **No cookies**: `sessionStorage` only, cleared when the tab closes
+- **Open source**: full transparency, build verifiable from source
 
 ### Required permissions (Microsoft Graph, delegated)
 
@@ -259,7 +260,7 @@ straight to sign-in.
 
 ## 🤝 Contributing
 
-Contributions are welcome — bug reports, documentation fixes, new analysis rules, and UI improvements are all appreciated.
+Contributions are welcome: bug reports, documentation fixes, new analysis rules, and UI improvements are all appreciated.
 
 **Quick start:**
 
@@ -273,9 +274,9 @@ npm run dev          # http://localhost:5173
 **PR workflow:**
 
 1. Fork the repo and create a feature branch from `main` (e.g. `fix/policy-parsing`)
-2. Make your change — keep PRs focused, one logical change per PR
+2. Make your change: keep PRs focused, one logical change per PR
 3. Verify it builds: `npm run build` must succeed
-4. Test in the browser — confirm the affected flow works end-to-end
+4. Test in the browser: confirm the affected flow works end-to-end
 5. Open a PR against `main`; CI runs Trivy and the Cloudflare Pages build automatically
 
 **Core contract (non-negotiable):** EntraPass is read-only and browser-only. No write operations against Microsoft Graph, no backend, no persistent storage beyond `sessionStorage`. PRs that change this will not be merged.
@@ -290,7 +291,7 @@ Other free, open-source Entra ID tools from the same team:
 
 | Tool | What it does |
 |---|---|
-| [Entra RoleLens](https://entrarolelens.aboutcloud.io) ([source](https://github.com/arusso-aboutcloud/Entra-Rolelens)) | Least-privilege Entra ID role finder — task → minimum built-in role |
+| [Entra RoleLens](https://entrarolelens.aboutcloud.io) ([source](https://github.com/arusso-aboutcloud/Entra-Rolelens)) | Least-privilege Entra ID role finder: task → minimum built-in role |
 | [Entra Tracker](https://entratracker.aboutcloud.io) ([source](https://github.com/arusso-aboutcloud/Entra-Tracker)) | Live tracker for Entra ID retirements, breaking changes, and previews |
 | [AADSTS Entra Errors](https://entraerrors.aboutcloud.io) ([source](https://github.com/arusso-aboutcloud/AADSTS-Entra-Errors)) | Searchable AADSTS error code reference |
 | [CROSSEC](https://crossec.aboutcloud.io) ([source](https://github.com/arusso-aboutcloud/crossed)) | Microsoft Cloud security crossword game |
@@ -299,7 +300,7 @@ Other free, open-source Entra ID tools from the same team:
 
 ## 📄 License
 
-MIT License — see [LICENSE](LICENSE) for details.
+MIT License: see [LICENSE](LICENSE) for details.
 
 > **Commercial use:** EntraPass is MIT-licensed and free to use. If you plan to
 > use it as part of a commercial product or paid service, we kindly ask that you
@@ -316,5 +317,5 @@ MIT License — see [LICENSE](LICENSE) for details.
 
 ---
 
-> Built by [Aboutcloud](https://aboutcloud.io) for the passkey community — because
+> Built by [Aboutcloud](https://aboutcloud.io) for the passkey community, because
 > phishing-resistant authentication shouldn't be hard to adopt.
