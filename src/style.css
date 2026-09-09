@@ -155,11 +155,13 @@ a:hover { text-decoration: underline; }
 .auth-brand-ring-cw {
   background: conic-gradient(from 0deg, #00d4ff, transparent 70%, #00d4ff);
   animation: auth-brand-spin-cw 3.8s linear infinite;
+  will-change: transform;
 }
 .auth-brand-ring-ccw {
   background: conic-gradient(from 0deg, #7fe3ff, transparent 70%, #7fe3ff);
   opacity: 0.8;
   animation: auth-brand-spin-ccw 5.2s linear infinite;
+  will-change: transform;
 }
 @keyframes auth-brand-spin-cw  { to { transform: rotate(360deg); } }
 @keyframes auth-brand-spin-ccw { to { transform: rotate(-360deg); } }
@@ -167,14 +169,15 @@ a:hover { text-decoration: underline; }
   .auth-brand-ring-cw  { animation: none; transform: rotate(20deg); }
   .auth-brand-ring-ccw { animation: none; transform: rotate(-20deg); }
 }
-/* Continuous conic-gradient rotation forces a repaint every frame --
-   fine on desktop, measurably not on mid/low-tier mobile GPUs (same
-   reasoning already applied to this same chip on the sibling sites).
-   Freeze at a static angle on touch devices instead of animating. */
-@media (pointer: coarse) {
-  .auth-brand-ring-cw  { animation: none; transform: rotate(20deg); }
-  .auth-brand-ring-ccw { animation: none; transform: rotate(-20deg); }
-}
+/* The ring only animates `transform`, which is compositor-only and
+   doesn't force main-thread repaint -- measured no FPS/task-time
+   regression under Pixel 5 + 4x-CPU-throttle (matching RoleLens's #170
+   methodology), so unlike other decorative glows on the sibling sites it
+   doesn't need a pointer:coarse freeze. will-change: transform (above)
+   hints the browser to promote it to its own layer despite the mask,
+   since a masked element can otherwise fall back to main-thread
+   compositing on some engines. Left spinning on mobile; the
+   prefers-reduced-motion freeze above still applies for accessibility. */
 
 .auth-brand-info {
   display: flex;
